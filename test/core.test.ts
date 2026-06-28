@@ -125,7 +125,12 @@ test('decode failures use the route default failure action', async () => {
       Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1' }],
     },
   ]);
-  const manager = new SqsWorkerManager(client);
+  const events: string[] = [];
+  const manager = new SqsWorkerManager(client, {
+    onEvent: (event) => {
+      events.push(event.type);
+    },
+  });
 
   manager.register({
     name: 'decode-failure',
@@ -146,7 +151,9 @@ test('decode failures use the route default failure action', async () => {
   const status = manager.getStatus()[0];
   assert.equal(status?.lastFailureKind, 'decode');
   assert.equal(status?.counters.handlerFailureCount, 1);
+  assert.equal(status?.counters.handlerStartedCount, 0);
   assert.equal(status?.counters.messageDeleteCount, 1);
+  assert.equal(events.includes('handler-start'), false);
 });
 
 test('error hooks can override handler failure action', async () => {
@@ -279,10 +286,12 @@ test('abandon timeout stops heartbeats, keeps the message, and records late sett
 
   assert.equal(client.deleteInputs.length, 0);
   assert.equal(client.visibilityInputs.length, heartbeatCountAfterTimeout);
+  assert.equal(events.some((event) => event.type === 'heartbeat-failure'), false);
   assert.equal(events.some((event) => event.type === 'late-settlement'), true);
 
   const snapshot = manager.getSnapshot();
   assert.equal(snapshot.counters.handlerTimeoutCount, 1);
+  assert.equal(snapshot.counters.heartbeatFailureCount, 0);
   assert.equal(snapshot.counters.messageKeepCount, 1);
   assert.equal(snapshot.counters.lateSettlementCount, 1);
 });

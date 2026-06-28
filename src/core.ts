@@ -597,7 +597,7 @@ export class SqsWorkerManager {
     };
 
     const runHeartbeat = async (): Promise<void> => {
-      if (heartbeatRunning) {
+      if (!heartbeatEnabled || heartbeatRunning) {
         return;
       }
 
@@ -622,16 +622,15 @@ export class SqsWorkerManager {
       }, route.config.heartbeatIntervalMs);
     }
 
-    this.emitRuntimeEvent(status, {
-      type: 'handler-start',
-      at: new Date(),
-      routeName: route.name,
-      queueUrl: route.queueUrl,
-      messageId: message.messageId,
-    });
-
     try {
       const payload = route.decodePayload?.(message);
+      this.emitRuntimeEvent(status, {
+        type: 'handler-start',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: message.messageId,
+      });
       const handlerPromise = Promise.resolve().then(() =>
         route.handle({
           routeName: route.name,
@@ -689,8 +688,7 @@ export class SqsWorkerManager {
         messageId: message.messageId,
         durationMs: Date.now() - startedAtMs,
         timeoutStrategy: route.config.timeoutStrategy,
-        settlementOutcome:
-          route.config.timeoutStrategy === 'cooperative' ? 'pending' : 'pending',
+        settlementOutcome: 'pending',
         error: timeoutError,
       });
 
