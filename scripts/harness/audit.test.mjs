@@ -41,6 +41,10 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(repoRoot, 'docs/HARNESS.md', 'scripts/README.md\ndocs/ISSUE_TRACKING.md\ndocs/EXECUTION_PLANS.md\ndocs/ARCHITECTURE.md\n');
   writeFile(repoRoot, 'README.md', 'WORKFLOW.md\ndocs/HARNESS.md\n');
   writeFile(repoRoot, 'scripts/README.md', 'verify.sh\n');
+  writeFile(repoRoot, 'src/core.ts', 'export const marker = true;\n');
+  writeFile(repoRoot, 'src/nest.ts', 'export const marker = true;\n');
+  writeFile(repoRoot, 'test/core.test.ts', 'export {};\n');
+  writeFile(repoRoot, 'test/nest.test.ts', 'export {};\n');
   writeFile(repoRoot, 'Makefile', '.PHONY: audit verify-fast verify plan-sync\naudit:\nverify-fast:\nverify:\nplan-sync:\n');
   writeFile(
     repoRoot,
@@ -87,4 +91,3 @@ test('buildReport fails when verify.sh is missing package checks', () => {
   assert.equal(verification?.status, 'fail');
   assert.equal(verifyCheck?.status, 'fail');
 });
-

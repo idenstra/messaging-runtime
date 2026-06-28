@@ -20,5 +20,4 @@ Default proof posture:
 - no Docker boot
 - no AWS dependency
 - no live SNS/SQS requirement
-- deterministic package and harness validation only
-
+- deterministic package, runtime, and harness validation only

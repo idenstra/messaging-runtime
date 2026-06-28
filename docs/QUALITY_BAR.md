@@ -12,4 +12,4 @@ Every meaningful change should:
 - update tests when behavior changes
 - update docs when package contracts or workflow expectations change
 - preserve the private-first, single-package posture unless a tracked issue changes that decision
-
+- keep runtime semantics stable unless a tracked issue explicitly expands behavior

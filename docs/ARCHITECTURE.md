@@ -17,6 +17,5 @@ Not owned here:
 Current state:
 - single package
 - private-first
-- bootstrap shell only
-- extraction from `platform` follows in the next slice
-
+- extracted SQS worker runtime core now lives here
+- consumer adoption still follows in later slices

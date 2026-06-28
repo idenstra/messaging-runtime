@@ -35,7 +35,7 @@ Read these first and use them intentionally:
 - Do not leak `CDP`, `bff-product`, or any other repo-specific types into the package API.
 - Keep local verification deterministic by default. Do not require live AWS for the harness gate.
 - Any meaningful behavior change must update the relevant docs in the same change-set.
-- Package publication is private-first and intentionally not automated in this bootstrap slice.
+- Package publication is private-first and intentionally not automated in the current extraction phase.
 
 ## Repo layout contract
 - `src/`: package source and exported runtime surface
@@ -64,4 +64,3 @@ Any meaningful change must update the relevant docs in the same change-set:
 - `WORKFLOW.md` for proof expectations
 - this file when repo rules change
 - `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, or `docs/RELIABILITY.md` when package boundaries or verification posture changes
-

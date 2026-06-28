@@ -137,6 +137,9 @@ function createRepoDocsCategory(repoRoot) {
     hasText('docs/ARCHITECTURE.md', 'Not owned here', repoRoot)
       ? createCheck('architecture-boundaries', 'pass', 'Architecture doc defines repo ownership boundaries')
       : createCheck('architecture-boundaries', 'fail', 'docs/ARCHITECTURE.md does not define the expected repo boundaries', 'Refresh docs/ARCHITECTURE.md with owned and non-owned surfaces.'),
+    ['src/core.ts', 'src/nest.ts', 'test/core.test.ts', 'test/nest.test.ts'].every((relativePath) => exists(relativePath, repoRoot))
+      ? createCheck('runtime-core-surface', 'pass', 'Runtime core source and consumer-agnostic tests are present')
+      : createCheck('runtime-core-surface', 'fail', 'Runtime core source or tests are missing from the repo surface', 'Keep the extracted runtime source and tests in this repo.'),
   ];
 
   return { id: 'repo-docs', status: categoryStatus(checks), checks };
@@ -175,4 +178,3 @@ function runCli() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runCli();
 }
-
