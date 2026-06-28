@@ -30,7 +30,7 @@ export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
       return message;
     }
 
-    return `${message} ${JSON.stringify(meta)}`;
+    return `${message} ${safeStringify(meta)}`;
   }
 }
 
@@ -47,5 +47,13 @@ export abstract class AbstractNestSqsWorkerHost implements OnModuleInit, OnModul
 
   protected snapshotWorkerStatus() {
     return this.workerManager.getStatus();
+  }
+}
+
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '[unserializable-meta]';
   }
 }

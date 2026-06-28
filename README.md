@@ -4,6 +4,8 @@
 
 Current state:
 - single package surface: `@idenstra/messaging-runtime`
+- root entrypoint exposes the transport runtime core only
+- Nest integration is exposed as the optional subpath `@idenstra/messaging-runtime/nest`
 - extracted worker runtime core now lives here
 - no business handlers live here
 - consumer adoption is still deferred until later slices

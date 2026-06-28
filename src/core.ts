@@ -86,16 +86,26 @@ export interface SqsWorkerRouteStatus {
 }
 
 export interface SqsRuntimeClient {
-  receiveMessage(input: ReceiveMessageCommandInput): Promise<ReceiveMessageCommandOutput>;
+  receiveMessage(
+    input: ReceiveMessageCommandInput,
+    options?: SqsRuntimeRequestOptions,
+  ): Promise<ReceiveMessageCommandOutput>;
   deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
   changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
+}
+
+export interface SqsRuntimeRequestOptions {
+  abortSignal?: AbortSignal;
 }
 
 export class AwsSqsRuntimeClient implements SqsRuntimeClient {
   constructor(private readonly client: SQSClient) {}
 
-  receiveMessage(input: ReceiveMessageCommandInput): Promise<ReceiveMessageCommandOutput> {
-    return this.client.send(new ReceiveMessageCommand(input));
+  receiveMessage(
+    input: ReceiveMessageCommandInput,
+    options?: SqsRuntimeRequestOptions,
+  ): Promise<ReceiveMessageCommandOutput> {
+    return this.client.send(new ReceiveMessageCommand(input), options);
   }
 
   async deleteMessage(input: DeleteMessageCommandInput): Promise<void> {
@@ -133,6 +143,7 @@ interface RouteRuntime<TPayload> {
   status: SqsWorkerRouteStatus;
   loop?: Promise<void>;
   tasks: Set<Promise<void>>;
+  pollAbortController?: AbortController;
 }
 
 export class SqsWorkerManager {
@@ -167,6 +178,7 @@ export class SqsWorkerManager {
         ...route.config,
       },
     };
+    validateRoute(route.name, route.queueUrl, normalized.config);
 
     this.routes.set(route.name, {
       route: normalized as NormalizedRoute<unknown>,
@@ -207,6 +219,7 @@ export class SqsWorkerManager {
       [...this.routes.values()].map(async (runtime) => {
         runtime.status.stopping = true;
         runtime.status.running = false;
+        runtime.pollAbortController?.abort();
         await runtime.loop;
         await Promise.all([...runtime.tasks]);
       }),
@@ -231,17 +244,25 @@ export class SqsWorkerManager {
       }
 
       try {
-        const response = await this.client.receiveMessage({
-          QueueUrl: route.queueUrl,
-          MaxNumberOfMessages: Math.max(
-            1,
-            Math.min(10, remainingCapacity, route.config.maxMessagesPerPoll),
-          ),
-          WaitTimeSeconds: route.config.waitTimeSeconds,
-          VisibilityTimeout: route.config.visibilityTimeoutSeconds,
-          AttributeNames: ['All'],
-          MessageAttributeNames: ['All'],
-        });
+        const abortController = new AbortController();
+        runtime.pollAbortController = abortController;
+        const response = await this.client.receiveMessage(
+          {
+            QueueUrl: route.queueUrl,
+            MaxNumberOfMessages: Math.max(
+              1,
+              Math.min(10, remainingCapacity, route.config.maxMessagesPerPoll),
+            ),
+            WaitTimeSeconds: route.config.waitTimeSeconds,
+            VisibilityTimeout: route.config.visibilityTimeoutSeconds,
+            AttributeNames: ['All'],
+            MessageAttributeNames: ['All'],
+          },
+          { abortSignal: abortController.signal },
+        );
+        if (runtime.pollAbortController === abortController) {
+          runtime.pollAbortController = undefined;
+        }
 
         const messages = (response.Messages ?? []).slice(0, remainingCapacity);
         if (messages.length === 0) {
@@ -272,6 +293,10 @@ export class SqsWorkerManager {
           runtime.tasks.add(task);
         }
       } catch (error) {
+        runtime.pollAbortController = undefined;
+        if (this.stopping && isAbortError(error)) {
+          break;
+        }
         const detail = describeUnknownError(error);
         status.lastErrorAt = new Date();
         status.lastErrorMessage = detail;
@@ -290,6 +315,7 @@ export class SqsWorkerManager {
     const message = toWorkerMessage(rawMessage);
 
     let heartbeatTimer: NodeJS.Timeout | undefined;
+    let heartbeatRunning = false;
     try {
       const heartbeat = async (): Promise<void> => {
         await this.client.changeMessageVisibility({
@@ -299,16 +325,29 @@ export class SqsWorkerManager {
         });
       };
 
+      const runHeartbeat = async (): Promise<void> => {
+        if (heartbeatRunning) {
+          return;
+        }
+
+        heartbeatRunning = true;
+        try {
+          await heartbeat();
+        } catch (error: unknown) {
+          this.logger.warn('SQS worker heartbeat failed.', {
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+            messageId: message.messageId,
+            error: describeUnknownError(error),
+          });
+        } finally {
+          heartbeatRunning = false;
+        }
+      };
+
       if (route.config.heartbeatIntervalMs > 0) {
         heartbeatTimer = setInterval(() => {
-          void heartbeat().catch((error: unknown) => {
-            this.logger.warn('SQS worker heartbeat failed.', {
-              routeName: route.name,
-              queueUrl: route.queueUrl,
-              messageId: message.messageId,
-              error: describeUnknownError(error),
-            });
-          });
+          void runHeartbeat();
         }, route.config.heartbeatIntervalMs);
       }
 
@@ -365,11 +404,57 @@ function toWorkerMessage(message: SqsSdkMessage): SqsWorkerMessage {
 }
 
 function defaultDecodePayload<TPayload>(message: SqsWorkerMessage): TPayload {
-  if (!message.body) {
-    return undefined as TPayload;
+  if (message.body === undefined) {
+    throw new Error('SQS message is missing a body.');
   }
 
   return JSON.parse(message.body) as TPayload;
+}
+
+function validateRoute(
+  routeName: string,
+  queueUrl: string,
+  config: SqsWorkerRouteConfig,
+): void {
+  if (!routeName.trim()) {
+    throw new Error('SQS worker route name must be a non-empty string.');
+  }
+  if (!queueUrl.trim()) {
+    throw new Error(`SQS worker route ${routeName} must declare a non-empty queueUrl.`);
+  }
+
+  validateInteger(routeName, 'concurrency', config.concurrency, 1);
+  validateInteger(routeName, 'waitTimeSeconds', config.waitTimeSeconds, 0, 20);
+  validateInteger(
+    routeName,
+    'visibilityTimeoutSeconds',
+    config.visibilityTimeoutSeconds,
+    0,
+    43_200,
+  );
+  validateInteger(routeName, 'heartbeatIntervalMs', config.heartbeatIntervalMs, 0);
+  validateInteger(routeName, 'emptyReceiveDelayMs', config.emptyReceiveDelayMs, 0);
+  validateInteger(routeName, 'errorBackoffMs', config.errorBackoffMs, 0);
+  validateInteger(routeName, 'maxMessagesPerPoll', config.maxMessagesPerPoll, 1, 10);
+}
+
+function validateInteger(
+  routeName: string,
+  field: keyof SqsWorkerRouteConfig,
+  value: number,
+  min: number,
+  max?: number,
+): void {
+  if (!Number.isInteger(value) || value < min || (max !== undefined && value > max)) {
+    const rangeDescription = max === undefined ? `>= ${min}` : `between ${min} and ${max}`;
+    throw new Error(
+      `SQS worker route ${routeName} has invalid ${field}; expected an integer ${rangeDescription}.`,
+    );
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 function describeUnknownError(error: unknown): string {

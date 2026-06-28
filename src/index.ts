@@ -4,4 +4,3 @@ export const packageMetadata = {
 } as const;
 
 export * from './core';
-export * from './nest';
