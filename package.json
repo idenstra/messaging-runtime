@@ -1,0 +1,42 @@
+{
+  "name": "@idenstra/messaging-runtime",
+  "version": "0.1.0",
+  "description": "Shared SNS/SQS messaging runtime for Idenstra app-owned worker services",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/idenstra/messaging-runtime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/idenstra/messaging-runtime/issues"
+  },
+  "homepage": "https://github.com/idenstra/messaging-runtime#readme",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2"
+  }
+}

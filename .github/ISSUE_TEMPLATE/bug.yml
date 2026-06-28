@@ -1,0 +1,22 @@
+name: Bug
+description: Runtime bug, regression, or incorrect behavior
+title: ""
+type: Bug
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof or reproduction
+
