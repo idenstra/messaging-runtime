@@ -7,6 +7,8 @@ Current state:
 - root entrypoint exposes the transport runtime core only
 - Nest integration is exposed as the optional subpath `@idenstra/messaging-runtime/nest`
 - extracted worker runtime core now lives here
+- route-level failure policy and error hooks now live in the core runtime
+- handler timeout control and runtime metrics/snapshot hooks now live in the core runtime
 - no business handlers live here
 - consumer adoption is still deferred until later slices
 
@@ -14,6 +16,8 @@ Current state:
 
 This repo will own:
 - the shared SNS/SQS polling/runtime core
+- route-level failure policy and timeout control
+- lightweight runtime event hooks and health/readiness snapshots
 - SNS/SQS-specific publisher and envelope helpers
 - worker host/bootstrap ergonomics for app-owned worker services
 - package-level tests and verification for the shared runtime
