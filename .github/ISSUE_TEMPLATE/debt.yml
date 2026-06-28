@@ -1,0 +1,16 @@
+name: Debt
+description: Technical debt or deferred hardening
+title: ""
+type: Debt
+body:
+  - type: textarea
+    id: debt
+    attributes:
+      label: Debt description
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk if deferred
+

@@ -1,0 +1,18 @@
+name: Task
+description: Small bounded implementation or follow-up task
+title: ""
+type: Task
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+

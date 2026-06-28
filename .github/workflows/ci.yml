@@ -1,0 +1,63 @@
+name: Messaging Runtime CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  harness-validate:
+    name: Harness validate
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Validator self-tests
+        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs
+
+      - name: Validate personal paths
+        run: node scripts/ci/validate-no-personal-paths.mjs
+
+      - name: Validate workflow security
+        run: node scripts/ci/validate-workflow-security.mjs
+
+      - name: Validate PR governance
+        run: node scripts/ci/validate-pr-governance.mjs
+
+      - name: Audit harness
+        run: make audit
+
+  package-checks:
+    name: Package checks
+    runs-on: ubuntu-latest
+    needs: harness-validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Run verify-fast
+        run: HARNESS_STRICT=1 make verify-fast
+

@@ -1,0 +1,32 @@
+name: Feature
+description: New runtime capability or package-surface expansion
+title: ""
+type: Feature
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: What capability should the runtime add or expand?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+  - type: dropdown
+    id: plan_required
+    attributes:
+      label: Execution plan required?
+      options:
+        - "Yes"
+        - "No"
+    validations:
+      required: true
+
