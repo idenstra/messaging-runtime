@@ -13,6 +13,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
+    "./nest": {
+      "types": "./dist/nest.d.ts",
+      "default": "./dist/nest.js"
     }
   },
   "engines": {
@@ -34,7 +42,19 @@
     "build": "tsc -p tsconfig.json",
     "test": "tsx --test test/**/*.test.ts"
   },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.940.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@nestjs/common": "^11.1.21",
     "@types/node": "^24.0.15",
     "tsx": "^4.20.6",
     "typescript": "^5.9.2"

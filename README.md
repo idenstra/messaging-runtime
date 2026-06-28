@@ -3,10 +3,12 @@
 `messaging-runtime` is Idenstra's dedicated private-first home for the shared TypeScript SNS/SQS messaging runtime.
 
 Current state:
-- repo bootstrap only
 - single package surface: `@idenstra/messaging-runtime`
-- no business handlers yet
-- real runtime extraction from `platform` follows in the next slice
+- root entrypoint exposes the transport runtime core only
+- Nest integration is exposed as the optional subpath `@idenstra/messaging-runtime/nest`
+- extracted worker runtime core now lives here
+- no business handlers live here
+- consumer adoption is still deferred until later slices
 
 ## Purpose
 
@@ -14,6 +16,7 @@ This repo will own:
 - the shared SNS/SQS polling/runtime core
 - SNS/SQS-specific publisher and envelope helpers
 - worker host/bootstrap ergonomics for app-owned worker services
+- package-level tests and verification for the shared runtime
 
 This repo will not own:
 - `CDP` communication handlers
@@ -28,6 +31,7 @@ npm test
 npm run build
 make audit
 make verify-fast
+make verify
 ```
 
 ## Canonical docs
@@ -43,7 +47,7 @@ make verify-fast
 
 - package name: `@idenstra/messaging-runtime`
 - registry posture: GitHub Packages, private-first
-- package publication is intentionally blocked in this bootstrap slice
+- package publication is intentionally blocked in the current extraction phase
 - version posture: `0.x`
 - OSS readiness is explicitly deferred
 - release/publication policy is formalized later under `#7`
