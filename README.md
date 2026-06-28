@@ -43,6 +43,7 @@ make verify-fast
 
 - package name: `@idenstra/messaging-runtime`
 - registry posture: GitHub Packages, private-first
+- package publication is intentionally blocked in this bootstrap slice
 - version posture: `0.x`
 - OSS readiness is explicitly deferred
-
+- release/publication policy is formalized later under `#7`

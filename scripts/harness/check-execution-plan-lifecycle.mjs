@@ -103,6 +103,22 @@ export function buildLifecycleJsonReport({
   };
 }
 
+export function filterResolvedWriteFindings(findings, movedPlans = []) {
+  if (movedPlans.length === 0) {
+    return findings;
+  }
+
+  const movedPlanPaths = new Set(movedPlans.map((movedPlan) => normalizeExecutionPlanPath(movedPlan.path)));
+
+  return findings.filter((finding) => {
+    if (finding.code !== 'closed-issue-active-plan') {
+      return true;
+    }
+
+    return !movedPlanPaths.has(normalizeExecutionPlanPath(finding.path));
+  });
+}
+
 async function fetchJson(url, token) {
   const response = await fetch(url, {
     headers: {
@@ -248,17 +264,32 @@ async function runCli() {
     }
   }
 
+  const remainingFindings = writeMode ? filterResolvedWriteFindings(findings, movedPlans) : findings;
+
   if (jsonMode) {
-    console.log(JSON.stringify(buildLifecycleJsonReport({ repoFullName, writeMode, findings, movedPlans }), null, 2));
+    console.log(
+      JSON.stringify(
+        buildLifecycleJsonReport({ repoFullName, writeMode, findings: remainingFindings, movedPlans }),
+        null,
+        2,
+      ),
+    );
     process.exit(0);
   }
 
-  if (findings.length === 0) {
+  if (remainingFindings.length === 0) {
     console.log('[check-execution-plan-lifecycle] no findings');
+
+    if (writeMode) {
+      for (const movedPlan of movedPlans) {
+        console.log(`moved ${movedPlan.path} -> ${movedPlan.nextPath}`);
+      }
+    }
+
     process.exit(0);
   }
 
-  printFindings(findings);
+  printFindings(remainingFindings);
 
   if (writeMode) {
     for (const movedPlan of movedPlans) {
@@ -275,4 +306,3 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(1);
   });
 }
-

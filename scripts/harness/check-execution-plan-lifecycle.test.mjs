@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildLifecycleJsonReport,
+  filterResolvedWriteFindings,
   findExecutionPlanLifecycleFindings,
 } from './check-execution-plan-lifecycle.mjs';
 import { moveExecutionPlanToCompleted } from './lib/execution-plan-utils.mjs';
@@ -75,3 +76,34 @@ test('buildLifecycleJsonReport includes moved plans for --json --write consumers
   });
 });
 
+test('filterResolvedWriteFindings removes closed-issue-active-plan findings that were moved', () => {
+  const findings = [
+    {
+      code: 'closed-issue-active-plan',
+      path: 'docs/exec-plans/active/42-archive-me.md',
+      issueNumber: 42,
+      nextPath: 'docs/exec-plans/completed/42-archive-me.md',
+    },
+    {
+      code: 'missing-issue',
+      path: 'docs/exec-plans/active/99-missing.md',
+      issueNumber: 99,
+    },
+  ];
+
+  const remainingFindings = filterResolvedWriteFindings(findings, [
+    {
+      path: 'docs/exec-plans/active/42-archive-me.md',
+      nextPath: 'docs/exec-plans/completed/42-archive-me.md',
+      issueNumber: 42,
+    },
+  ]);
+
+  assert.deepEqual(remainingFindings, [
+    {
+      code: 'missing-issue',
+      path: 'docs/exec-plans/active/99-missing.md',
+      issueNumber: 99,
+    },
+  ]);
+});

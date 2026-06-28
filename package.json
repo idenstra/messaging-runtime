@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Shared SNS/SQS messaging runtime for Idenstra app-owned worker services",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -40,4 +40,3 @@
     "typescript": "^5.9.2"
   }
 }
-
