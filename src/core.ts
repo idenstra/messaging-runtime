@@ -34,8 +34,14 @@ export interface SqsWorkerMessage {
   raw: SqsSdkMessage;
 }
 
+export type SqsWorkerAckAction = 'delete' | 'keep';
+export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
+export type SqsWorkerTimeoutStrategy = 'cooperative' | 'abandon';
+export type SqsWorkerHeartbeatSource = 'interval' | 'manual';
+export type SqsWorkerLateSettlementOutcome = 'resolved' | 'rejected';
+
 export interface SqsWorkerHandlerResult {
-  action?: 'delete' | 'keep';
+  action?: SqsWorkerAckAction;
 }
 
 export interface SqsWorkerHandlerContext<TPayload> {
@@ -43,12 +49,31 @@ export interface SqsWorkerHandlerContext<TPayload> {
   queueUrl: string;
   payload: TPayload;
   message: SqsWorkerMessage;
+  abortSignal: AbortSignal;
   heartbeat(): Promise<void>;
 }
 
 export type SqsWorkerHandler<TPayload> = (
   context: SqsWorkerHandlerContext<TPayload>,
 ) => Promise<SqsWorkerHandlerResult | void>;
+
+export interface SqsWorkerErrorContext<TPayload> {
+  routeName: string;
+  queueUrl: string;
+  message: SqsWorkerMessage;
+  payload?: TPayload;
+  abortSignal: AbortSignal;
+  failureKind: SqsWorkerFailureKind;
+  error: unknown;
+  durationMs: number;
+  timeoutStrategy?: SqsWorkerTimeoutStrategy;
+  settlementOutcome?: SqsWorkerLateSettlementOutcome | 'pending';
+  settlementError?: unknown;
+}
+
+export type SqsWorkerErrorHook<TPayload> = (
+  context: SqsWorkerErrorContext<TPayload>,
+) => SqsWorkerAckAction | void | Promise<SqsWorkerAckAction | void>;
 
 export interface SqsWorkerRouteConfig {
   concurrency: number;
@@ -58,6 +83,9 @@ export interface SqsWorkerRouteConfig {
   emptyReceiveDelayMs: number;
   errorBackoffMs: number;
   maxMessagesPerPoll: number;
+  handlerTimeoutMs?: number;
+  timeoutStrategy: SqsWorkerTimeoutStrategy;
+  failureAction: SqsWorkerAckAction;
 }
 
 export interface SqsWorkerRoute<TPayload> {
@@ -65,12 +93,28 @@ export interface SqsWorkerRoute<TPayload> {
   queueUrl: string;
   decodePayload?: (message: SqsWorkerMessage) => TPayload;
   handle: SqsWorkerHandler<TPayload>;
+  onError?: SqsWorkerErrorHook<TPayload>;
   config?: Partial<SqsWorkerRouteConfig>;
 }
 
 export interface SqsWorkerManagerOptions {
   logger?: SqsWorkerLogger;
   defaults?: Partial<SqsWorkerRouteConfig>;
+  onEvent?: SqsWorkerRuntimeEventHook;
+}
+
+export interface SqsWorkerRouteCounters {
+  receiveEmptyCount: number;
+  messagesReceivedCount: number;
+  handlerStartedCount: number;
+  handlerSuccessCount: number;
+  handlerFailureCount: number;
+  handlerTimeoutCount: number;
+  lateSettlementCount: number;
+  messageDeleteCount: number;
+  messageKeepCount: number;
+  heartbeatSuccessCount: number;
+  heartbeatFailureCount: number;
 }
 
 export interface SqsWorkerRouteStatus {
@@ -79,11 +123,125 @@ export interface SqsWorkerRouteStatus {
   running: boolean;
   stopping: boolean;
   inFlight: number;
+  counters: SqsWorkerRouteCounters;
   lastReceiveAt?: Date;
+  lastReceiveEmptyAt?: Date;
+  lastStartedAt?: Date;
   lastSuccessAt?: Date;
   lastErrorAt?: Date;
   lastErrorMessage?: string;
+  lastFailureKind?: SqsWorkerFailureKind;
+  lastTimeoutAt?: Date;
+  lastDeleteAt?: Date;
+  lastKeepAt?: Date;
+  lastHeartbeatSuccessAt?: Date;
+  lastHeartbeatFailureAt?: Date;
+  lastHeartbeatFailureMessage?: string;
+  lastLateSettlementAt?: Date;
+  lastLateSettlementOutcome?: SqsWorkerLateSettlementOutcome;
 }
+
+export interface SqsWorkerManagerSnapshot {
+  started: boolean;
+  stopping: boolean;
+  routeCount: number;
+  totalInFlight: number;
+  counters: SqsWorkerRouteCounters;
+  routes: SqsWorkerRouteStatus[];
+}
+
+interface SqsWorkerRuntimeEventBase {
+  type: string;
+  at: Date;
+  routeName: string;
+  queueUrl: string;
+}
+
+export interface SqsWorkerReceiveEmptyEvent extends SqsWorkerRuntimeEventBase {
+  type: 'receive-empty';
+}
+
+export interface SqsWorkerMessagesReceivedEvent extends SqsWorkerRuntimeEventBase {
+  type: 'messages-received';
+  messageCount: number;
+}
+
+export interface SqsWorkerHandlerStartEvent extends SqsWorkerRuntimeEventBase {
+  type: 'handler-start';
+  messageId: string;
+}
+
+export interface SqsWorkerHandlerSuccessEvent extends SqsWorkerRuntimeEventBase {
+  type: 'handler-success';
+  messageId: string;
+  durationMs: number;
+}
+
+export interface SqsWorkerHandlerFailureEvent extends SqsWorkerRuntimeEventBase {
+  type: 'handler-failure';
+  messageId: string;
+  failureKind: Exclude<SqsWorkerFailureKind, 'timeout'>;
+  durationMs: number;
+  action: SqsWorkerAckAction;
+  error: unknown;
+}
+
+export interface SqsWorkerHandlerTimeoutEvent extends SqsWorkerRuntimeEventBase {
+  type: 'handler-timeout';
+  messageId: string;
+  durationMs: number;
+  timeoutStrategy: SqsWorkerTimeoutStrategy;
+  settlementOutcome: SqsWorkerLateSettlementOutcome | 'pending';
+  error: unknown;
+}
+
+export interface SqsWorkerLateSettlementEvent extends SqsWorkerRuntimeEventBase {
+  type: 'late-settlement';
+  messageId: string;
+  durationMs: number;
+  outcome: SqsWorkerLateSettlementOutcome;
+  error?: unknown;
+}
+
+export interface SqsWorkerMessageDeleteEvent extends SqsWorkerRuntimeEventBase {
+  type: 'message-delete';
+  messageId: string;
+  reason: 'success' | 'failure' | 'timeout';
+}
+
+export interface SqsWorkerMessageKeepEvent extends SqsWorkerRuntimeEventBase {
+  type: 'message-keep';
+  messageId: string;
+  reason: 'success' | 'failure' | 'timeout';
+}
+
+export interface SqsWorkerHeartbeatSuccessEvent extends SqsWorkerRuntimeEventBase {
+  type: 'heartbeat-success';
+  messageId: string;
+  source: SqsWorkerHeartbeatSource;
+}
+
+export interface SqsWorkerHeartbeatFailureEvent extends SqsWorkerRuntimeEventBase {
+  type: 'heartbeat-failure';
+  messageId: string;
+  source: SqsWorkerHeartbeatSource;
+  error: unknown;
+}
+
+export type SqsWorkerRuntimeEvent =
+  | SqsWorkerReceiveEmptyEvent
+  | SqsWorkerMessagesReceivedEvent
+  | SqsWorkerHandlerStartEvent
+  | SqsWorkerHandlerSuccessEvent
+  | SqsWorkerHandlerFailureEvent
+  | SqsWorkerHandlerTimeoutEvent
+  | SqsWorkerLateSettlementEvent
+  | SqsWorkerMessageDeleteEvent
+  | SqsWorkerMessageKeepEvent
+  | SqsWorkerHeartbeatSuccessEvent
+  | SqsWorkerHeartbeatFailureEvent;
+
+export type SqsWorkerRuntimeEventHook = (event: SqsWorkerRuntimeEvent) => void;
 
 export interface SqsRuntimeClient {
   receiveMessage(
@@ -96,6 +254,29 @@ export interface SqsRuntimeClient {
 
 export interface SqsRuntimeRequestOptions {
   abortSignal?: AbortSignal;
+}
+
+export class SqsWorkerTimeoutError extends Error {
+  readonly routeName: string;
+  readonly messageId: string;
+  readonly timeoutMs: number;
+  readonly timeoutStrategy: SqsWorkerTimeoutStrategy;
+
+  constructor(options: {
+    routeName: string;
+    messageId: string;
+    timeoutMs: number;
+    timeoutStrategy: SqsWorkerTimeoutStrategy;
+  }) {
+    super(
+      `SQS worker handler timed out after ${options.timeoutMs}ms on route ${options.routeName}.`,
+    );
+    this.name = 'SqsWorkerTimeoutError';
+    this.routeName = options.routeName;
+    this.messageId = options.messageId;
+    this.timeoutMs = options.timeoutMs;
+    this.timeoutStrategy = options.timeoutStrategy;
+  }
 }
 
 export class AwsSqsRuntimeClient implements SqsRuntimeClient {
@@ -125,6 +306,8 @@ const DEFAULT_ROUTE_CONFIG: SqsWorkerRouteConfig = {
   emptyReceiveDelayMs: 250,
   errorBackoffMs: 1_000,
   maxMessagesPerPoll: 10,
+  timeoutStrategy: 'cooperative',
+  failureAction: 'keep',
 };
 
 const DEFAULT_LOGGER: SqsWorkerLogger = {
@@ -146,9 +329,14 @@ interface RouteRuntime<TPayload> {
   pollAbortController?: AbortController;
 }
 
+type SettledHandlerResult =
+  | { outcome: 'resolved'; result: SqsWorkerHandlerResult | void }
+  | { outcome: 'rejected'; error: unknown };
+
 export class SqsWorkerManager {
   private readonly logger: SqsWorkerLogger;
   private readonly defaults: Partial<SqsWorkerRouteConfig>;
+  private readonly onEvent?: SqsWorkerRuntimeEventHook;
   private readonly routes = new Map<string, RouteRuntime<unknown>>();
   private started = false;
   private stopping = false;
@@ -159,6 +347,7 @@ export class SqsWorkerManager {
   ) {
     this.logger = options.logger ?? DEFAULT_LOGGER;
     this.defaults = options.defaults ?? {};
+    this.onEvent = options.onEvent;
   }
 
   register<TPayload>(route: SqsWorkerRoute<TPayload>): void {
@@ -167,6 +356,9 @@ export class SqsWorkerManager {
     }
     if (this.routes.has(route.name)) {
       throw new Error(`SQS worker route ${route.name} is already registered.`);
+    }
+    if (route.onError !== undefined && typeof route.onError !== 'function') {
+      throw new Error(`SQS worker route ${route.name} has invalid onError; expected a function.`);
     }
 
     const normalized: NormalizedRoute<TPayload> = {
@@ -188,6 +380,7 @@ export class SqsWorkerManager {
         running: false,
         stopping: false,
         inFlight: 0,
+        counters: createCounters(),
       },
       tasks: new Set(),
     });
@@ -230,7 +423,23 @@ export class SqsWorkerManager {
   }
 
   getStatus(): SqsWorkerRouteStatus[] {
-    return [...this.routes.values()].map(({ status }) => ({ ...status }));
+    return [...this.routes.values()].map(({ status }) => cloneRouteStatus(status));
+  }
+
+  getSnapshot(): SqsWorkerManagerSnapshot {
+    const routes = this.getStatus();
+
+    return {
+      started: this.started,
+      stopping: this.stopping,
+      routeCount: routes.length,
+      totalInFlight: routes.reduce((total, route) => total + route.inFlight, 0),
+      counters: routes.reduce(
+        (aggregate, route) => addCounters(aggregate, route.counters),
+        createCounters(),
+      ),
+      routes,
+    };
   }
 
   private async runRouteLoop(runtime: RouteRuntime<unknown>): Promise<void> {
@@ -266,11 +475,24 @@ export class SqsWorkerManager {
 
         const messages = (response.Messages ?? []).slice(0, remainingCapacity);
         if (messages.length === 0) {
+          this.emitRuntimeEvent(status, {
+            type: 'receive-empty',
+            at: new Date(),
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+          });
           await sleep(route.config.emptyReceiveDelayMs);
           continue;
         }
 
-        status.lastReceiveAt = new Date();
+        this.emitRuntimeEvent(status, {
+          type: 'messages-received',
+          at: new Date(),
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          messageCount: messages.length,
+        });
+
         for (const rawMessage of messages) {
           const task = this.processMessage(runtime, rawMessage)
             .catch((error: unknown) => {
@@ -310,68 +532,519 @@ export class SqsWorkerManager {
     }
   }
 
-  private async processMessage(runtime: RouteRuntime<unknown>, rawMessage: SqsSdkMessage): Promise<void> {
+  private async processMessage(
+    runtime: RouteRuntime<unknown>,
+    rawMessage: SqsSdkMessage,
+  ): Promise<void> {
     const { route, status } = runtime;
     const message = toWorkerMessage(rawMessage);
-
+    const startedAtMs = Date.now();
+    const abortController = new AbortController();
     let heartbeatTimer: NodeJS.Timeout | undefined;
+    let heartbeatEnabled = true;
     let heartbeatRunning = false;
-    try {
-      const heartbeat = async (): Promise<void> => {
+    let timeoutObserved = false;
+
+    const emitHeartbeatSuccess = (source: SqsWorkerHeartbeatSource): void => {
+      this.emitRuntimeEvent(status, {
+        type: 'heartbeat-success',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: message.messageId,
+        source,
+      });
+    };
+
+    const emitHeartbeatFailure = (source: SqsWorkerHeartbeatSource, error: unknown): void => {
+      this.emitRuntimeEvent(status, {
+        type: 'heartbeat-failure',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: message.messageId,
+        source,
+        error,
+      });
+    };
+
+    const heartbeat = async (source: SqsWorkerHeartbeatSource = 'manual'): Promise<void> => {
+      if (!heartbeatEnabled) {
+        const error = new Error('SQS worker heartbeat is no longer available for this message.');
+        emitHeartbeatFailure(source, error);
+        throw error;
+      }
+
+      try {
         await this.client.changeMessageVisibility({
           QueueUrl: route.queueUrl,
           ReceiptHandle: message.receiptHandle,
           VisibilityTimeout: route.config.visibilityTimeoutSeconds,
         });
-      };
+        emitHeartbeatSuccess(source);
+      } catch (error: unknown) {
+        emitHeartbeatFailure(source, error);
+        throw error;
+      }
+    };
 
-      const runHeartbeat = async (): Promise<void> => {
-        if (heartbeatRunning) {
-          return;
+    const disableHeartbeat = (): void => {
+      heartbeatEnabled = false;
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = undefined;
+      }
+    };
+
+    const runHeartbeat = async (): Promise<void> => {
+      if (!heartbeatEnabled || heartbeatRunning) {
+        return;
+      }
+
+      heartbeatRunning = true;
+      try {
+        await heartbeat('interval');
+      } catch (error: unknown) {
+        this.logger.warn('SQS worker heartbeat failed.', {
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          messageId: message.messageId,
+          error: describeUnknownError(error),
+        });
+      } finally {
+        heartbeatRunning = false;
+      }
+    };
+
+    if (route.config.heartbeatIntervalMs > 0) {
+      heartbeatTimer = setInterval(() => {
+        void runHeartbeat();
+      }, route.config.heartbeatIntervalMs);
+    }
+
+    try {
+      const payload = route.decodePayload?.(message);
+      this.emitRuntimeEvent(status, {
+        type: 'handler-start',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: message.messageId,
+      });
+      const handlerPromise = Promise.resolve().then(() =>
+        route.handle({
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          payload,
+          message,
+          abortSignal: abortController.signal,
+          heartbeat: () => heartbeat('manual'),
+        }),
+      );
+
+      if (route.config.handlerTimeoutMs === undefined) {
+        await this.handleWithoutTimeout(status, route, message, payload, handlerPromise, startedAtMs, abortController.signal);
+        return;
+      }
+
+      const timedOutcome = await this.awaitWithTimeout(
+        handlerPromise,
+        startedAtMs,
+        route,
+        message,
+        status,
+        abortController,
+        () => {
+          timeoutObserved = true;
+        },
+      );
+
+      if (timedOutcome.type === 'resolved') {
+        await this.finishSuccess(status, route, message, timedOutcome.result, startedAtMs);
+        return;
+      }
+
+      if (timedOutcome.type === 'rejected') {
+        await this.finishFailure({
+          status,
+          route,
+          message,
+          payload,
+          abortSignal: abortController.signal,
+          failureKind: 'handler',
+          error: timedOutcome.error,
+          durationMs: Date.now() - startedAtMs,
+          allowDelete: true,
+        });
+        return;
+      }
+
+      const timeoutError = timedOutcome.error;
+      this.emitRuntimeEvent(status, {
+        type: 'handler-timeout',
+        at: timedOutcome.timedOutAt,
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: message.messageId,
+        durationMs: Date.now() - startedAtMs,
+        timeoutStrategy: route.config.timeoutStrategy,
+        settlementOutcome: 'pending',
+        error: timeoutError,
+      });
+
+      if (route.config.timeoutStrategy === 'abandon') {
+        disableHeartbeat();
+        await this.finishFailure({
+          status,
+          route,
+          message,
+          payload,
+          abortSignal: abortController.signal,
+          failureKind: 'timeout',
+          error: timeoutError,
+          durationMs: Date.now() - startedAtMs,
+          allowDelete: false,
+          timeoutStrategy: 'abandon',
+          settlementOutcome: 'pending',
+        });
+
+        void this.observeLateSettlement(status, route, message, handlerPromise, startedAtMs);
+        return;
+      }
+
+      const settlement = await settleHandler(handlerPromise);
+      const settlementOutcome: SqsWorkerLateSettlementOutcome = settlement.outcome;
+      await this.finishFailure({
+        status,
+        route,
+        message,
+        payload,
+        abortSignal: abortController.signal,
+        failureKind: 'timeout',
+        error: timeoutError,
+        durationMs: Date.now() - startedAtMs,
+        allowDelete: true,
+        timeoutStrategy: 'cooperative',
+        settlementOutcome,
+        settlementError: settlement.outcome === 'rejected' ? settlement.error : undefined,
+      });
+    } catch (error: unknown) {
+      await this.finishFailure({
+        status,
+        route,
+        message,
+        payload: undefined,
+        abortSignal: abortController.signal,
+        failureKind: 'decode',
+        error,
+        durationMs: Date.now() - startedAtMs,
+        allowDelete: true,
+      });
+    } finally {
+      if (!timeoutObserved || route.config.timeoutStrategy === 'cooperative') {
+        disableHeartbeat();
+      }
+    }
+  }
+
+  private async handleWithoutTimeout<TPayload>(
+    status: SqsWorkerRouteStatus,
+    route: NormalizedRoute<TPayload>,
+    message: SqsWorkerMessage,
+    payload: TPayload,
+    handlerPromise: Promise<SqsWorkerHandlerResult | void>,
+    startedAtMs: number,
+    abortSignal: AbortSignal,
+  ): Promise<void> {
+    try {
+      const result = await handlerPromise;
+      await this.finishSuccess(status, route, message, result, startedAtMs);
+    } catch (error: unknown) {
+      await this.finishFailure({
+        status,
+        route,
+        message,
+        payload,
+        abortSignal,
+        failureKind: 'handler',
+        error,
+        durationMs: Date.now() - startedAtMs,
+        allowDelete: true,
+      });
+    }
+  }
+
+  private async awaitWithTimeout<TPayload>(
+    handlerPromise: Promise<SqsWorkerHandlerResult | void>,
+    startedAtMs: number,
+    route: NormalizedRoute<TPayload>,
+    message: SqsWorkerMessage,
+    status: SqsWorkerRouteStatus,
+    abortController: AbortController,
+    onTimeoutObserved: () => void,
+  ): Promise<
+    | { type: 'resolved'; result: SqsWorkerHandlerResult | void }
+    | { type: 'rejected'; error: unknown }
+    | { type: 'timeout'; error: SqsWorkerTimeoutError; timedOutAt: Date }
+  > {
+    const timeoutMs = route.config.handlerTimeoutMs;
+    if (timeoutMs === undefined) {
+      throw new Error('handlerTimeoutMs must be defined when awaiting with timeout.');
+    }
+
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    try {
+      return await Promise.race([
+        handlerPromise.then(
+          (result) => ({ type: 'resolved' as const, result }),
+          (error) => ({ type: 'rejected' as const, error }),
+        ),
+        new Promise<{
+          type: 'timeout';
+          error: SqsWorkerTimeoutError;
+          timedOutAt: Date;
+        }>((resolve) => {
+          timeoutHandle = setTimeout(() => {
+            onTimeoutObserved();
+            const timedOutAt = new Date();
+            const timeoutError = new SqsWorkerTimeoutError({
+              routeName: route.name,
+              messageId: message.messageId,
+              timeoutMs,
+              timeoutStrategy: route.config.timeoutStrategy,
+            });
+            recordFailure(status, 'timeout', timeoutError, timedOutAt);
+            abortController.abort(timeoutError);
+            resolve({
+              type: 'timeout',
+              error: timeoutError,
+              timedOutAt,
+            });
+          }, timeoutMs);
+        }),
+      ]);
+    } finally {
+      clearTimer(timeoutHandle);
+    }
+  }
+
+  private async finishSuccess<TPayload>(
+    status: SqsWorkerRouteStatus,
+    route: NormalizedRoute<TPayload>,
+    message: SqsWorkerMessage,
+    result: SqsWorkerHandlerResult | void,
+    startedAtMs: number,
+  ): Promise<void> {
+    const action = result?.action ?? 'delete';
+
+    this.emitRuntimeEvent(status, {
+      type: 'handler-success',
+      at: new Date(),
+      routeName: route.name,
+      queueUrl: route.queueUrl,
+      messageId: message.messageId,
+      durationMs: Date.now() - startedAtMs,
+    });
+
+    await this.applyAction(status, route, message, action, 'success');
+  }
+
+  private async finishFailure<TPayload>(params: {
+    status: SqsWorkerRouteStatus;
+    route: NormalizedRoute<TPayload>;
+    message: SqsWorkerMessage;
+    payload?: TPayload;
+    abortSignal: AbortSignal;
+    failureKind: SqsWorkerFailureKind;
+    error: unknown;
+    durationMs: number;
+    allowDelete: boolean;
+    timeoutStrategy?: SqsWorkerTimeoutStrategy;
+    settlementOutcome?: SqsWorkerLateSettlementOutcome | 'pending';
+    settlementError?: unknown;
+  }): Promise<void> {
+    const {
+      status,
+      route,
+      message,
+      payload,
+      abortSignal,
+      failureKind,
+      error,
+      durationMs,
+      allowDelete,
+      timeoutStrategy,
+      settlementOutcome,
+      settlementError,
+    } = params;
+
+    recordFailure(status, failureKind, error, new Date());
+    const action = await this.resolveFailureAction(route, {
+      routeName: route.name,
+      queueUrl: route.queueUrl,
+      message,
+      payload,
+      abortSignal,
+      failureKind,
+      error,
+      durationMs,
+      timeoutStrategy,
+      settlementOutcome,
+      settlementError,
+    }, allowDelete);
+
+    if (failureKind === 'timeout') {
+      // The timeout occurrence itself was already emitted when the timeout fired.
+      await this.applyAction(status, route, message, action, 'timeout');
+      return;
+    }
+
+    this.emitRuntimeEvent(status, {
+      type: 'handler-failure',
+      at: new Date(),
+      routeName: route.name,
+      queueUrl: route.queueUrl,
+      messageId: message.messageId,
+      failureKind,
+      durationMs,
+      action,
+      error,
+    });
+
+    await this.applyAction(status, route, message, action, 'failure');
+  }
+
+  private async resolveFailureAction<TPayload>(
+    route: NormalizedRoute<TPayload>,
+    context: SqsWorkerErrorContext<TPayload>,
+    allowDelete: boolean,
+  ): Promise<SqsWorkerAckAction> {
+    let action = route.config.failureAction;
+
+    if (route.onError) {
+      try {
+        const override = await route.onError(context);
+        if (override === 'delete' || override === 'keep') {
+          action = override;
+        } else if (override !== undefined) {
+          this.logger.warn('SQS worker error hook returned an invalid action.', {
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+            returned: String(override),
+          });
         }
+      } catch (hookError: unknown) {
+        this.logger.warn('SQS worker error hook failed; using route default failure action.', {
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          error: describeUnknownError(hookError),
+        });
+      }
+    }
 
-        heartbeatRunning = true;
-        try {
-          await heartbeat();
-        } catch (error: unknown) {
-          this.logger.warn('SQS worker heartbeat failed.', {
+    if (!allowDelete) {
+      return 'keep';
+    }
+
+    return action;
+  }
+
+  private async applyAction<TPayload>(
+    status: SqsWorkerRouteStatus,
+    route: NormalizedRoute<TPayload>,
+    message: SqsWorkerMessage,
+    action: SqsWorkerAckAction,
+    reason: 'success' | 'failure' | 'timeout',
+  ): Promise<void> {
+    if (action === 'delete') {
+      await this.client.deleteMessage({
+        QueueUrl: route.queueUrl,
+        ReceiptHandle: message.receiptHandle,
+      });
+      this.emitRuntimeEvent(status, {
+        type: 'message-delete',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: message.messageId,
+        reason,
+      });
+      return;
+    }
+
+    this.emitRuntimeEvent(status, {
+      type: 'message-keep',
+      at: new Date(),
+      routeName: route.name,
+      queueUrl: route.queueUrl,
+      messageId: message.messageId,
+      reason,
+    });
+  }
+
+  private async observeLateSettlement<TPayload>(
+    status: SqsWorkerRouteStatus,
+    route: NormalizedRoute<TPayload>,
+    message: SqsWorkerMessage,
+    handlerPromise: Promise<SqsWorkerHandlerResult | void>,
+    startedAtMs: number,
+  ): Promise<void> {
+    const settled = await settleHandler(handlerPromise);
+    const event =
+      settled.outcome === 'resolved'
+        ? {
+            type: 'late-settlement' as const,
+            at: new Date(),
             routeName: route.name,
             queueUrl: route.queueUrl,
             messageId: message.messageId,
-            error: describeUnknownError(error),
-          });
-        } finally {
-          heartbeatRunning = false;
-        }
-      };
+            durationMs: Date.now() - startedAtMs,
+            outcome: 'resolved' as const,
+          }
+        : {
+            type: 'late-settlement' as const,
+            at: new Date(),
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+            messageId: message.messageId,
+            durationMs: Date.now() - startedAtMs,
+            outcome: 'rejected' as const,
+            error: settled.error,
+          };
 
-      if (route.config.heartbeatIntervalMs > 0) {
-        heartbeatTimer = setInterval(() => {
-          void runHeartbeat();
-        }, route.config.heartbeatIntervalMs);
-      }
+    this.emitRuntimeEvent(status, event);
+    this.logger.warn('SQS worker handler settled after abandon timeout finalization.', {
+      routeName: route.name,
+      queueUrl: route.queueUrl,
+      messageId: message.messageId,
+      outcome: event.outcome,
+      error:
+        event.outcome === 'rejected' && event.error
+          ? describeUnknownError(event.error)
+          : undefined,
+    });
+  }
 
-      const payload = route.decodePayload?.(message);
-      const result = await route.handle({
-        routeName: route.name,
-        queueUrl: route.queueUrl,
-        payload,
-        message,
-        heartbeat,
+  private emitRuntimeEvent(
+    status: SqsWorkerRouteStatus,
+    event: SqsWorkerRuntimeEvent,
+  ): void {
+    recordEvent(status, event);
+
+    if (!this.onEvent) {
+      return;
+    }
+
+    try {
+      this.onEvent(event);
+    } catch (error: unknown) {
+      this.logger.warn('SQS worker runtime event hook failed.', {
+        routeName: event.routeName,
+        queueUrl: event.queueUrl,
+        eventType: event.type,
+        error: describeUnknownError(error),
       });
-
-      if ((result?.action ?? 'delete') === 'delete') {
-        await this.client.deleteMessage({
-          QueueUrl: route.queueUrl,
-          ReceiptHandle: message.receiptHandle,
-        });
-      }
-
-      status.lastSuccessAt = new Date();
-    } finally {
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-      }
     }
   }
 }
@@ -386,19 +1059,18 @@ function toWorkerMessage(message: SqsSdkMessage): SqsWorkerMessage {
     receiptHandle: message.ReceiptHandle,
     body: message.Body,
     attributes: message.Attributes ?? {},
-    messageAttributes:
-      Object.fromEntries(
-        Object.entries(message.MessageAttributes ?? {}).map(([key, value]) => [
-          key,
-          {
-            stringValue: value.StringValue,
-            binaryValue: value.BinaryValue,
-            stringListValues: value.StringListValues,
-            binaryListValues: value.BinaryListValues,
-            dataType: value.DataType,
-          },
-        ]),
-      ) ?? {},
+    messageAttributes: Object.fromEntries(
+      Object.entries(message.MessageAttributes ?? {}).map(([key, value]) => [
+        key,
+        {
+          stringValue: value.StringValue,
+          binaryValue: value.BinaryValue,
+          stringListValues: value.StringListValues,
+          binaryListValues: value.BinaryListValues,
+          dataType: value.DataType,
+        },
+      ]),
+    ),
     raw: message,
   };
 }
@@ -436,6 +1108,27 @@ function validateRoute(
   validateInteger(routeName, 'emptyReceiveDelayMs', config.emptyReceiveDelayMs, 0);
   validateInteger(routeName, 'errorBackoffMs', config.errorBackoffMs, 0);
   validateInteger(routeName, 'maxMessagesPerPoll', config.maxMessagesPerPoll, 1, 10);
+
+  if (
+    config.handlerTimeoutMs !== undefined &&
+    (!Number.isInteger(config.handlerTimeoutMs) || config.handlerTimeoutMs < 1)
+  ) {
+    throw new Error(
+      `SQS worker route ${routeName} has invalid handlerTimeoutMs; expected an integer >= 1.`,
+    );
+  }
+
+  if (config.timeoutStrategy !== 'cooperative' && config.timeoutStrategy !== 'abandon') {
+    throw new Error(
+      `SQS worker route ${routeName} has invalid timeoutStrategy; expected cooperative or abandon.`,
+    );
+  }
+
+  if (config.failureAction !== 'delete' && config.failureAction !== 'keep') {
+    throw new Error(
+      `SQS worker route ${routeName} has invalid failureAction; expected delete or keep.`,
+    );
+  }
 }
 
 function validateInteger(
@@ -450,6 +1143,125 @@ function validateInteger(
     throw new Error(
       `SQS worker route ${routeName} has invalid ${field}; expected an integer ${rangeDescription}.`,
     );
+  }
+}
+
+function createCounters(): SqsWorkerRouteCounters {
+  return {
+    receiveEmptyCount: 0,
+    messagesReceivedCount: 0,
+    handlerStartedCount: 0,
+    handlerSuccessCount: 0,
+    handlerFailureCount: 0,
+    handlerTimeoutCount: 0,
+    lateSettlementCount: 0,
+    messageDeleteCount: 0,
+    messageKeepCount: 0,
+    heartbeatSuccessCount: 0,
+    heartbeatFailureCount: 0,
+  };
+}
+
+function addCounters(
+  target: SqsWorkerRouteCounters,
+  source: SqsWorkerRouteCounters,
+): SqsWorkerRouteCounters {
+  return {
+    receiveEmptyCount: target.receiveEmptyCount + source.receiveEmptyCount,
+    messagesReceivedCount: target.messagesReceivedCount + source.messagesReceivedCount,
+    handlerStartedCount: target.handlerStartedCount + source.handlerStartedCount,
+    handlerSuccessCount: target.handlerSuccessCount + source.handlerSuccessCount,
+    handlerFailureCount: target.handlerFailureCount + source.handlerFailureCount,
+    handlerTimeoutCount: target.handlerTimeoutCount + source.handlerTimeoutCount,
+    lateSettlementCount: target.lateSettlementCount + source.lateSettlementCount,
+    messageDeleteCount: target.messageDeleteCount + source.messageDeleteCount,
+    messageKeepCount: target.messageKeepCount + source.messageKeepCount,
+    heartbeatSuccessCount: target.heartbeatSuccessCount + source.heartbeatSuccessCount,
+    heartbeatFailureCount: target.heartbeatFailureCount + source.heartbeatFailureCount,
+  };
+}
+
+function cloneRouteStatus(status: SqsWorkerRouteStatus): SqsWorkerRouteStatus {
+  return {
+    ...status,
+    counters: { ...status.counters },
+  };
+}
+
+function recordFailure(
+  status: SqsWorkerRouteStatus,
+  kind: SqsWorkerFailureKind,
+  error: unknown,
+  at: Date,
+): void {
+  status.lastErrorAt = at;
+  status.lastErrorMessage = describeUnknownError(error);
+  status.lastFailureKind = kind;
+}
+
+function recordEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
+  switch (event.type) {
+    case 'receive-empty':
+      status.counters.receiveEmptyCount += 1;
+      status.lastReceiveEmptyAt = event.at;
+      return;
+    case 'messages-received':
+      status.counters.messagesReceivedCount += event.messageCount;
+      status.lastReceiveAt = event.at;
+      return;
+    case 'handler-start':
+      status.counters.handlerStartedCount += 1;
+      status.lastStartedAt = event.at;
+      return;
+    case 'handler-success':
+      status.counters.handlerSuccessCount += 1;
+      status.lastSuccessAt = event.at;
+      return;
+    case 'handler-failure':
+      status.counters.handlerFailureCount += 1;
+      return;
+    case 'handler-timeout':
+      status.counters.handlerTimeoutCount += 1;
+      status.lastTimeoutAt = event.at;
+      return;
+    case 'late-settlement':
+      status.counters.lateSettlementCount += 1;
+      status.lastLateSettlementAt = event.at;
+      status.lastLateSettlementOutcome = event.outcome;
+      return;
+    case 'message-delete':
+      status.counters.messageDeleteCount += 1;
+      status.lastDeleteAt = event.at;
+      return;
+    case 'message-keep':
+      status.counters.messageKeepCount += 1;
+      status.lastKeepAt = event.at;
+      return;
+    case 'heartbeat-success':
+      status.counters.heartbeatSuccessCount += 1;
+      status.lastHeartbeatSuccessAt = event.at;
+      return;
+    case 'heartbeat-failure':
+      status.counters.heartbeatFailureCount += 1;
+      status.lastHeartbeatFailureAt = event.at;
+      status.lastHeartbeatFailureMessage = describeUnknownError(event.error);
+      return;
+  }
+}
+
+async function settleHandler(
+  promise: Promise<SqsWorkerHandlerResult | void>,
+): Promise<SettledHandlerResult> {
+  try {
+    return { outcome: 'resolved', result: await promise };
+  } catch (error: unknown) {
+    return { outcome: 'rejected', error };
+  }
+}
+
+function clearTimer(timer?: NodeJS.Timeout): void {
+  if (timer) {
+    clearTimeout(timer);
   }
 }
 

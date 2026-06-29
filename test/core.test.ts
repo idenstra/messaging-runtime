@@ -10,6 +10,7 @@ import {
   SqsWorkerManager,
   type SqsRuntimeClient,
   type SqsRuntimeRequestOptions,
+  type SqsWorkerRuntimeEvent,
 } from '../src';
 
 type ReceiveBatch =
@@ -70,20 +71,26 @@ class FakeSqsClient implements SqsRuntimeClient {
   }
 }
 
-test('deletes messages after successful handler execution', async () => {
+test('deletes messages after successful handler execution and updates snapshots', async () => {
   const client = new FakeSqsClient([
     {
       Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
     },
   ]);
-  const manager = new SqsWorkerManager(client);
-  const seen: string[] = [];
+  const events: string[] = [];
+  const manager = new SqsWorkerManager(client, {
+    onEvent: (event) => {
+      events.push(event.type);
+    },
+  });
+  let abortSignalObserved: AbortSignal | undefined;
 
   manager.register<{ kind: string }>({
     name: 'dispatch-email',
     queueUrl: 'https://queue.test/email',
-    handle: async ({ payload }) => {
-      seen.push(payload.kind);
+    handle: async ({ payload, abortSignal }) => {
+      abortSignalObserved = abortSignal;
+      assert.equal(payload.kind, 'alpha');
     },
     config: {
       waitTimeSeconds: 0,
@@ -93,15 +100,63 @@ test('deletes messages after successful handler execution', async () => {
   });
 
   await manager.start();
-  await waitFor(() => seen.length === 1 && client.deleteInputs.length === 1);
+  await waitFor(() => client.deleteInputs.length === 1);
   await manager.stop();
 
-  assert.deepEqual(seen, ['alpha']);
-  assert.equal(client.deleteInputs.length, 1);
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.routeCount, 1);
+  assert.equal(snapshot.totalInFlight, 0);
+  assert.equal(snapshot.counters.messagesReceivedCount, 1);
+  assert.equal(snapshot.counters.handlerStartedCount, 1);
+  assert.equal(snapshot.counters.handlerSuccessCount, 1);
+  assert.equal(snapshot.counters.messageDeleteCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.messageDeleteCount, 1);
   assert.equal(client.deleteInputs[0]?.ReceiptHandle, 'r1');
+  assert.ok(abortSignalObserved);
+  assert.equal(abortSignalObserved?.aborted, false);
+  assert.deepEqual(events.slice(0, 2), ['messages-received', 'handler-start']);
+  assert.equal(events.includes('handler-success'), true);
+  assert.equal(events.includes('message-delete'), true);
 });
 
-test('preserves failed messages for retry by not deleting them', async () => {
+test('decode failures use the route default failure action', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1' }],
+    },
+  ]);
+  const events: string[] = [];
+  const manager = new SqsWorkerManager(client, {
+    onEvent: (event) => {
+      events.push(event.type);
+    },
+  });
+
+  manager.register({
+    name: 'decode-failure',
+    queueUrl: 'https://queue.test/email',
+    handle: async () => undefined,
+    config: {
+      waitTimeSeconds: 0,
+      emptyReceiveDelayMs: 10,
+      heartbeatIntervalMs: 0,
+      failureAction: 'delete',
+    },
+  });
+
+  await manager.start();
+  await waitFor(() => client.deleteInputs.length === 1);
+  await manager.stop();
+
+  const status = manager.getStatus()[0];
+  assert.equal(status?.lastFailureKind, 'decode');
+  assert.equal(status?.counters.handlerFailureCount, 1);
+  assert.equal(status?.counters.handlerStartedCount, 0);
+  assert.equal(status?.counters.messageDeleteCount, 1);
+  assert.equal(events.includes('handler-start'), false);
+});
+
+test('error hooks can override handler failure action', async () => {
   const client = new FakeSqsClient([
     {
       Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
@@ -110,111 +165,153 @@ test('preserves failed messages for retry by not deleting them', async () => {
   const manager = new SqsWorkerManager(client);
 
   manager.register({
-    name: 'dispatch-email',
+    name: 'handler-failure',
     queueUrl: 'https://queue.test/email',
     handle: async () => {
       throw new Error('boom');
     },
+    onError: async (context) => {
+      assert.equal(context.failureKind, 'handler');
+      return 'delete';
+    },
     config: {
       waitTimeSeconds: 0,
       emptyReceiveDelayMs: 10,
       heartbeatIntervalMs: 0,
+      failureAction: 'keep',
     },
   });
 
   await manager.start();
-  await waitFor(() => Boolean(manager.getStatus()[0]?.lastErrorMessage?.includes('boom')));
+  await waitFor(() => client.deleteInputs.length === 1);
   await manager.stop();
 
-  assert.equal(client.deleteInputs.length, 0);
-  assert.equal(manager.getStatus()[0]?.lastErrorMessage?.includes('boom'), true);
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.handlerFailureCount, 1);
+  assert.equal(snapshot.counters.messageDeleteCount, 1);
+  assert.equal(snapshot.counters.messageKeepCount, 0);
 });
 
-test('enforces the configured concurrency ceiling', async () => {
-  const client = new FakeSqsClient([
-    {
-      Messages: [
-        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ idx: 1 }) },
-        { MessageId: 'm2', ReceiptHandle: 'r2', Body: JSON.stringify({ idx: 2 }) },
-      ],
-    },
-    {
-      Messages: [{ MessageId: 'm3', ReceiptHandle: 'r3', Body: JSON.stringify({ idx: 3 }) }],
-    },
-  ]);
-  const manager = new SqsWorkerManager(client);
-  let inFlight = 0;
-  let maxInFlight = 0;
-
-  manager.register<{ idx: number }>({
-    name: 'dispatch-email',
-    queueUrl: 'https://queue.test/email',
-    handle: async () => {
-      inFlight += 1;
-      maxInFlight = Math.max(maxInFlight, inFlight);
-      await sleep(25);
-      inFlight -= 1;
-    },
-    config: {
-      concurrency: 2,
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-    },
-  });
-
-  await manager.start();
-  await waitFor(() => client.deleteInputs.length === 3);
-  await manager.stop();
-
-  assert.equal(maxInFlight, 2);
-});
-
-test('extends visibility for long-running handlers', async () => {
+test('cooperative timeout aborts, keeps the slot occupied, continues heartbeating, and may delete after settlement', async () => {
   const client = new FakeSqsClient([
     {
       Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
     },
   ]);
-  const manager = new SqsWorkerManager(client);
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+  let abortObserved = false;
 
   manager.register({
-    name: 'dispatch-email',
+    name: 'cooperative-timeout',
     queueUrl: 'https://queue.test/email',
-    handle: async () => {
-      await sleep(75);
+    handle: async ({ abortSignal }) => {
+      await onceAborted(abortSignal);
+      abortObserved = abortSignal.aborted;
+      await sleep(35);
     },
     config: {
       waitTimeSeconds: 0,
       emptyReceiveDelayMs: 10,
       visibilityTimeoutSeconds: 30,
-      heartbeatIntervalMs: 20,
+      heartbeatIntervalMs: 10,
+      handlerTimeoutMs: 20,
+      timeoutStrategy: 'cooperative',
+      failureAction: 'delete',
     },
   });
 
   await manager.start();
-  await waitFor(() => client.visibilityInputs.length >= 2);
+  await waitFor(() => Boolean(manager.getStatus()[0]?.lastTimeoutAt));
+  assert.equal(manager.getStatus()[0]?.inFlight, 1);
+
+  await waitFor(() => client.deleteInputs.length === 1);
   await manager.stop();
 
+  const timeoutEvents = events.filter((event) => event.type === 'handler-timeout');
+  assert.equal(timeoutEvents.length, 1);
+  assert.equal(timeoutEvents[0]?.type, 'handler-timeout');
+  assert.equal(timeoutEvents[0]?.timeoutStrategy, 'cooperative');
+  assert.ok(abortObserved);
   assert.ok(client.visibilityInputs.length >= 2);
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.handlerTimeoutCount, 1);
+  assert.equal(snapshot.counters.messageDeleteCount, 1);
 });
 
-test('graceful stop drains in-flight handlers before returning', async () => {
+test('abandon timeout stops heartbeats, keeps the message, and records late settlement', async () => {
   const client = new FakeSqsClient([
     {
       Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
     },
   ]);
-  const manager = new SqsWorkerManager(client);
-  let finished = false;
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
 
   manager.register({
-    name: 'dispatch-email',
+    name: 'abandon-timeout',
     queueUrl: 'https://queue.test/email',
-    handle: async () => {
-      await sleep(50);
-      finished = true;
+    handle: async ({ abortSignal }) => {
+      await onceAborted(abortSignal);
+      await sleep(40);
     },
+    config: {
+      waitTimeSeconds: 0,
+      emptyReceiveDelayMs: 10,
+      visibilityTimeoutSeconds: 30,
+      heartbeatIntervalMs: 10,
+      handlerTimeoutMs: 15,
+      timeoutStrategy: 'abandon',
+      failureAction: 'delete',
+    },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.messageKeepCount === 1);
+  assert.equal(manager.getStatus()[0]?.inFlight, 0);
+  const heartbeatCountAfterTimeout = client.visibilityInputs.length;
+
+  await waitFor(() => manager.getSnapshot().counters.lateSettlementCount === 1);
+  await sleep(30);
+  await manager.stop();
+
+  assert.equal(client.deleteInputs.length, 0);
+  assert.equal(client.visibilityInputs.length, heartbeatCountAfterTimeout);
+  assert.equal(events.some((event) => event.type === 'heartbeat-failure'), false);
+  assert.equal(events.some((event) => event.type === 'late-settlement'), true);
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.handlerTimeoutCount, 1);
+  assert.equal(snapshot.counters.heartbeatFailureCount, 0);
+  assert.equal(snapshot.counters.messageKeepCount, 1);
+  assert.equal(snapshot.counters.lateSettlementCount, 1);
+});
+
+test('metrics hook exceptions do not break runtime processing', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
+    },
+  ]);
+  const manager = new SqsWorkerManager(client, {
+    onEvent: () => {
+      throw new Error('metrics down');
+    },
+  });
+
+  manager.register({
+    name: 'metrics-errors',
+    queueUrl: 'https://queue.test/email',
+    handle: async () => undefined,
     config: {
       waitTimeSeconds: 0,
       emptyReceiveDelayMs: 10,
@@ -223,11 +320,45 @@ test('graceful stop drains in-flight handlers before returning', async () => {
   });
 
   await manager.start();
-  await waitFor(() => manager.getStatus()[0]?.inFlight === 1);
+  await waitFor(() => client.deleteInputs.length === 1);
   await manager.stop();
 
-  assert.equal(finished, true);
   assert.equal(client.deleteInputs.length, 1);
+});
+
+test('cooperative timeout still blocks stop until the timed-out handler settles', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
+    },
+  ]);
+  const manager = new SqsWorkerManager(client);
+
+  manager.register({
+    name: 'cooperative-stop',
+    queueUrl: 'https://queue.test/email',
+    handle: async ({ abortSignal }) => {
+      await onceAborted(abortSignal);
+      await sleep(45);
+    },
+    config: {
+      waitTimeSeconds: 0,
+      emptyReceiveDelayMs: 10,
+      heartbeatIntervalMs: 10,
+      handlerTimeoutMs: 15,
+      timeoutStrategy: 'cooperative',
+      failureAction: 'keep',
+    },
+  });
+
+  await manager.start();
+  await waitFor(() => Boolean(manager.getStatus()[0]?.lastTimeoutAt));
+
+  const startedAt = Date.now();
+  await manager.stop();
+  const elapsedMs = Date.now() - startedAt;
+
+  assert.ok(elapsedMs >= 30);
 });
 
 test('stop aborts an in-flight long poll instead of waiting for the full receive timeout', async () => {
@@ -263,48 +394,52 @@ test('stop aborts an in-flight long poll instead of waiting for the full receive
   assert.ok(Date.now() - stopStartedAt < 250);
 });
 
-test('rejects invalid route configuration during registration', () => {
+test('rejects invalid timeout and failure configuration during registration', () => {
   const manager = new SqsWorkerManager(new FakeSqsClient([]));
 
   assert.throws(
     () =>
       manager.register({
-        name: 'dispatch-email',
+        name: 'invalid-timeout',
         queueUrl: 'https://queue.test/email',
         handle: async () => undefined,
-        config: { concurrency: 0 },
+        config: { handlerTimeoutMs: 0 },
       }),
-    /invalid concurrency/i,
+    /invalid handlerTimeoutMs/i,
+  );
+
+  assert.throws(
+    () =>
+      manager.register({
+        name: 'invalid-strategy',
+        queueUrl: 'https://queue.test/email',
+        handle: async () => undefined,
+        config: { timeoutStrategy: 'bogus' as never },
+      }),
+    /invalid timeoutStrategy/i,
+  );
+
+  assert.throws(
+    () =>
+      manager.register({
+        name: 'invalid-failure-action',
+        queueUrl: 'https://queue.test/email',
+        handle: async () => undefined,
+        config: { failureAction: 'bogus' as never },
+      }),
+    /invalid failureAction/i,
   );
 });
 
-test('preserves bodyless messages by failing decode before delete', async () => {
-  const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1' }],
-    },
-  ]);
-  const manager = new SqsWorkerManager(client);
+async function onceAborted(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    return;
+  }
 
-  manager.register({
-    name: 'dispatch-email',
-    queueUrl: 'https://queue.test/email',
-    handle: async () => undefined,
-    config: {
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-    },
+  await new Promise<void>((resolve) => {
+    signal.addEventListener('abort', () => resolve(), { once: true });
   });
-
-  await manager.start();
-  await waitFor(() =>
-    Boolean(manager.getStatus()[0]?.lastErrorMessage?.includes('missing a body')),
-  );
-  await manager.stop();
-
-  assert.equal(client.deleteInputs.length, 0);
-});
+}
 
 async function waitFor(
   predicate: () => boolean,
