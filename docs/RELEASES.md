@@ -70,7 +70,7 @@ Workflow publication:
 Local installs and local manual package inspection:
 - use GitHub Packages auth in user space
 - supported patterns:
-  - `~/.npmrc`
+  - a user-scoped npm config file
   - `npm login --auth-type=legacy --scope=@idenstra --registry=https://npm.pkg.github.com`
 - do not commit auth tokens into repo `.npmrc`
 
