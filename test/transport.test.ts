@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { ListTopicsCommandInput } from '@aws-sdk/client-sns';
+import { SNSClient, type ListTopicsCommandInput } from '@aws-sdk/client-sns';
 import type {
   GetQueueUrlCommandInput,
   MessageAttributeValue as SqsMessageAttributeValue,
+  SQSClient,
   SendMessageBatchCommandInput,
   SendMessageCommandInput,
 } from '@aws-sdk/client-sqs';
