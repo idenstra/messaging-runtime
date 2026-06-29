@@ -19,8 +19,7 @@ export interface SqsWorkerQueueResolver {
   resolve(queue: string): Promise<string>;
 }
 
-export interface SqsWorkerServiceRoute<TPayload>
-  extends Omit<SqsWorkerRoute<TPayload>, 'queueUrl'> {
+export interface SqsWorkerServiceRoute<TPayload> extends Omit<SqsWorkerRoute<TPayload>, 'queueUrl'> {
   queue?: string;
 }
 
@@ -110,14 +109,16 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
   }
 
   getSnapshot(): SqsWorkerManagerSnapshot {
-    return this.manager?.getSnapshot() ?? {
-      started: false,
-      stopping: false,
-      routeCount: 0,
-      totalInFlight: 0,
-      counters: createEmptyCounters(),
-      routes: [],
-    };
+    return (
+      this.manager?.getSnapshot() ?? {
+        started: false,
+        stopping: false,
+        routeCount: 0,
+        totalInFlight: 0,
+        counters: createEmptyCounters(),
+        routes: [],
+      }
+    );
   }
 
   private async ensureManager(): Promise<SqsWorkerManager> {
@@ -148,10 +149,7 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
 
     for (const activeRoute of this.activeRoutes) {
       const queueUrl = await this.options.queueResolver.resolve(activeRoute.queue);
-      const routeConfig = mergeRouteConfig(
-        activeRoute.route.config,
-        activeRoute.manifest.config,
-      );
+      const routeConfig = mergeRouteConfig(activeRoute.route.config, activeRoute.manifest.config);
       manager.register({
         name: activeRoute.route.name,
         queueUrl,
@@ -214,64 +212,39 @@ export async function runSqsWorkerServiceUntilSignal(
   }
 }
 
-export function parseSqsWorkerServiceManifest(
-  input: unknown,
-): SqsWorkerServiceManifest {
+export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceManifest {
   const rawManifest =
     typeof input === 'string'
       ? parseJsonRecord(input, 'SQS worker service manifest JSON')
       : assertRecord(input, 'SQS worker service manifest');
 
-  const defaults = readOptionalRouteConfigPatch(
-    rawManifest.defaults,
-    'SQS worker service manifest defaults',
-  );
-  const rawRoutes = assertRecord(
-    rawManifest.routes,
-    'SQS worker service manifest routes',
-  );
+  const defaults = readOptionalRouteConfigPatch(rawManifest.defaults, 'SQS worker service manifest defaults');
+  const rawRoutes = assertRecord(rawManifest.routes, 'SQS worker service manifest routes');
   const routes: Record<string, SqsWorkerServiceManifestRoute> = {};
 
   for (const [routeName, rawRouteEntry] of Object.entries(rawRoutes)) {
     const normalizedRouteName = assertRouteName(routeName);
     if (normalizedRouteName in routes) {
-      throw new Error(
-        `SQS worker service manifest declares duplicate route entries for ${normalizedRouteName}.`,
-      );
+      throw new Error(`SQS worker service manifest declares duplicate route entries for ${normalizedRouteName}.`);
     }
-    const routeEntry = assertRecord(
-      rawRouteEntry,
-      `SQS worker service manifest route ${normalizedRouteName}`,
-    );
+    const routeEntry = assertRecord(rawRouteEntry, `SQS worker service manifest route ${normalizedRouteName}`);
     const enabled = readOptionalBoolean(
       routeEntry.enabled,
       `SQS worker service manifest route ${normalizedRouteName} enabled`,
     );
-    const queue = readOptionalText(
-      routeEntry.queue,
-      `SQS worker service manifest route ${normalizedRouteName} queue`,
-    );
+    const queue = readOptionalText(routeEntry.queue, `SQS worker service manifest route ${normalizedRouteName} queue`);
     const config = readOptionalRouteConfigPatch(
       routeEntry.config,
       `SQS worker service manifest route ${normalizedRouteName} config`,
     );
 
-    routes[normalizedRouteName] = {
-      enabled,
-      queue,
-      config,
-    };
+    routes[normalizedRouteName] = { enabled, queue, config };
   }
 
-  return {
-    defaults,
-    routes,
-  };
+  return { defaults, routes };
 }
 
-function indexRoutes(
-  routes: readonly SqsWorkerServiceRoute<unknown>[],
-): Map<string, SqsWorkerServiceRoute<unknown>> {
+function indexRoutes(routes: readonly SqsWorkerServiceRoute<unknown>[]): Map<string, SqsWorkerServiceRoute<unknown>> {
   const routesByName = new Map<string, SqsWorkerServiceRoute<unknown>>();
 
   for (const route of routes) {
@@ -283,11 +256,7 @@ function indexRoutes(
       throw new Error(`SQS worker service route ${routeName} is already registered.`);
     }
 
-    routesByName.set(routeName, {
-      ...route,
-      name: routeName,
-      queue: route.queue?.trim(),
-    });
+    routesByName.set(routeName, { ...route, name: routeName, queue: route.queue?.trim() });
   }
 
   return routesByName;
@@ -302,9 +271,7 @@ function resolveActiveRoutes(
   for (const [routeName, routeManifest] of Object.entries(manifest.routes)) {
     const route = routesByName.get(routeName);
     if (!route) {
-      throw new Error(
-        `SQS worker service manifest route ${routeName} does not match any registered route.`,
-      );
+      throw new Error(`SQS worker service manifest route ${routeName} does not match any registered route.`);
     }
 
     const normalizedManifest: NormalizedManifestRoute = {
@@ -324,11 +291,7 @@ function resolveActiveRoutes(
       );
     }
 
-    activeRoutes.push({
-      route,
-      queue: queue.trim(),
-      manifest: normalizedManifest,
-    });
+    activeRoutes.push({ route, queue: queue.trim(), manifest: normalizedManifest });
   }
 
   return activeRoutes;
@@ -342,15 +305,10 @@ function mergeRouteConfig(
     return undefined;
   }
 
-  return {
-    ...routeConfig,
-    ...manifestConfig,
-  };
+  return { ...routeConfig, ...manifestConfig };
 }
 
-function normalizeSignals(
-  signals: readonly NodeJS.Signals[] | undefined,
-): NodeJS.Signals[] {
+function normalizeSignals(signals: readonly NodeJS.Signals[] | undefined): NodeJS.Signals[] {
   const configuredSignals = signals ?? DEFAULT_SIGNALS;
   const uniqueSignals = [...new Set(configuredSignals)];
 
@@ -369,10 +327,7 @@ function parseJsonRecord(source: string, label: string): Record<string, unknown>
   }
 }
 
-function readOptionalRouteConfigPatch(
-  value: unknown,
-  label: string,
-): Partial<SqsWorkerRouteConfig> | undefined {
+function readOptionalRouteConfigPatch(value: unknown, label: string): Partial<SqsWorkerRouteConfig> | undefined {
   if (value === undefined) {
     return undefined;
   }

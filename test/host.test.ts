@@ -7,22 +7,18 @@ import type {
   ReceiveMessageCommandOutput,
 } from '@aws-sdk/client-sqs';
 import type { SqsRuntimeClient } from '../src';
-import {
-  SqsWorkerServiceHost,
-  parseSqsWorkerServiceManifest,
-  runSqsWorkerServiceUntilSignal,
-} from '../src';
+import { parseSqsWorkerServiceManifest, runSqsWorkerServiceUntilSignal, SqsWorkerServiceHost } from '../src';
 
 class FakeSqsClient implements SqsRuntimeClient {
   readonly receiveInputs: ReceiveMessageCommandInput[] = [];
   readonly deleteInputs: DeleteMessageCommandInput[] = [];
   readonly visibilityInputs: ChangeMessageVisibilityCommandInput[] = [];
-  private readonly messagesByQueue = new Map<string, Array<{ MessageId: string; ReceiptHandle: string; Body?: string }>>();
+  private readonly messagesByQueue = new Map<
+    string,
+    Array<{ MessageId: string; ReceiptHandle: string; Body?: string }>
+  >();
 
-  withMessage(
-    queueUrl: string,
-    message: { MessageId: string; ReceiptHandle: string; Body?: string },
-  ): this {
+  withMessage(queueUrl: string, message: { MessageId: string; ReceiptHandle: string; Body?: string }): this {
     const queueMessages = this.messagesByQueue.get(queueUrl) ?? [];
     queueMessages.push(message);
     this.messagesByQueue.set(queueUrl, queueMessages);
@@ -72,13 +68,8 @@ test('parses a JSON manifest and preserves the serializable route shape', () => 
     JSON.stringify({
       defaults: { concurrency: 2, waitTimeSeconds: 1 },
       routes: {
-        dispatch: {
-          queue: 'dispatch-queue',
-          config: { maxMessagesPerPoll: 1 },
-        },
-        feedback: {
-          enabled: false,
-        },
+        dispatch: { queue: 'dispatch-queue', config: { maxMessagesPerPoll: 1 } },
+        feedback: { enabled: false },
       },
     }),
   );
@@ -86,16 +77,8 @@ test('parses a JSON manifest and preserves the serializable route shape', () => 
   assert.deepEqual(manifest, {
     defaults: { concurrency: 2, waitTimeSeconds: 1 },
     routes: {
-      dispatch: {
-        enabled: undefined,
-        queue: 'dispatch-queue',
-        config: { maxMessagesPerPoll: 1 },
-      },
-      feedback: {
-        enabled: false,
-        queue: undefined,
-        config: undefined,
-      },
+      dispatch: { enabled: undefined, queue: 'dispatch-queue', config: { maxMessagesPerPoll: 1 } },
+      feedback: { enabled: false, queue: undefined, config: undefined },
     },
   });
 });
@@ -109,20 +92,8 @@ test('rejects manifest routes that do not match a registered route', () => {
       new SqsWorkerServiceHost({
         client,
         queueResolver: resolver,
-        routes: [
-          {
-            name: 'dispatch',
-            queue: 'dispatch-queue',
-            handle: async () => undefined,
-          },
-        ],
-        manifest: parseSqsWorkerServiceManifest({
-          routes: {
-            feedback: {
-              queue: 'dispatch-queue',
-            },
-          },
-        }),
+        routes: [{ name: 'dispatch', queue: 'dispatch-queue', handle: async () => undefined }],
+        manifest: parseSqsWorkerServiceManifest({ routes: { feedback: { queue: 'dispatch-queue' } } }),
       }),
     /does not match any registered route/i,
   );
@@ -130,13 +101,7 @@ test('rejects manifest routes that do not match a registered route', () => {
 
 test('rejects duplicate manifest route names after normalization', () => {
   assert.throws(
-    () =>
-      parseSqsWorkerServiceManifest({
-        routes: {
-          dispatch: {},
-          ' dispatch ': {},
-        },
-      }),
+    () => parseSqsWorkerServiceManifest({ routes: { dispatch: {}, ' dispatch ': {} } }),
     /duplicate route entries/i,
   );
 });
@@ -150,17 +115,8 @@ test('rejects enabled routes without a queue binding in the manifest or route de
       new SqsWorkerServiceHost({
         client,
         queueResolver: resolver,
-        routes: [
-          {
-            name: 'dispatch',
-            handle: async () => undefined,
-          },
-        ],
-        manifest: parseSqsWorkerServiceManifest({
-          routes: {
-            dispatch: {},
-          },
-        }),
+        routes: [{ name: 'dispatch', handle: async () => undefined }],
+        manifest: parseSqsWorkerServiceManifest({ routes: { dispatch: {} } }),
       }),
     /has no queue binding/i,
   );
@@ -174,10 +130,7 @@ test('activates only manifest-enabled routes and merges config with the document
     ReceiptHandle: 'r1',
     Body: JSON.stringify({ type: 'dispatch' }),
   });
-  const resolver = new FakeQueueResolver({
-    'dispatch-queue': dispatchQueueUrl,
-    'feedback-queue': feedbackQueueUrl,
-  });
+  const resolver = new FakeQueueResolver({ 'dispatch-queue': dispatchQueueUrl, 'feedback-queue': feedbackQueueUrl });
   const handledPayloads: string[] = [];
   const host = new SqsWorkerServiceHost({
     client,
@@ -189,41 +142,18 @@ test('activates only manifest-enabled routes and merges config with the document
         handle: async ({ payload }) => {
           handledPayloads.push((payload as { type: string }).type);
         },
-        config: {
-          maxMessagesPerPoll: 2,
-          waitTimeSeconds: 0,
-          emptyReceiveDelayMs: 10,
-          heartbeatIntervalMs: 0,
-        },
+        config: { maxMessagesPerPoll: 2, waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
       },
       {
         name: 'feedback',
         queue: 'feedback-queue',
         handle: async () => undefined,
-        config: {
-          waitTimeSeconds: 0,
-          emptyReceiveDelayMs: 10,
-          heartbeatIntervalMs: 0,
-        },
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
       },
     ],
     manifest: parseSqsWorkerServiceManifest({
-      defaults: {
-        concurrency: 5,
-        maxMessagesPerPoll: 9,
-        waitTimeSeconds: 1,
-      },
-      routes: {
-        dispatch: {
-          config: {
-            concurrency: 3,
-            waitTimeSeconds: 4,
-          },
-        },
-        feedback: {
-          enabled: false,
-        },
-      },
+      defaults: { concurrency: 5, maxMessagesPerPoll: 9, waitTimeSeconds: 1 },
+      routes: { dispatch: { config: { concurrency: 3, waitTimeSeconds: 4 } }, feedback: { enabled: false } },
     }),
   });
 
@@ -233,8 +163,14 @@ test('activates only manifest-enabled routes and merges config with the document
 
   assert.deepEqual(handledPayloads, ['dispatch']);
   assert.deepEqual(resolver.identifiers, ['dispatch-queue']);
-  assert.equal(client.receiveInputs.every((input) => input.QueueUrl === dispatchQueueUrl), true);
-  assert.equal(client.receiveInputs.some((input) => input.QueueUrl === feedbackQueueUrl), false);
+  assert.equal(
+    client.receiveInputs.every((input) => input.QueueUrl === dispatchQueueUrl),
+    true,
+  );
+  assert.equal(
+    client.receiveInputs.some((input) => input.QueueUrl === feedbackQueueUrl),
+    false,
+  );
   assert.equal(client.receiveInputs[0]?.MaxNumberOfMessages, 2);
   assert.equal(client.receiveInputs[0]?.WaitTimeSeconds, 4);
   assert.equal(host.getStatus().length, 1);
@@ -272,13 +208,7 @@ test('accepts queue identifiers as name, URL, or ARN and resolves them through t
       },
     ],
     manifest: parseSqsWorkerServiceManifest({
-      routes: {
-        dispatch: {},
-        feedback: {},
-        events: {
-          queue: 'arn:aws:sqs:us-east-1:123456789012:events-queue',
-        },
-      },
+      routes: { dispatch: {}, feedback: {}, events: { queue: 'arn:aws:sqs:us-east-1:123456789012:events-queue' } },
     }),
   });
 

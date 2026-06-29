@@ -2,10 +2,10 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import type { LoggerService } from '@nestjs/common';
 import {
-  SqsWorkerManager,
-  SqsWorkerServiceHost,
   parseSqsWorkerServiceManifest,
   type SqsRuntimeClient,
+  SqsWorkerManager,
+  SqsWorkerServiceHost,
 } from '../../src';
 import { AbstractNestSqsWorkerHost, NestSqsWorkerLoggerAdapter } from '../../src/adapters/nest';
 
@@ -32,10 +32,6 @@ class FakeQueueResolver {
 }
 
 class Host extends AbstractNestSqsWorkerHost {
-  constructor(workerLifecycle: SqsWorkerManager | SqsWorkerServiceHost) {
-    super(workerLifecycle);
-  }
-
   status() {
     return this.snapshotWorkerStatus();
   }
@@ -51,11 +47,7 @@ test('nest host starts and stops the underlying manager lifecycle', async () => 
     name: 'dispatch-email',
     queueUrl: 'https://queue.test/email',
     handle: async () => undefined,
-    config: {
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-    },
+    config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
   });
 
   const host = new Host(manager);
@@ -68,26 +60,16 @@ test('nest host starts and stops the underlying manager lifecycle', async () => 
 test('nest host also works with the higher-level worker service host', async () => {
   const serviceHost = new SqsWorkerServiceHost({
     client: new FakeSqsClient(),
-    queueResolver: new FakeQueueResolver({
-      'dispatch-queue': 'https://queue.test/email',
-    }),
+    queueResolver: new FakeQueueResolver({ 'dispatch-queue': 'https://queue.test/email' }),
     routes: [
       {
         name: 'dispatch-email',
         queue: 'dispatch-queue',
         handle: async () => undefined,
-        config: {
-          waitTimeSeconds: 0,
-          emptyReceiveDelayMs: 10,
-          heartbeatIntervalMs: 0,
-        },
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
       },
     ],
-    manifest: parseSqsWorkerServiceManifest({
-      routes: {
-        'dispatch-email': {},
-      },
-    }),
+    manifest: parseSqsWorkerServiceManifest({ routes: { 'dispatch-email': {} } }),
   });
 
   const host = new Host(serviceHost);

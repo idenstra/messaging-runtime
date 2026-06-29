@@ -7,8 +7,7 @@ import { listTrackedFiles } from '../harness/lib/fs-utils.mjs';
 const strict = process.env.HARNESS_STRICT === '1' || process.env.CI === 'true';
 const root = process.cwd();
 
-const trackedFilePattern =
-  /(^|\/)(AGENTS\.md|WORKFLOW\.md|README\.md|Makefile|.*\.(md|mjs|sh|ya?ml|json|ts))$/i;
+const trackedFilePattern = /(^|\/)(AGENTS\.md|WORKFLOW\.md|README\.md|Makefile|.*\.(md|mjs|sh|ya?ml|json|ts))$/i;
 const personalPathPatterns = [
   /\/home\/[A-Za-z0-9._-]+(?:\/[^\s'")\]]*)?/g,
   /\/Users\/[A-Za-z0-9._-]+(?:\/[^\s'")\]]*)?/g,
@@ -34,11 +33,7 @@ export function findPersonalPathFindings(repoRoot, trackedFiles = listTrackedFil
       for (const pattern of personalPathPatterns) {
         pattern.lastIndex = 0;
         for (const match of lineText.matchAll(pattern)) {
-          findings.push({
-            path: relativePath,
-            line: index + 1,
-            value: match[0],
-          });
+          findings.push({ path: relativePath, line: index + 1, value: match[0] });
         }
       }
     });
@@ -72,4 +67,3 @@ function runCli() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runCli();
 }
-

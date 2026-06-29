@@ -58,9 +58,14 @@ Rules:
 - Default final gate for this repo:
   - `make verify`
 
+Local style helpers:
+- `make format`
+- `make lint`
+
 ## Documentation discipline
 Any meaningful change must update the relevant docs in the same change-set:
 - `README.md` for repo purpose and quick-start flow
 - `WORKFLOW.md` for proof expectations
 - this file when repo rules change
 - `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, or `docs/RELIABILITY.md` when package boundaries or verification posture changes
+- `docs/QUALITY_BAR.md` or `docs/AI_ENGINEERING.md` when contributor-style or AI-discipline rules change

@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import {
   findWorkflowSecurityViolations,
   parseWorkflowEvents,
@@ -78,7 +78,7 @@ test('findWorkflowSecurityViolations flags pull_request_target checkout of head 
     '    steps:',
     '      - uses: actions/checkout@v7',
     '        with:',
-    '          ref: ${{ github.event.pull_request.head.ref }}',
+    '          ref: $' + '{{ github.event.pull_request.head.ref }}',
     '',
   ].join('\n');
 

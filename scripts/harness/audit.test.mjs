@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { buildReport } from './audit.mjs';
 
 function createTempRepo() {
@@ -30,25 +30,49 @@ function seedMinimalHarnessRepo(repoRoot) {
       '',
     ].join('\n'),
   );
-  writeFile(repoRoot, 'WORKFLOW.md', 'verify-fast\nmake verify\ndocs/ISSUE_TRACKING.md\n');
+  writeFile(
+    repoRoot,
+    'WORKFLOW.md',
+    'verify-fast\nmake verify\ndocs/ISSUE_TRACKING.md\nstyle-drift validation\nBiome lint\n',
+  );
   writeFile(repoRoot, 'docs/templates/execution-plan.md', '# template\n');
   writeFile(repoRoot, 'docs/templates/handoff.md', '# handoff\n');
-  writeFile(repoRoot, 'docs/EXECUTION_PLANS.md', 'docs/templates/execution-plan.md\ndocs/templates/handoff.md\nmake plan-sync\n');
+  writeFile(
+    repoRoot,
+    'docs/EXECUTION_PLANS.md',
+    'docs/templates/execution-plan.md\ndocs/templates/handoff.md\nmake plan-sync\n',
+  );
   writeFile(repoRoot, 'docs/ISSUE_TRACKING.md', 'issue -> plan -> PR\nIdenstra Backlog\n');
   writeFile(repoRoot, 'docs/ARCHITECTURE.md', 'SNS/SQS\nNot owned here\n');
   writeFile(repoRoot, 'docs/SECURITY.md', '# security\n.npmrc\n');
   writeFile(repoRoot, 'docs/RELIABILITY.md', '# reliability\n');
-  writeFile(repoRoot, 'docs/HARNESS.md', 'scripts/README.md\ndocs/ISSUE_TRACKING.md\ndocs/EXECUTION_PLANS.md\ndocs/ARCHITECTURE.md\n');
+  writeFile(repoRoot, 'docs/QUALITY_BAR.md', 'one disciplined maintainer\ntool, or agent attribution\n');
+  writeFile(repoRoot, 'docs/AI_ENGINEERING.md', 'do not leave model, tool, or agent signatures\n');
+  writeFile(
+    repoRoot,
+    'docs/HARNESS.md',
+    'scripts/README.md\ndocs/ISSUE_TRACKING.md\ndocs/EXECUTION_PLANS.md\ndocs/ARCHITECTURE.md\n',
+  );
   writeFile(repoRoot, 'README.md', 'WORKFLOW.md\ndocs/HARNESS.md\ndocs/RELEASES.md\ndocs/COMPATIBILITY.md\n');
   writeFile(repoRoot, 'CHANGELOG.md', '# Changelog\n\n## [0.1.0] - 2026-06-29\n\n- Initial release.\n');
   writeFile(repoRoot, 'docs/RELEASES.md', 'package.json\nGitHub Packages\n');
   writeFile(repoRoot, 'docs/COMPATIBILITY.md', 'exact versions\nNode 24\n');
   writeFile(repoRoot, 'scripts/README.md', 'verify.sh\n');
+  writeFile(repoRoot, 'biome.json', '{}\n');
+  writeFile(
+    repoRoot,
+    'package.json',
+    '{"scripts":{"format":"biome format --write .","lint":"biome check .","lint:fix":"biome check --write ."}}\n',
+  );
   writeFile(repoRoot, 'src/core.ts', 'export const marker = true;\n');
   writeFile(repoRoot, 'src/adapters/nest.ts', 'export const marker = true;\n');
   writeFile(repoRoot, 'test/core.test.ts', 'export {};\n');
   writeFile(repoRoot, 'test/adapters/nest.test.ts', 'export {};\n');
-  writeFile(repoRoot, 'Makefile', '.PHONY: audit verify-fast verify plan-sync\naudit:\nverify-fast:\nverify:\nplan-sync:\n');
+  writeFile(
+    repoRoot,
+    'Makefile',
+    '.PHONY: format lint audit verify-fast verify plan-sync\nformat:\nlint:\naudit:\nverify-fast:\nverify:\nplan-sync:\n',
+  );
   writeFile(
     repoRoot,
     'scripts/harness/verify.sh',
@@ -58,8 +82,10 @@ function seedMinimalHarnessRepo(repoRoot) {
       'node scripts/ci/validate-workflow-security.mjs',
       'node scripts/ci/validate-pr-governance.mjs',
       'node scripts/harness/validate-backlog-ownership.mjs',
+      'node scripts/harness/check-style-drift.mjs',
       'node scripts/release/validate-release-state.mjs',
       'npm ci --ignore-scripts',
+      'npm run lint',
       'npm test',
       'npm run build',
       'npm pack --dry-run',
@@ -69,9 +95,25 @@ function seedMinimalHarnessRepo(repoRoot) {
   );
   writeFile(repoRoot, 'scripts/harness/check-execution-plan-lifecycle.mjs', '// ok\n');
   writeFile(repoRoot, '.github/workflows/ci.yml', 'harness-validate:\nmake audit\npackage-checks:\nmake verify-fast\n');
-  writeFile(repoRoot, '.github/workflows/release.yml', 'workflow_dispatch:\nnpm publish --dry-run\nvalidate-release-state.mjs\ngh release create\n');
-  writeFile(repoRoot, '.github/PULL_REQUEST_TEMPLATE.md', 'Execution plan: N/A\nPlan-free exemption: none\nIssue-free exemption: none\n');
-  for (const fileName of ['epic.yml', 'feature.yml', 'task.yml', 'bug.yml', 'improvement.yml', 'debt.yml', 'config.yml']) {
+  writeFile(
+    repoRoot,
+    '.github/workflows/release.yml',
+    'workflow_dispatch:\nnpm publish --dry-run\nvalidate-release-state.mjs\ngh release create\n',
+  );
+  writeFile(
+    repoRoot,
+    '.github/PULL_REQUEST_TEMPLATE.md',
+    'Execution plan: N/A\nPlan-free exemption: none\nIssue-free exemption: none\n',
+  );
+  for (const fileName of [
+    'epic.yml',
+    'feature.yml',
+    'task.yml',
+    'bug.yml',
+    'improvement.yml',
+    'debt.yml',
+    'config.yml',
+  ]) {
     writeFile(repoRoot, `.github/ISSUE_TEMPLATE/${fileName}`, '# template\n');
   }
 }

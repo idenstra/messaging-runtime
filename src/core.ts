@@ -5,9 +5,9 @@ import {
   type DeleteMessageCommandInput,
   ReceiveMessageCommand,
   type ReceiveMessageCommandInput,
-  type Message as SqsSdkMessage,
   type ReceiveMessageCommandOutput,
   SQSClient,
+  type Message as SqsSdkMessage,
 } from '@aws-sdk/client-sqs';
 
 export interface SqsWorkerLogger {
@@ -55,7 +55,7 @@ export interface SqsWorkerHandlerContext<TPayload> {
 
 export type SqsWorkerHandler<TPayload> = (
   context: SqsWorkerHandlerContext<TPayload>,
-) => Promise<SqsWorkerHandlerResult | void>;
+) => Promise<SqsWorkerHandlerResult | undefined>;
 
 export interface SqsWorkerErrorContext<TPayload> {
   routeName: string;
@@ -73,7 +73,7 @@ export interface SqsWorkerErrorContext<TPayload> {
 
 export type SqsWorkerErrorHook<TPayload> = (
   context: SqsWorkerErrorContext<TPayload>,
-) => SqsWorkerAckAction | void | Promise<SqsWorkerAckAction | void>;
+) => SqsWorkerAckAction | undefined | Promise<SqsWorkerAckAction | undefined>;
 
 export interface SqsWorkerRouteConfig {
   concurrency: number;
@@ -268,9 +268,7 @@ export class SqsWorkerTimeoutError extends Error {
     timeoutMs: number;
     timeoutStrategy: SqsWorkerTimeoutStrategy;
   }) {
-    super(
-      `SQS worker handler timed out after ${options.timeoutMs}ms on route ${options.routeName}.`,
-    );
+    super(`SQS worker handler timed out after ${options.timeoutMs}ms on route ${options.routeName}.`);
     this.name = 'SqsWorkerTimeoutError';
     this.routeName = options.routeName;
     this.messageId = options.messageId;
@@ -330,7 +328,7 @@ interface RouteRuntime<TPayload> {
 }
 
 type SettledHandlerResult =
-  | { outcome: 'resolved'; result: SqsWorkerHandlerResult | void }
+  | { outcome: 'resolved'; result: SqsWorkerHandlerResult | undefined }
   | { outcome: 'rejected'; error: unknown };
 
 export class SqsWorkerManager {
@@ -364,11 +362,7 @@ export class SqsWorkerManager {
     const normalized: NormalizedRoute<TPayload> = {
       ...route,
       decodePayload: route.decodePayload ?? defaultDecodePayload<TPayload>,
-      config: {
-        ...DEFAULT_ROUTE_CONFIG,
-        ...this.defaults,
-        ...route.config,
-      },
+      config: { ...DEFAULT_ROUTE_CONFIG, ...this.defaults, ...route.config },
     };
     validateRoute(route.name, route.queueUrl, normalized.config);
 
@@ -434,10 +428,7 @@ export class SqsWorkerManager {
       stopping: this.stopping,
       routeCount: routes.length,
       totalInFlight: routes.reduce((total, route) => total + route.inFlight, 0),
-      counters: routes.reduce(
-        (aggregate, route) => addCounters(aggregate, route.counters),
-        createCounters(),
-      ),
+      counters: routes.reduce((aggregate, route) => addCounters(aggregate, route.counters), createCounters()),
       routes,
     };
   }
@@ -458,10 +449,7 @@ export class SqsWorkerManager {
         const response = await this.client.receiveMessage(
           {
             QueueUrl: route.queueUrl,
-            MaxNumberOfMessages: Math.max(
-              1,
-              Math.min(10, remainingCapacity, route.config.maxMessagesPerPoll),
-            ),
+            MaxNumberOfMessages: Math.max(1, Math.min(10, remainingCapacity, route.config.maxMessagesPerPoll)),
             WaitTimeSeconds: route.config.waitTimeSeconds,
             VisibilityTimeout: route.config.visibilityTimeoutSeconds,
             AttributeNames: ['All'],
@@ -532,10 +520,7 @@ export class SqsWorkerManager {
     }
   }
 
-  private async processMessage(
-    runtime: RouteRuntime<unknown>,
-    rawMessage: SqsSdkMessage,
-  ): Promise<void> {
+  private async processMessage(runtime: RouteRuntime<unknown>, rawMessage: SqsSdkMessage): Promise<void> {
     const { route, status } = runtime;
     const message = toWorkerMessage(rawMessage);
     const startedAtMs = Date.now();
@@ -643,21 +628,21 @@ export class SqsWorkerManager {
       );
 
       if (route.config.handlerTimeoutMs === undefined) {
-        await this.handleWithoutTimeout(status, route, message, payload, handlerPromise, startedAtMs, abortController.signal);
+        await this.handleWithoutTimeout(
+          status,
+          route,
+          message,
+          payload,
+          handlerPromise,
+          startedAtMs,
+          abortController.signal,
+        );
         return;
       }
 
-      const timedOutcome = await this.awaitWithTimeout(
-        handlerPromise,
-        startedAtMs,
-        route,
-        message,
-        status,
-        abortController,
-        () => {
-          timeoutObserved = true;
-        },
-      );
+      const timedOutcome = await this.awaitWithTimeout(handlerPromise, route, message, status, abortController, () => {
+        timeoutObserved = true;
+      });
 
       if (timedOutcome.type === 'resolved') {
         await this.finishSuccess(status, route, message, timedOutcome.result, startedAtMs);
@@ -752,7 +737,7 @@ export class SqsWorkerManager {
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
     payload: TPayload,
-    handlerPromise: Promise<SqsWorkerHandlerResult | void>,
+    handlerPromise: Promise<SqsWorkerHandlerResult | undefined>,
     startedAtMs: number,
     abortSignal: AbortSignal,
   ): Promise<void> {
@@ -775,15 +760,14 @@ export class SqsWorkerManager {
   }
 
   private async awaitWithTimeout<TPayload>(
-    handlerPromise: Promise<SqsWorkerHandlerResult | void>,
-    startedAtMs: number,
+    handlerPromise: Promise<SqsWorkerHandlerResult | undefined>,
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
     status: SqsWorkerRouteStatus,
     abortController: AbortController,
     onTimeoutObserved: () => void,
   ): Promise<
-    | { type: 'resolved'; result: SqsWorkerHandlerResult | void }
+    | { type: 'resolved'; result: SqsWorkerHandlerResult | undefined }
     | { type: 'rejected'; error: unknown }
     | { type: 'timeout'; error: SqsWorkerTimeoutError; timedOutAt: Date }
   > {
@@ -800,11 +784,7 @@ export class SqsWorkerManager {
           (result) => ({ type: 'resolved' as const, result }),
           (error) => ({ type: 'rejected' as const, error }),
         ),
-        new Promise<{
-          type: 'timeout';
-          error: SqsWorkerTimeoutError;
-          timedOutAt: Date;
-        }>((resolve) => {
+        new Promise<{ type: 'timeout'; error: SqsWorkerTimeoutError; timedOutAt: Date }>((resolve) => {
           timeoutHandle = setTimeout(() => {
             onTimeoutObserved();
             const timedOutAt = new Date();
@@ -816,11 +796,7 @@ export class SqsWorkerManager {
             });
             recordFailure(status, 'timeout', timeoutError, timedOutAt);
             abortController.abort(timeoutError);
-            resolve({
-              type: 'timeout',
-              error: timeoutError,
-              timedOutAt,
-            });
+            resolve({ type: 'timeout', error: timeoutError, timedOutAt });
           }, timeoutMs);
         }),
       ]);
@@ -833,7 +809,7 @@ export class SqsWorkerManager {
     status: SqsWorkerRouteStatus,
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
-    result: SqsWorkerHandlerResult | void,
+    result: SqsWorkerHandlerResult | undefined,
     startedAtMs: number,
   ): Promise<void> {
     const action = result?.action ?? 'delete';
@@ -880,19 +856,23 @@ export class SqsWorkerManager {
     } = params;
 
     recordFailure(status, failureKind, error, new Date());
-    const action = await this.resolveFailureAction(route, {
-      routeName: route.name,
-      queueUrl: route.queueUrl,
-      message,
-      payload,
-      abortSignal,
-      failureKind,
-      error,
-      durationMs,
-      timeoutStrategy,
-      settlementOutcome,
-      settlementError,
-    }, allowDelete);
+    const action = await this.resolveFailureAction(
+      route,
+      {
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        message,
+        payload,
+        abortSignal,
+        failureKind,
+        error,
+        durationMs,
+        timeoutStrategy,
+        settlementOutcome,
+        settlementError,
+      },
+      allowDelete,
+    );
 
     if (failureKind === 'timeout') {
       // The timeout occurrence itself was already emitted when the timeout fired.
@@ -958,10 +938,7 @@ export class SqsWorkerManager {
     reason: 'success' | 'failure' | 'timeout',
   ): Promise<void> {
     if (action === 'delete') {
-      await this.client.deleteMessage({
-        QueueUrl: route.queueUrl,
-        ReceiptHandle: message.receiptHandle,
-      });
+      await this.client.deleteMessage({ QueueUrl: route.queueUrl, ReceiptHandle: message.receiptHandle });
       this.emitRuntimeEvent(status, {
         type: 'message-delete',
         at: new Date(),
@@ -987,7 +964,7 @@ export class SqsWorkerManager {
     status: SqsWorkerRouteStatus,
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
-    handlerPromise: Promise<SqsWorkerHandlerResult | void>,
+    handlerPromise: Promise<SqsWorkerHandlerResult | undefined>,
     startedAtMs: number,
   ): Promise<void> {
     const settled = await settleHandler(handlerPromise);
@@ -1019,17 +996,11 @@ export class SqsWorkerManager {
       queueUrl: route.queueUrl,
       messageId: message.messageId,
       outcome: event.outcome,
-      error:
-        event.outcome === 'rejected' && event.error
-          ? describeUnknownError(event.error)
-          : undefined,
+      error: event.outcome === 'rejected' && event.error ? describeUnknownError(event.error) : undefined,
     });
   }
 
-  private emitRuntimeEvent(
-    status: SqsWorkerRouteStatus,
-    event: SqsWorkerRuntimeEvent,
-  ): void {
+  private emitRuntimeEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
     recordEvent(status, event);
 
     if (!this.onEvent) {
@@ -1083,11 +1054,7 @@ function defaultDecodePayload<TPayload>(message: SqsWorkerMessage): TPayload {
   return JSON.parse(message.body) as TPayload;
 }
 
-function validateRoute(
-  routeName: string,
-  queueUrl: string,
-  config: SqsWorkerRouteConfig,
-): void {
+function validateRoute(routeName: string, queueUrl: string, config: SqsWorkerRouteConfig): void {
   if (!routeName.trim()) {
     throw new Error('SQS worker route name must be a non-empty string.');
   }
@@ -1097,13 +1064,7 @@ function validateRoute(
 
   validateInteger(routeName, 'concurrency', config.concurrency, 1);
   validateInteger(routeName, 'waitTimeSeconds', config.waitTimeSeconds, 0, 20);
-  validateInteger(
-    routeName,
-    'visibilityTimeoutSeconds',
-    config.visibilityTimeoutSeconds,
-    0,
-    43_200,
-  );
+  validateInteger(routeName, 'visibilityTimeoutSeconds', config.visibilityTimeoutSeconds, 0, 43_200);
   validateInteger(routeName, 'heartbeatIntervalMs', config.heartbeatIntervalMs, 0);
   validateInteger(routeName, 'emptyReceiveDelayMs', config.emptyReceiveDelayMs, 0);
   validateInteger(routeName, 'errorBackoffMs', config.errorBackoffMs, 0);
@@ -1113,21 +1074,15 @@ function validateRoute(
     config.handlerTimeoutMs !== undefined &&
     (!Number.isInteger(config.handlerTimeoutMs) || config.handlerTimeoutMs < 1)
   ) {
-    throw new Error(
-      `SQS worker route ${routeName} has invalid handlerTimeoutMs; expected an integer >= 1.`,
-    );
+    throw new Error(`SQS worker route ${routeName} has invalid handlerTimeoutMs; expected an integer >= 1.`);
   }
 
   if (config.timeoutStrategy !== 'cooperative' && config.timeoutStrategy !== 'abandon') {
-    throw new Error(
-      `SQS worker route ${routeName} has invalid timeoutStrategy; expected cooperative or abandon.`,
-    );
+    throw new Error(`SQS worker route ${routeName} has invalid timeoutStrategy; expected cooperative or abandon.`);
   }
 
   if (config.failureAction !== 'delete' && config.failureAction !== 'keep') {
-    throw new Error(
-      `SQS worker route ${routeName} has invalid failureAction; expected delete or keep.`,
-    );
+    throw new Error(`SQS worker route ${routeName} has invalid failureAction; expected delete or keep.`);
   }
 }
 
@@ -1140,9 +1095,7 @@ function validateInteger(
 ): void {
   if (!Number.isInteger(value) || value < min || (max !== undefined && value > max)) {
     const rangeDescription = max === undefined ? `>= ${min}` : `between ${min} and ${max}`;
-    throw new Error(
-      `SQS worker route ${routeName} has invalid ${field}; expected an integer ${rangeDescription}.`,
-    );
+    throw new Error(`SQS worker route ${routeName} has invalid ${field}; expected an integer ${rangeDescription}.`);
   }
 }
 
@@ -1162,10 +1115,7 @@ function createCounters(): SqsWorkerRouteCounters {
   };
 }
 
-function addCounters(
-  target: SqsWorkerRouteCounters,
-  source: SqsWorkerRouteCounters,
-): SqsWorkerRouteCounters {
+function addCounters(target: SqsWorkerRouteCounters, source: SqsWorkerRouteCounters): SqsWorkerRouteCounters {
   return {
     receiveEmptyCount: target.receiveEmptyCount + source.receiveEmptyCount,
     messagesReceivedCount: target.messagesReceivedCount + source.messagesReceivedCount,
@@ -1182,18 +1132,10 @@ function addCounters(
 }
 
 function cloneRouteStatus(status: SqsWorkerRouteStatus): SqsWorkerRouteStatus {
-  return {
-    ...status,
-    counters: { ...status.counters },
-  };
+  return { ...status, counters: { ...status.counters } };
 }
 
-function recordFailure(
-  status: SqsWorkerRouteStatus,
-  kind: SqsWorkerFailureKind,
-  error: unknown,
-  at: Date,
-): void {
+function recordFailure(status: SqsWorkerRouteStatus, kind: SqsWorkerFailureKind, error: unknown, at: Date): void {
   status.lastErrorAt = at;
   status.lastErrorMessage = describeUnknownError(error);
   status.lastFailureKind = kind;
@@ -1249,9 +1191,7 @@ function recordEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent)
   }
 }
 
-async function settleHandler(
-  promise: Promise<SqsWorkerHandlerResult | void>,
-): Promise<SettledHandlerResult> {
+async function settleHandler(promise: Promise<SqsWorkerHandlerResult | undefined>): Promise<SettledHandlerResult> {
   try {
     return { outcome: 'resolved', result: await promise };
   } catch (error: unknown) {

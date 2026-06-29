@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { findBacklogOwnershipFindings } from './validate-backlog-ownership.mjs';
 
 function createTempRepo() {
@@ -17,21 +17,12 @@ test('findBacklogOwnershipFindings flags unchecked checklist items in general do
 
   const findings = findBacklogOwnershipFindings(repoRoot, ['docs/HARNESS.md']);
 
-  assert.deepEqual(findings, [
-    {
-      path: 'docs/HARNESS.md',
-      line: 2,
-      text: '- [ ] Move the backlog.',
-    },
-  ]);
+  assert.deepEqual(findings, [{ path: 'docs/HARNESS.md', line: 2, text: '- [ ] Move the backlog.' }]);
 });
 
 test('findBacklogOwnershipFindings ignores execution plans and templates', () => {
   const repoRoot = createTempRepo();
-  const allowedPaths = [
-    'docs/exec-plans/active/123-demo.md',
-    'docs/templates/execution-plan.md',
-  ];
+  const allowedPaths = ['docs/exec-plans/active/123-demo.md', 'docs/templates/execution-plan.md'];
 
   for (const relativePath of allowedPaths) {
     const filePath = path.join(repoRoot, relativePath);
@@ -43,4 +34,3 @@ test('findBacklogOwnershipFindings ignores execution plans and templates', () =>
 
   assert.deepEqual(findings, []);
 });
-

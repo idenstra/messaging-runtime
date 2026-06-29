@@ -24,11 +24,17 @@ node scripts/ci/validate-pr-governance.mjs
 echo "[messaging-runtime harness] validate backlog ownership"
 node scripts/harness/validate-backlog-ownership.mjs
 
+echo "[messaging-runtime harness] check style drift"
+node scripts/harness/check-style-drift.mjs
+
 echo "[messaging-runtime harness] validate release state"
 node scripts/release/validate-release-state.mjs
 
 echo "[messaging-runtime harness] npm ci"
 npm ci --ignore-scripts
+
+echo "[messaging-runtime harness] npm run lint"
+npm run lint
 
 echo "[messaging-runtime harness] npm test"
 npm test
