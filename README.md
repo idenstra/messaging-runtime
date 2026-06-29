@@ -4,11 +4,12 @@
 
 Current state:
 - single package surface: `@idenstra/messaging-runtime`
-- root entrypoint exposes the worker runtime core plus SNS/SQS transport helpers
+- root entrypoint exposes the worker runtime core, worker host/bootstrap helpers, and SNS/SQS transport helpers
 - Nest integration is exposed as the optional subpath `@idenstra/messaging-runtime/nest`
 - extracted worker runtime core now lives here
 - route-level failure policy and error hooks now live in the core runtime
 - handler timeout control and runtime metrics/snapshot hooks now live in the core runtime
+- manifest-driven worker host activation and signal runner ergonomics now live in the root package
 - root-exported SNS/SQS translators, cached resolvers, and JSON publisher helpers now live here
 - resolver config may be preloaded by the consumer at startup; the library does not read env/files directly
 - no business handlers live here
@@ -20,6 +21,7 @@ This repo will own:
 - the shared SNS/SQS polling/runtime core
 - route-level failure policy and timeout control
 - lightweight runtime event hooks and health/readiness snapshots
+- worker-service host/bootstrap APIs for app-owned workers
 - SNS/SQS-specific publisher and envelope helpers
 - worker host/bootstrap ergonomics for app-owned worker services
 - package-level tests and verification for the shared runtime
@@ -38,6 +40,127 @@ npm run build
 make audit
 make verify-fast
 make verify
+```
+
+## Worker host/bootstrap
+
+Build a consumer-owned worker entrypoint with manifest-driven activation:
+
+```ts
+import {
+  AwsSqsTransportClient,
+  SqsQueueUrlResolver,
+  SqsWorkerServiceHost,
+  parseSqsWorkerServiceManifest,
+  runSqsWorkerServiceUntilSignal,
+} from '@idenstra/messaging-runtime';
+import { SQSClient } from '@aws-sdk/client-sqs';
+
+const sqsClient = new AwsSqsTransportClient(new SQSClient({ region: 'us-east-1' }));
+const queueResolver = new SqsQueueUrlResolver(sqsClient, {
+  preload: {
+    'dispatch-queue': 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+  },
+});
+
+const manifest = parseSqsWorkerServiceManifest({
+  defaults: { concurrency: 4 },
+  routes: {
+    dispatch: {
+      queue: 'dispatch-queue',
+      config: { waitTimeSeconds: 5 },
+    },
+  },
+});
+
+const host = new SqsWorkerServiceHost({
+  client: sqsClient,
+  queueResolver,
+  manifest,
+  routes: [
+    {
+      name: 'dispatch',
+      handle: async ({ payload }) => {
+        console.log(payload);
+      },
+    },
+  ],
+});
+
+await runSqsWorkerServiceUntilSignal(host);
+```
+
+Bootstrap boundary:
+- the app owns env/files/secrets loading and the final process entrypoint
+- the runtime owns manifest parsing, route activation, queue resolution, lifecycle, and signal-driven shutdown
+- the library does not dynamically load handlers or config sources
+
+## Nest integration
+
+Nest support is optional and intentionally thin.
+
+What it provides:
+- `OnModuleInit` / `OnModuleDestroy` lifecycle wiring for a worker manager or worker service host
+- a small logger adapter that maps runtime logs onto a Nest `LoggerService`
+- less repeated bootstrap code in Nest-based consumers such as `CDP`
+
+What it does not provide:
+- higher throughput
+- different queue semantics
+- different retry/timeout behavior
+- any dependency on Nest inside the core runtime or host layer
+
+Example:
+
+```ts
+import { Injectable, Logger } from '@nestjs/common';
+import { SQSClient } from '@aws-sdk/client-sqs';
+import {
+  AwsSqsTransportClient,
+  SqsQueueUrlResolver,
+  SqsWorkerServiceHost,
+  parseSqsWorkerServiceManifest,
+} from '@idenstra/messaging-runtime';
+import { AbstractNestSqsWorkerHost } from '@idenstra/messaging-runtime/nest';
+
+@Injectable()
+export class DispatchWorkerService extends AbstractNestSqsWorkerHost {
+  constructor() {
+    const sqsClient = new AwsSqsTransportClient(new SQSClient({ region: 'us-east-1' }));
+    const queueResolver = new SqsQueueUrlResolver(sqsClient, {
+      preload: {
+        'dispatch-queue': 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+      },
+    });
+
+    const manifest = parseSqsWorkerServiceManifest({
+      routes: {
+        dispatch: {
+          queue: 'dispatch-queue',
+        },
+      },
+    });
+
+    const host = new SqsWorkerServiceHost({
+      client: sqsClient,
+      queueResolver,
+      manifest,
+      managerOptions: {
+        logger: new Logger('DispatchWorker'),
+      },
+      routes: [
+        {
+          name: 'dispatch',
+          handle: async ({ payload }) => {
+            console.log(payload);
+          },
+        },
+      ],
+    });
+
+    super(host);
+  }
+}
 ```
 
 ## Transport helpers

@@ -1,6 +1,6 @@
 import type { LoggerService, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { SqsWorkerLogger } from './core';
-import { SqsWorkerManager } from './core';
+import type { SqsWorkerServiceLifecycle } from './host';
 
 export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
   constructor(private readonly logger: LoggerService) {}
@@ -35,18 +35,22 @@ export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
 }
 
 export abstract class AbstractNestSqsWorkerHost implements OnModuleInit, OnModuleDestroy {
-  protected constructor(protected readonly workerManager: SqsWorkerManager) {}
+  protected constructor(protected readonly workerLifecycle: SqsWorkerServiceLifecycle) {}
 
   async onModuleInit(): Promise<void> {
-    await this.workerManager.start();
+    await this.workerLifecycle.start();
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.workerManager.stop();
+    await this.workerLifecycle.stop();
   }
 
   protected snapshotWorkerStatus() {
-    return this.workerManager.getStatus();
+    return this.workerLifecycle.getStatus();
+  }
+
+  protected snapshotWorkerSnapshot() {
+    return this.workerLifecycle.getSnapshot();
   }
 }
 
