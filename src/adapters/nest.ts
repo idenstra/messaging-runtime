@@ -1,6 +1,6 @@
 import type { LoggerService, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { SqsWorkerLogger } from './core';
-import type { SqsWorkerServiceLifecycle } from './host';
+import type { SqsWorkerLogger } from '../core';
+import type { SqsWorkerServiceLifecycle } from '../host';
 
 export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
   constructor(private readonly logger: LoggerService) {}

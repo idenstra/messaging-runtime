@@ -10,4 +10,5 @@ Security expectations for this repo:
 Registry notes:
 - GitHub Packages is the intended private-first registry target
 - auth material for publication belongs in CI or operator environments, never in the repo
-
+- the tracked repo `.npmrc` may contain scope-to-registry mapping only, never auth tokens
+- release automation is manual and guarded; normal PR CI must stay publish-free

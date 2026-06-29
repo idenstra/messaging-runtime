@@ -1,0 +1,77 @@
+name: Messaging Runtime Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the package, create the git tag, and create the GitHub release
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: messaging-runtime-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Release package
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_AUTH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@idenstra'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Verify package
+        run: HARNESS_STRICT=1 make verify-fast
+
+      - name: Validate releasable git and registry state
+        run: node scripts/release/validate-release-state.mjs --check-git-tag --check-published-version
+
+      - name: Read package version
+        id: package-version
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release notes
+        run: node scripts/release/print-release-notes.mjs "${{ steps.package-version.outputs.version }}" > release-notes.md
+
+      - name: Publish dry-run
+        run: npm publish --dry-run
+
+      - name: Publish package
+        if: ${{ inputs.publish }}
+        run: npm publish
+
+      - name: Create git tag
+        if: ${{ inputs.publish }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.package-version.outputs.version }}"
+          git push origin "v${{ steps.package-version.outputs.version }}"
+
+      - name: Create GitHub release
+        if: ${{ inputs.publish }}
+        run: gh release create "v${{ steps.package-version.outputs.version }}" --title "v${{ steps.package-version.outputs.version }}" --notes-file release-notes.md

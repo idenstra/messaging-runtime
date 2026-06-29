@@ -30,6 +30,7 @@ Current state:
   - module lifecycle integration
   - logger bridging
   - no runtime-semantic or performance divergence from framework-agnostic usage
+  - adapter implementation stays separated from core runtime files
 - the root package now owns:
   - SQS JSON body decoding
   - SNS-over-SQS envelope decoding

@@ -60,4 +60,3 @@ jobs:
 
       - name: Run verify-fast
         run: HARNESS_STRICT=1 make verify-fast
-

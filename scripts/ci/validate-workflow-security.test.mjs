@@ -40,6 +40,33 @@ test('validateWorkflowSecurity accepts a simple read-only CI workflow', () => {
   assert.equal(result.violations.length, 0);
 });
 
+test('validateWorkflowSecurity accepts write-permission npm installs when --ignore-scripts is used', () => {
+  const workflowsDir = createTempWorkflowDir();
+  const workflowPath = path.join(workflowsDir, 'release.yml');
+  fs.writeFileSync(
+    workflowPath,
+    [
+      'name: Release',
+      'on:',
+      '  workflow_dispatch:',
+      'permissions:',
+      '  contents: write',
+      '  packages: write',
+      'jobs:',
+      '  release:',
+      '    runs-on: ubuntu-latest',
+      '    steps:',
+      '      - uses: actions/checkout@v7',
+      '      - run: npm ci --ignore-scripts',
+      '',
+    ].join('\n'),
+  );
+
+  const result = validateWorkflowSecurity(workflowsDir);
+
+  assert.equal(result.violations.length, 0);
+});
+
 test('findWorkflowSecurityViolations flags pull_request_target checkout of head ref', () => {
   const source = [
     'name: Unsafe',
@@ -69,4 +96,3 @@ test('parseWorkflowEvents accepts scalar, array, and block trigger syntax', () =
     ['workflow_run', 'pull_request'],
   );
 });
-

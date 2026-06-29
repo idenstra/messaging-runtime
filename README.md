@@ -6,12 +6,14 @@ Current state:
 - single package surface: `@idenstra/messaging-runtime`
 - root entrypoint exposes the worker runtime core, worker host/bootstrap helpers, and SNS/SQS transport helpers
 - Nest integration is exposed as the optional subpath `@idenstra/messaging-runtime/nest`
+- framework adapters are kept separate from core runtime files under `src/adapters/`
 - extracted worker runtime core now lives here
 - route-level failure policy and error hooks now live in the core runtime
 - handler timeout control and runtime metrics/snapshot hooks now live in the core runtime
 - manifest-driven worker host activation and signal runner ergonomics now live in the root package
 - root-exported SNS/SQS translators, cached resolvers, and JSON publisher helpers now live here
 - resolver config may be preloaded by the consumer at startup; the library does not read env/files directly
+- private-first release automation and exact-version consumer policy now live in the repo harness
 - no business handlers live here
 - consumer adoption is still deferred until later slices
 
@@ -239,6 +241,8 @@ Current migration seam:
 - [WORKFLOW.md](WORKFLOW.md)
 - [docs/HARNESS.md](docs/HARNESS.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/RELEASES.md](docs/RELEASES.md)
+- [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
 - [docs/EXECUTION_PLANS.md](docs/EXECUTION_PLANS.md)
 - [docs/ISSUE_TRACKING.md](docs/ISSUE_TRACKING.md)
 
@@ -246,7 +250,9 @@ Current migration seam:
 
 - package name: `@idenstra/messaging-runtime`
 - registry posture: GitHub Packages, private-first
-- package publication is intentionally blocked in the current extraction phase
+- publication is operator-driven through the guarded manual release workflow
 - version posture: `0.x`
+- internal consumers pin exact versions while the package stays `0.x`
+- `package.json` version is the release version source of truth and must match `CHANGELOG.md`
 - OSS readiness is explicitly deferred
-- release/publication policy is formalized later under `#7`
+- public-release posture is deferred to `#11`
