@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (85):
+- exported symbols (86):
   - `AwsSnsTransportClient`
   - `AwsSqsRuntimeClient`
   - `AwsSqsTransportClient`
@@ -82,6 +82,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteStatus`
   - `SqsWorkerRuntimeEvent`
+  - `SqsWorkerRuntimeEventBase`
   - `SqsWorkerRuntimeEventHook`
   - `SqsWorkerServiceHost`
   - `SqsWorkerServiceHostOptions`
@@ -97,7 +98,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core.d.ts`
-- exported symbols (37):
+- exported symbols (38):
   - `AwsSqsRuntimeClient`
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
@@ -132,6 +133,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteStatus`
   - `SqsWorkerRuntimeEvent`
+  - `SqsWorkerRuntimeEventBase`
   - `SqsWorkerRuntimeEventHook`
   - `SqsWorkerTimeoutError`
   - `SqsWorkerTimeoutStrategy`
@@ -140,6 +142,13 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./nest`
 - declarations: `dist/adapters/nest.d.ts`
-- exported symbols (2):
+- exported symbols (9):
   - `AbstractNestSqsWorkerHost`
   - `NestSqsWorkerLoggerAdapter`
+  - `SqsWorkerFailureKind`
+  - `SqsWorkerLateSettlementOutcome`
+  - `SqsWorkerLogger`
+  - `SqsWorkerManagerSnapshot`
+  - `SqsWorkerRouteCounters`
+  - `SqsWorkerRouteStatus`
+  - `SqsWorkerServiceLifecycle`

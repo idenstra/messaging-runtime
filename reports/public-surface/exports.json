@@ -81,6 +81,7 @@
         "SqsWorkerRouteCounters",
         "SqsWorkerRouteStatus",
         "SqsWorkerRuntimeEvent",
+        "SqsWorkerRuntimeEventBase",
         "SqsWorkerRuntimeEventHook",
         "SqsWorkerServiceHost",
         "SqsWorkerServiceHostOptions",
@@ -132,6 +133,7 @@
         "SqsWorkerRouteCounters",
         "SqsWorkerRouteStatus",
         "SqsWorkerRuntimeEvent",
+        "SqsWorkerRuntimeEventBase",
         "SqsWorkerRuntimeEventHook",
         "SqsWorkerTimeoutError",
         "SqsWorkerTimeoutStrategy"
@@ -141,7 +143,17 @@
       "subpath": "./nest",
       "importSpecifier": "@idenstra/messaging-runtime/nest",
       "declarationPath": "dist/adapters/nest.d.ts",
-      "symbols": ["AbstractNestSqsWorkerHost", "NestSqsWorkerLoggerAdapter"]
+      "symbols": [
+        "AbstractNestSqsWorkerHost",
+        "NestSqsWorkerLoggerAdapter",
+        "SqsWorkerFailureKind",
+        "SqsWorkerLateSettlementOutcome",
+        "SqsWorkerLogger",
+        "SqsWorkerManagerSnapshot",
+        "SqsWorkerRouteCounters",
+        "SqsWorkerRouteStatus",
+        "SqsWorkerServiceLifecycle"
+      ]
     }
   ]
 }

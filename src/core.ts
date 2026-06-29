@@ -53,9 +53,13 @@ export interface SqsWorkerHandlerContext<TPayload> {
   heartbeat(): Promise<void>;
 }
 
+type SqsWorkerVoidResult = ReturnType<() => void>;
+
 export type SqsWorkerHandler<TPayload> = (
   context: SqsWorkerHandlerContext<TPayload>,
-) => Promise<SqsWorkerHandlerResult | undefined>;
+) => Promise<SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined>;
+
+type SqsWorkerHandlerOutcome = SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined;
 
 export interface SqsWorkerErrorContext<TPayload> {
   routeName: string;
@@ -73,7 +77,11 @@ export interface SqsWorkerErrorContext<TPayload> {
 
 export type SqsWorkerErrorHook<TPayload> = (
   context: SqsWorkerErrorContext<TPayload>,
-) => SqsWorkerAckAction | undefined | Promise<SqsWorkerAckAction | undefined>;
+) =>
+  | SqsWorkerAckAction
+  | SqsWorkerVoidResult
+  | undefined
+  | Promise<SqsWorkerAckAction | SqsWorkerVoidResult | undefined>;
 
 export interface SqsWorkerRouteConfig {
   concurrency: number;
@@ -150,7 +158,7 @@ export interface SqsWorkerManagerSnapshot {
   routes: SqsWorkerRouteStatus[];
 }
 
-interface SqsWorkerRuntimeEventBase {
+export interface SqsWorkerRuntimeEventBase {
   type: string;
   at: Date;
   routeName: string;
@@ -328,7 +336,7 @@ interface RouteRuntime<TPayload> {
 }
 
 type SettledHandlerResult =
-  | { outcome: 'resolved'; result: SqsWorkerHandlerResult | undefined }
+  | { outcome: 'resolved'; result: SqsWorkerHandlerOutcome }
   | { outcome: 'rejected'; error: unknown };
 
 export class SqsWorkerManager {
@@ -737,7 +745,7 @@ export class SqsWorkerManager {
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
     payload: TPayload,
-    handlerPromise: Promise<SqsWorkerHandlerResult | undefined>,
+    handlerPromise: Promise<SqsWorkerHandlerOutcome>,
     startedAtMs: number,
     abortSignal: AbortSignal,
   ): Promise<void> {
@@ -760,14 +768,14 @@ export class SqsWorkerManager {
   }
 
   private async awaitWithTimeout<TPayload>(
-    handlerPromise: Promise<SqsWorkerHandlerResult | undefined>,
+    handlerPromise: Promise<SqsWorkerHandlerOutcome>,
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
     status: SqsWorkerRouteStatus,
     abortController: AbortController,
     onTimeoutObserved: () => void,
   ): Promise<
-    | { type: 'resolved'; result: SqsWorkerHandlerResult | undefined }
+    | { type: 'resolved'; result: SqsWorkerHandlerOutcome }
     | { type: 'rejected'; error: unknown }
     | { type: 'timeout'; error: SqsWorkerTimeoutError; timedOutAt: Date }
   > {
@@ -809,7 +817,7 @@ export class SqsWorkerManager {
     status: SqsWorkerRouteStatus,
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
-    result: SqsWorkerHandlerResult | undefined,
+    result: SqsWorkerHandlerOutcome,
     startedAtMs: number,
   ): Promise<void> {
     const action = result?.action ?? 'delete';
@@ -964,7 +972,7 @@ export class SqsWorkerManager {
     status: SqsWorkerRouteStatus,
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
-    handlerPromise: Promise<SqsWorkerHandlerResult | undefined>,
+    handlerPromise: Promise<SqsWorkerHandlerOutcome>,
     startedAtMs: number,
   ): Promise<void> {
     const settled = await settleHandler(handlerPromise);
@@ -1191,7 +1199,7 @@ function recordEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent)
   }
 }
 
-async function settleHandler(promise: Promise<SqsWorkerHandlerResult | undefined>): Promise<SettledHandlerResult> {
+async function settleHandler(promise: Promise<SqsWorkerHandlerOutcome>): Promise<SettledHandlerResult> {
   try {
     return { outcome: 'resolved', result: await promise };
   } catch (error: unknown) {

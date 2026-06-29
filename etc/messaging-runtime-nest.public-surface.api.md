@@ -15,22 +15,14 @@ export abstract class AbstractNestSqsWorkerHost implements OnModuleInit, OnModul
     onModuleDestroy(): Promise<void>;
     // (undocumented)
     onModuleInit(): Promise<void>;
-    // Warning: (ae-forgotten-export) The symbol "SqsWorkerManagerSnapshot" needs to be exported by the entry point nest.d.ts
-    //
     // (undocumented)
     protected snapshotWorkerSnapshot(): SqsWorkerManagerSnapshot;
-    // Warning: (ae-forgotten-export) The symbol "SqsWorkerRouteStatus" needs to be exported by the entry point nest.d.ts
-    //
     // (undocumented)
     protected snapshotWorkerStatus(): SqsWorkerRouteStatus[];
-    // Warning: (ae-forgotten-export) The symbol "SqsWorkerServiceLifecycle" needs to be exported by the entry point nest.d.ts
-    //
     // (undocumented)
     protected readonly workerLifecycle: SqsWorkerServiceLifecycle;
 }
 
-// Warning: (ae-forgotten-export) The symbol "SqsWorkerLogger" needs to be exported by the entry point nest.d.ts
-//
 // @public (undocumented)
 export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
     constructor(logger: LoggerService);
@@ -42,6 +34,124 @@ export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
     info(message: string, meta?: Record<string, unknown>): void;
     // (undocumented)
     warn(message: string, meta?: Record<string, unknown>): void;
+}
+
+// @public (undocumented)
+export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
+
+// @public (undocumented)
+export type SqsWorkerLateSettlementOutcome = 'resolved' | 'rejected';
+
+// @public (undocumented)
+export interface SqsWorkerLogger {
+    // (undocumented)
+    debug(message: string, meta?: Record<string, unknown>): void;
+    // (undocumented)
+    error(message: string, meta?: Record<string, unknown>): void;
+    // (undocumented)
+    info(message: string, meta?: Record<string, unknown>): void;
+    // (undocumented)
+    warn(message: string, meta?: Record<string, unknown>): void;
+}
+
+// @public (undocumented)
+export interface SqsWorkerManagerSnapshot {
+    // (undocumented)
+    counters: SqsWorkerRouteCounters;
+    // (undocumented)
+    routeCount: number;
+    // (undocumented)
+    routes: SqsWorkerRouteStatus[];
+    // (undocumented)
+    started: boolean;
+    // (undocumented)
+    stopping: boolean;
+    // (undocumented)
+    totalInFlight: number;
+}
+
+// @public (undocumented)
+export interface SqsWorkerRouteCounters {
+    // (undocumented)
+    handlerFailureCount: number;
+    // (undocumented)
+    handlerStartedCount: number;
+    // (undocumented)
+    handlerSuccessCount: number;
+    // (undocumented)
+    handlerTimeoutCount: number;
+    // (undocumented)
+    heartbeatFailureCount: number;
+    // (undocumented)
+    heartbeatSuccessCount: number;
+    // (undocumented)
+    lateSettlementCount: number;
+    // (undocumented)
+    messageDeleteCount: number;
+    // (undocumented)
+    messageKeepCount: number;
+    // (undocumented)
+    messagesReceivedCount: number;
+    // (undocumented)
+    receiveEmptyCount: number;
+}
+
+// @public (undocumented)
+export interface SqsWorkerRouteStatus {
+    // (undocumented)
+    counters: SqsWorkerRouteCounters;
+    // (undocumented)
+    inFlight: number;
+    // (undocumented)
+    lastDeleteAt?: Date;
+    // (undocumented)
+    lastErrorAt?: Date;
+    // (undocumented)
+    lastErrorMessage?: string;
+    // (undocumented)
+    lastFailureKind?: SqsWorkerFailureKind;
+    // (undocumented)
+    lastHeartbeatFailureAt?: Date;
+    // (undocumented)
+    lastHeartbeatFailureMessage?: string;
+    // (undocumented)
+    lastHeartbeatSuccessAt?: Date;
+    // (undocumented)
+    lastKeepAt?: Date;
+    // (undocumented)
+    lastLateSettlementAt?: Date;
+    // (undocumented)
+    lastLateSettlementOutcome?: SqsWorkerLateSettlementOutcome;
+    // (undocumented)
+    lastReceiveAt?: Date;
+    // (undocumented)
+    lastReceiveEmptyAt?: Date;
+    // (undocumented)
+    lastStartedAt?: Date;
+    // (undocumented)
+    lastSuccessAt?: Date;
+    // (undocumented)
+    lastTimeoutAt?: Date;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    queueUrl: string;
+    // (undocumented)
+    running: boolean;
+    // (undocumented)
+    stopping: boolean;
+}
+
+// @public (undocumented)
+export interface SqsWorkerServiceLifecycle {
+    // (undocumented)
+    getSnapshot(): SqsWorkerManagerSnapshot;
+    // (undocumented)
+    getStatus(): SqsWorkerRouteStatus[];
+    // (undocumented)
+    start(): Promise<void>;
+    // (undocumented)
+    stop(): Promise<void>;
 }
 
 // (No @packageDocumentation comment for this package)

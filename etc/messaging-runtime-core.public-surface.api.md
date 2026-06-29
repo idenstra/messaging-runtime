@@ -67,14 +67,16 @@ export interface SqsWorkerErrorContext<TPayload> {
     timeoutStrategy?: SqsWorkerTimeoutStrategy;
 }
 
+// Warning: (ae-forgotten-export) The symbol "SqsWorkerVoidResult" needs to be exported by the entry point core.d.ts
+//
 // @public (undocumented)
-export type SqsWorkerErrorHook<TPayload> = (context: SqsWorkerErrorContext<TPayload>) => SqsWorkerAckAction | undefined | Promise<SqsWorkerAckAction | undefined>;
+export type SqsWorkerErrorHook<TPayload> = (context: SqsWorkerErrorContext<TPayload>) => SqsWorkerAckAction | SqsWorkerVoidResult | undefined | Promise<SqsWorkerAckAction | SqsWorkerVoidResult | undefined>;
 
 // @public (undocumented)
 export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 
 // @public (undocumented)
-export type SqsWorkerHandler<TPayload> = (context: SqsWorkerHandlerContext<TPayload>) => Promise<SqsWorkerHandlerResult | undefined>;
+export type SqsWorkerHandler<TPayload> = (context: SqsWorkerHandlerContext<TPayload>) => Promise<SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined>;
 
 // @public (undocumented)
 export interface SqsWorkerHandlerContext<TPayload> {
@@ -92,8 +94,6 @@ export interface SqsWorkerHandlerContext<TPayload> {
     routeName: string;
 }
 
-// Warning: (ae-forgotten-export) The symbol "SqsWorkerRuntimeEventBase" needs to be exported by the entry point core.d.ts
-//
 // @public (undocumented)
 export interface SqsWorkerHandlerFailureEvent extends SqsWorkerRuntimeEventBase {
     // (undocumented)
@@ -423,6 +423,18 @@ export interface SqsWorkerRouteStatus {
 
 // @public (undocumented)
 export type SqsWorkerRuntimeEvent = SqsWorkerReceiveEmptyEvent | SqsWorkerMessagesReceivedEvent | SqsWorkerHandlerStartEvent | SqsWorkerHandlerSuccessEvent | SqsWorkerHandlerFailureEvent | SqsWorkerHandlerTimeoutEvent | SqsWorkerLateSettlementEvent | SqsWorkerMessageDeleteEvent | SqsWorkerMessageKeepEvent | SqsWorkerHeartbeatSuccessEvent | SqsWorkerHeartbeatFailureEvent;
+
+// @public (undocumented)
+export interface SqsWorkerRuntimeEventBase {
+    // (undocumented)
+    at: Date;
+    // (undocumented)
+    queueUrl: string;
+    // (undocumented)
+    routeName: string;
+    // (undocumented)
+    type: string;
+}
 
 // @public (undocumented)
 export type SqsWorkerRuntimeEventHook = (event: SqsWorkerRuntimeEvent) => void;
