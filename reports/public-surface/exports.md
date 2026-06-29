@@ -1,0 +1,145 @@
+# Public surface snapshot
+
+Package: `@idenstra/messaging-runtime`
+
+## @idenstra/messaging-runtime
+
+- subpath: `.`
+- declarations: `dist/index.d.ts`
+- exported symbols (85):
+  - `AwsSnsTransportClient`
+  - `AwsSqsRuntimeClient`
+  - `AwsSqsTransportClient`
+  - `DecodedSnsNotificationJson`
+  - `decodeSnsEnvelope`
+  - `decodeSnsNotificationJson`
+  - `decodeSqsJsonBody`
+  - `packageMetadata`
+  - `parseSqsWorkerServiceManifest`
+  - `runSqsWorkerServiceUntilSignal`
+  - `SnsEnvelope`
+  - `SnsEnvelopeBase`
+  - `SnsEnvelopeType`
+  - `SnsMessageAttributes`
+  - `SnsNotificationEnvelope`
+  - `SnsPublishClient`
+  - `SnsPublisher`
+  - `SnsPublishJsonInput`
+  - `SnsPublishJsonOptions`
+  - `SnsPublishJsonResult`
+  - `SnsSubscriptionConfirmationEnvelope`
+  - `SnsTopicArnResolver`
+  - `SnsTopicArnResolverClient`
+  - `SnsTopicArnResolverOptions`
+  - `SnsTransportClient`
+  - `SnsUnsubscribeConfirmationEnvelope`
+  - `SqsMessageAttributes`
+  - `SqsPublishClient`
+  - `SqsPublisher`
+  - `SqsQueueUrlResolver`
+  - `SqsQueueUrlResolverClient`
+  - `SqsQueueUrlResolverOptions`
+  - `SqsRuntimeClient`
+  - `SqsRuntimeRequestOptions`
+  - `SqsSendJsonBatchEntry`
+  - `SqsSendJsonBatchFailure`
+  - `SqsSendJsonBatchInput`
+  - `SqsSendJsonBatchResult`
+  - `SqsSendJsonBatchSuccess`
+  - `SqsSendJsonInput`
+  - `SqsSendJsonOptions`
+  - `SqsSendJsonResult`
+  - `SqsTransportClient`
+  - `SqsWorkerAckAction`
+  - `SqsWorkerErrorContext`
+  - `SqsWorkerErrorHook`
+  - `SqsWorkerFailureKind`
+  - `SqsWorkerHandler`
+  - `SqsWorkerHandlerContext`
+  - `SqsWorkerHandlerFailureEvent`
+  - `SqsWorkerHandlerResult`
+  - `SqsWorkerHandlerStartEvent`
+  - `SqsWorkerHandlerSuccessEvent`
+  - `SqsWorkerHandlerTimeoutEvent`
+  - `SqsWorkerHeartbeatFailureEvent`
+  - `SqsWorkerHeartbeatSource`
+  - `SqsWorkerHeartbeatSuccessEvent`
+  - `SqsWorkerLateSettlementEvent`
+  - `SqsWorkerLateSettlementOutcome`
+  - `SqsWorkerLogger`
+  - `SqsWorkerManager`
+  - `SqsWorkerManagerOptions`
+  - `SqsWorkerManagerSnapshot`
+  - `SqsWorkerMessage`
+  - `SqsWorkerMessageAttributeValue`
+  - `SqsWorkerMessageDeleteEvent`
+  - `SqsWorkerMessageKeepEvent`
+  - `SqsWorkerMessagesReceivedEvent`
+  - `SqsWorkerQueueResolver`
+  - `SqsWorkerReceiveEmptyEvent`
+  - `SqsWorkerRoute`
+  - `SqsWorkerRouteConfig`
+  - `SqsWorkerRouteCounters`
+  - `SqsWorkerRouteStatus`
+  - `SqsWorkerRuntimeEvent`
+  - `SqsWorkerRuntimeEventHook`
+  - `SqsWorkerServiceHost`
+  - `SqsWorkerServiceHostOptions`
+  - `SqsWorkerServiceLifecycle`
+  - `SqsWorkerServiceManifest`
+  - `SqsWorkerServiceManifestRoute`
+  - `SqsWorkerServiceRoute`
+  - `SqsWorkerServiceRunOptions`
+  - `SqsWorkerTimeoutError`
+  - `SqsWorkerTimeoutStrategy`
+
+## @idenstra/messaging-runtime/core
+
+- subpath: `./core`
+- declarations: `dist/core.d.ts`
+- exported symbols (37):
+  - `AwsSqsRuntimeClient`
+  - `SqsRuntimeClient`
+  - `SqsRuntimeRequestOptions`
+  - `SqsWorkerAckAction`
+  - `SqsWorkerErrorContext`
+  - `SqsWorkerErrorHook`
+  - `SqsWorkerFailureKind`
+  - `SqsWorkerHandler`
+  - `SqsWorkerHandlerContext`
+  - `SqsWorkerHandlerFailureEvent`
+  - `SqsWorkerHandlerResult`
+  - `SqsWorkerHandlerStartEvent`
+  - `SqsWorkerHandlerSuccessEvent`
+  - `SqsWorkerHandlerTimeoutEvent`
+  - `SqsWorkerHeartbeatFailureEvent`
+  - `SqsWorkerHeartbeatSource`
+  - `SqsWorkerHeartbeatSuccessEvent`
+  - `SqsWorkerLateSettlementEvent`
+  - `SqsWorkerLateSettlementOutcome`
+  - `SqsWorkerLogger`
+  - `SqsWorkerManager`
+  - `SqsWorkerManagerOptions`
+  - `SqsWorkerManagerSnapshot`
+  - `SqsWorkerMessage`
+  - `SqsWorkerMessageAttributeValue`
+  - `SqsWorkerMessageDeleteEvent`
+  - `SqsWorkerMessageKeepEvent`
+  - `SqsWorkerMessagesReceivedEvent`
+  - `SqsWorkerReceiveEmptyEvent`
+  - `SqsWorkerRoute`
+  - `SqsWorkerRouteConfig`
+  - `SqsWorkerRouteCounters`
+  - `SqsWorkerRouteStatus`
+  - `SqsWorkerRuntimeEvent`
+  - `SqsWorkerRuntimeEventHook`
+  - `SqsWorkerTimeoutError`
+  - `SqsWorkerTimeoutStrategy`
+
+## @idenstra/messaging-runtime/nest
+
+- subpath: `./nest`
+- declarations: `dist/adapters/nest.d.ts`
+- exported symbols (2):
+  - `AbstractNestSqsWorkerHost`
+  - `NestSqsWorkerLoggerAdapter`

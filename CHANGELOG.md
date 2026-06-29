@@ -12,7 +12,7 @@ Format rules:
 ### Added
 
 - bootstrapped the private-first `@idenstra/messaging-runtime` package, harness, and governance surface
-- extracted the shared SNS/SQS worker runtime core from `platform`
+- extracted the shared SNS/SQS worker runtime core from the former bootstrap host repo
 - added route failure policy, timeout semantics, runtime metrics hooks, and manager snapshots
 - added SNS/SQS translators, resolvers, and JSON publisher helpers
 - added worker-service host bootstrap, manifest-driven route activation, and signal runner ergonomics

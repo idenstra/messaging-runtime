@@ -32,7 +32,7 @@ Read these first and use them intentionally:
 - Keep the repo SNS/SQS-specific. Do not broaden into Kafka, RabbitMQ, or generic broker abstractions.
 - Keep a single package surface: `@idenstra/messaging-runtime`.
 - Do not move consumer business handlers into this repo.
-- Do not leak `CDP`, `bff-product`, or any other repo-specific types into the package API.
+- Do not leak consumer- or repo-specific types into the package API.
 - Keep local verification deterministic by default. Do not require live AWS for the harness gate.
 - Any meaningful behavior change must update the relevant docs in the same change-set.
 - Package publication remains private-first and is allowed only through the guarded manual release workflow.

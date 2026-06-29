@@ -19,6 +19,9 @@
   "scripts": {
     "format": "biome format --write .",
     "build": "rm -rf dist && tsc -p tsconfig.json",
+    "public-surface:report": "node scripts/public-surface/run-interface-reports.mjs --write",
+    "public-surface:snapshot": "node scripts/public-surface/check-export-snapshot.mjs --write",
+    "public-surface:check": "node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "tsx --test test/*.test.ts test/**/*.test.ts"
@@ -27,6 +30,7 @@
   "peerDependencies": { "@nestjs/common": "^11.0.0" },
   "peerDependenciesMeta": { "@nestjs/common": { "optional": true } },
   "devDependencies": {
+    "@microsoft/api-extractor": "^7.53.1",
     "@biomejs/biome": "^2.4.10",
     "@nestjs/common": "^11.1.21",
     "@types/node": "^24.0.15",

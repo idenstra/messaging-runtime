@@ -71,7 +71,7 @@ This file adds proof tiers and handoff expectations around that sequence.
 ## Verify tiers
 
 - `make audit`: deterministic harness audit for docs, templates, CI wiring, and package-governance surface.
-- `make verify-fast`: validator self-tests, repo hygiene checks, style-drift validation, Biome lint, package install/build/test, `npm pack --dry-run`, and release-readiness validation.
+- `make verify-fast`: validator self-tests, repo hygiene checks, style-drift validation, public-surface validation, Biome lint, package install/build/test, package-interface report and export-snapshot checks, `npm pack --dry-run`, and release-readiness validation.
 - `make verify`: default repo gate; it currently aliases `make verify-fast`.
 - `make plan-sync`: local execution-plan lifecycle sync that moves closed-issue plans from `docs/exec-plans/active/` to `docs/exec-plans/completed/`.
 

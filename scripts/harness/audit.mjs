@@ -78,7 +78,11 @@ function createGovernanceCategory(repoRoot) {
         ),
     exists('docs/ISSUE_TRACKING.md', repoRoot) &&
     hasText('docs/ISSUE_TRACKING.md', 'issue -> plan -> PR', repoRoot) &&
-    hasText('docs/ISSUE_TRACKING.md', 'Idenstra Backlog', repoRoot)
+    hasText(
+      'docs/ISSUE_TRACKING.md',
+      'Cross-repo work should keep the authoritative backlog in the owning repo',
+      repoRoot,
+    )
       ? createCheck('issue-tracking-doc', 'pass', 'Issue tracking doc defines backlog ownership and board usage')
       : createCheck(
           'issue-tracking-doc',
@@ -144,18 +148,37 @@ function createVerificationCategory(repoRoot) {
           'Biome config or package scripts are missing',
           'Add biome.json plus package format/lint scripts.',
         ),
+    exists('scripts/harness/check-public-import-surface.mjs', repoRoot) &&
+    exists('scripts/harness/check-package-facing-reference-hygiene.mjs', repoRoot)
+      ? createCheck(
+          'public-surface-validators',
+          'pass',
+          'Public import surface and package-facing reference hygiene validators are present',
+        )
+      : createCheck(
+          'public-surface-validators',
+          'fail',
+          'Public-surface validators are missing',
+          'Add the import-surface validator and the package-facing reference hygiene validator.',
+        ),
     exists('scripts/harness/verify.sh', repoRoot) &&
-    verifyScript.includes('node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs') &&
+    verifyScript.includes(
+      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs',
+    ) &&
     verifyScript.includes('validate-no-personal-paths.mjs') &&
     verifyScript.includes('validate-workflow-security.mjs') &&
     verifyScript.includes('validate-pr-governance.mjs') &&
     verifyScript.includes('validate-backlog-ownership.mjs') &&
+    verifyScript.includes('check-execution-plan-lifecycle.mjs') &&
     verifyScript.includes('check-style-drift.mjs') &&
+    verifyScript.includes('check-public-import-surface.mjs') &&
+    verifyScript.includes('check-package-facing-reference-hygiene.mjs') &&
     verifyScript.includes('validate-release-state.mjs') &&
     verifyScript.includes('npm ci --ignore-scripts') &&
     verifyScript.includes('npm run lint') &&
     verifyScript.includes('npm test') &&
     verifyScript.includes('npm run build') &&
+    verifyScript.includes('npm run public-surface:check') &&
     verifyScript.includes('npm pack --dry-run') &&
     verifyScript.includes('audit.mjs')
       ? createCheck('verify-wrapper', 'pass', 'verify.sh runs the expected library checks')
@@ -164,6 +187,30 @@ function createVerificationCategory(repoRoot) {
           'fail',
           'verify.sh is missing one or more expected checks',
           'Update verify.sh to run validators, package checks, and the audit.',
+        ),
+    exists('scripts/public-surface/run-interface-reports.mjs', repoRoot) &&
+    exists('scripts/public-surface/check-export-snapshot.mjs', repoRoot) &&
+    exists('public-surface-report.root.json', repoRoot) &&
+    exists('public-surface-report.core.json', repoRoot) &&
+    exists('public-surface-report.nest.json', repoRoot) &&
+    exists('etc/messaging-runtime.public-surface.api.md', repoRoot) &&
+    exists('etc/messaging-runtime-core.public-surface.api.md', repoRoot) &&
+    exists('etc/messaging-runtime-nest.public-surface.api.md', repoRoot) &&
+    exists('reports/public-surface/exports.json', repoRoot) &&
+    exists('reports/public-surface/exports.md', repoRoot) &&
+    packageJson.includes('"public-surface:report"') &&
+    packageJson.includes('"public-surface:snapshot"') &&
+    packageJson.includes('"public-surface:check"')
+      ? createCheck(
+          'public-surface-artifacts',
+          'pass',
+          'Public-surface report configs, approved reports, export snapshots, and package scripts are present',
+        )
+      : createCheck(
+          'public-surface-artifacts',
+          'fail',
+          'Public-surface configs, snapshots, or package scripts are missing',
+          'Add public-surface report configs, approved report files, export snapshots, and package public-surface:* scripts.',
         ),
     exists('scripts/harness/check-execution-plan-lifecycle.mjs', repoRoot) &&
     hasText('docs/EXECUTION_PLANS.md', 'make plan-sync', repoRoot)
@@ -207,7 +254,8 @@ function createRepoDocsCategory(repoRoot) {
     hasText('docs/HARNESS.md', 'scripts/README.md', repoRoot) &&
     hasText('docs/HARNESS.md', 'docs/ISSUE_TRACKING.md', repoRoot) &&
     hasText('docs/HARNESS.md', 'docs/EXECUTION_PLANS.md', repoRoot) &&
-    hasText('docs/HARNESS.md', 'docs/ARCHITECTURE.md', repoRoot)
+    hasText('docs/HARNESS.md', 'docs/ARCHITECTURE.md', repoRoot) &&
+    hasText('docs/HARNESS.md', 'public package surface', repoRoot)
       ? createCheck('harness-links', 'pass', 'Harness overview points to the canonical detailed docs')
       : createCheck(
           'harness-links',
@@ -219,7 +267,8 @@ function createRepoDocsCategory(repoRoot) {
     hasText('README.md', 'WORKFLOW.md', repoRoot) &&
     hasText('README.md', 'docs/HARNESS.md', repoRoot) &&
     hasText('README.md', 'docs/RELEASES.md', repoRoot) &&
-    hasText('README.md', 'docs/COMPATIBILITY.md', repoRoot)
+    hasText('README.md', 'docs/COMPATIBILITY.md', repoRoot) &&
+    hasText('README.md', 'Supported imports are intentionally narrow', repoRoot)
       ? createCheck('readme-entrypoints', 'pass', 'README.md points readers to the harness docs')
       : createCheck(
           'readme-entrypoints',
@@ -229,7 +278,8 @@ function createRepoDocsCategory(repoRoot) {
         ),
     exists('docs/ARCHITECTURE.md', repoRoot) &&
     hasText('docs/ARCHITECTURE.md', 'SNS/SQS', repoRoot) &&
-    hasText('docs/ARCHITECTURE.md', 'Not owned here', repoRoot)
+    hasText('docs/ARCHITECTURE.md', 'Not owned here', repoRoot) &&
+    hasText('docs/ARCHITECTURE.md', 'Public package contract', repoRoot)
       ? createCheck('architecture-boundaries', 'pass', 'Architecture doc defines repo ownership boundaries')
       : createCheck(
           'architecture-boundaries',
@@ -240,6 +290,7 @@ function createRepoDocsCategory(repoRoot) {
     exists('docs/QUALITY_BAR.md', repoRoot) &&
     hasText('docs/QUALITY_BAR.md', 'one disciplined maintainer', repoRoot) &&
     hasText('docs/QUALITY_BAR.md', 'tool, or agent attribution', repoRoot) &&
+    hasText('docs/QUALITY_BAR.md', 'supported import surface', repoRoot) &&
     hasText('docs/AI_ENGINEERING.md', 'do not leave model, tool, or agent signatures', repoRoot)
       ? createCheck('style-discipline-docs', 'pass', 'Quality and AI docs define the one-voice contributor standard')
       : createCheck(
@@ -252,7 +303,8 @@ function createRepoDocsCategory(repoRoot) {
     exists('docs/RELEASES.md', repoRoot) &&
     exists('docs/COMPATIBILITY.md', repoRoot) &&
     hasText('docs/RELEASES.md', 'package.json', repoRoot) &&
-    hasText('docs/COMPATIBILITY.md', 'exact versions', repoRoot)
+    hasText('docs/COMPATIBILITY.md', 'exact versions', repoRoot) &&
+    hasText('docs/COMPATIBILITY.md', '@idenstra/messaging-runtime/core', repoRoot)
       ? createCheck('release-docs', 'pass', 'Release and compatibility docs define the private-first consumer contract')
       : createCheck(
           'release-docs',

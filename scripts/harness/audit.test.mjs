@@ -42,27 +42,39 @@ function seedMinimalHarnessRepo(repoRoot) {
     'docs/EXECUTION_PLANS.md',
     'docs/templates/execution-plan.md\ndocs/templates/handoff.md\nmake plan-sync\n',
   );
-  writeFile(repoRoot, 'docs/ISSUE_TRACKING.md', 'issue -> plan -> PR\nIdenstra Backlog\n');
-  writeFile(repoRoot, 'docs/ARCHITECTURE.md', 'SNS/SQS\nNot owned here\n');
+  writeFile(
+    repoRoot,
+    'docs/ISSUE_TRACKING.md',
+    'issue -> plan -> PR\nCross-repo work should keep the authoritative backlog in the owning repo.\n',
+  );
+  writeFile(repoRoot, 'docs/ARCHITECTURE.md', 'SNS/SQS\nNot owned here\nPublic package contract\n');
   writeFile(repoRoot, 'docs/SECURITY.md', '# security\n.npmrc\n');
   writeFile(repoRoot, 'docs/RELIABILITY.md', '# reliability\n');
-  writeFile(repoRoot, 'docs/QUALITY_BAR.md', 'one disciplined maintainer\ntool, or agent attribution\n');
+  writeFile(
+    repoRoot,
+    'docs/QUALITY_BAR.md',
+    'one disciplined maintainer\ntool, or agent attribution\nsupported import surface\n',
+  );
   writeFile(repoRoot, 'docs/AI_ENGINEERING.md', 'do not leave model, tool, or agent signatures\n');
   writeFile(
     repoRoot,
     'docs/HARNESS.md',
-    'scripts/README.md\ndocs/ISSUE_TRACKING.md\ndocs/EXECUTION_PLANS.md\ndocs/ARCHITECTURE.md\n',
+    'scripts/README.md\ndocs/ISSUE_TRACKING.md\ndocs/EXECUTION_PLANS.md\ndocs/ARCHITECTURE.md\npublic package surface\n',
   );
-  writeFile(repoRoot, 'README.md', 'WORKFLOW.md\ndocs/HARNESS.md\ndocs/RELEASES.md\ndocs/COMPATIBILITY.md\n');
+  writeFile(
+    repoRoot,
+    'README.md',
+    'WORKFLOW.md\ndocs/HARNESS.md\ndocs/RELEASES.md\ndocs/COMPATIBILITY.md\nSupported imports are intentionally narrow\n',
+  );
   writeFile(repoRoot, 'CHANGELOG.md', '# Changelog\n\n## [0.1.0] - 2026-06-29\n\n- Initial release.\n');
   writeFile(repoRoot, 'docs/RELEASES.md', 'package.json\nGitHub Packages\n');
-  writeFile(repoRoot, 'docs/COMPATIBILITY.md', 'exact versions\nNode 24\n');
+  writeFile(repoRoot, 'docs/COMPATIBILITY.md', 'exact versions\nNode 24\n@idenstra/messaging-runtime/core\n');
   writeFile(repoRoot, 'scripts/README.md', 'verify.sh\n');
   writeFile(repoRoot, 'biome.json', '{}\n');
   writeFile(
     repoRoot,
     'package.json',
-    '{"scripts":{"format":"biome format --write .","lint":"biome check .","lint:fix":"biome check --write ."}}\n',
+    '{"scripts":{"format":"biome format --write .","lint":"biome check .","lint:fix":"biome check --write .","public-surface:report":"node scripts/public-surface/run-interface-reports.mjs --write","public-surface:snapshot":"node scripts/public-surface/check-export-snapshot.mjs --write","public-surface:check":"node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs"}}\n',
   );
   writeFile(repoRoot, 'src/core.ts', 'export const marker = true;\n');
   writeFile(repoRoot, 'src/adapters/nest.ts', 'export const marker = true;\n');
@@ -77,24 +89,44 @@ function seedMinimalHarnessRepo(repoRoot) {
     repoRoot,
     'scripts/harness/verify.sh',
     [
-      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs',
+      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs',
       'node scripts/ci/validate-no-personal-paths.mjs',
       'node scripts/ci/validate-workflow-security.mjs',
       'node scripts/ci/validate-pr-governance.mjs',
       'node scripts/harness/validate-backlog-ownership.mjs',
+      'node scripts/harness/check-execution-plan-lifecycle.mjs',
       'node scripts/harness/check-style-drift.mjs',
+      'node scripts/harness/check-public-import-surface.mjs',
+      'node scripts/harness/check-package-facing-reference-hygiene.mjs',
       'node scripts/release/validate-release-state.mjs',
       'npm ci --ignore-scripts',
       'npm run lint',
       'npm test',
       'npm run build',
+      'npm run public-surface:check',
       'npm pack --dry-run',
       'node scripts/harness/audit.mjs',
       '',
     ].join('\n'),
   );
   writeFile(repoRoot, 'scripts/harness/check-execution-plan-lifecycle.mjs', '// ok\n');
-  writeFile(repoRoot, '.github/workflows/ci.yml', 'harness-validate:\nmake audit\npackage-checks:\nmake verify-fast\n');
+  writeFile(repoRoot, 'scripts/harness/check-public-import-surface.mjs', '// ok\n');
+  writeFile(repoRoot, 'scripts/harness/check-package-facing-reference-hygiene.mjs', '// ok\n');
+  writeFile(repoRoot, 'scripts/public-surface/run-interface-reports.mjs', '// ok\n');
+  writeFile(repoRoot, 'scripts/public-surface/check-export-snapshot.mjs', '// ok\n');
+  writeFile(repoRoot, 'public-surface-report.root.json', '{}\n');
+  writeFile(repoRoot, 'public-surface-report.core.json', '{}\n');
+  writeFile(repoRoot, 'public-surface-report.nest.json', '{}\n');
+  writeFile(repoRoot, 'etc/messaging-runtime.public-surface.api.md', '# surface\n');
+  writeFile(repoRoot, 'etc/messaging-runtime-core.public-surface.api.md', '# surface\n');
+  writeFile(repoRoot, 'etc/messaging-runtime-nest.public-surface.api.md', '# surface\n');
+  writeFile(repoRoot, 'reports/public-surface/exports.json', '{}\n');
+  writeFile(repoRoot, 'reports/public-surface/exports.md', '# exports\n');
+  writeFile(
+    repoRoot,
+    '.github/workflows/ci.yml',
+    'harness-validate:\nnode --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs\nmake audit\npackage-checks:\nmake verify-fast\n',
+  );
   writeFile(
     repoRoot,
     '.github/workflows/release.yml',

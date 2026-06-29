@@ -75,3 +75,20 @@ test('findStyleDriftFindings ignores marker names when they appear only inside i
 
   assert.deepEqual(findings, []);
 });
+
+test('findStyleDriftFindings allows rule literals inside the style-drift validator sources', () => {
+  const repoRoot = createTempRepo();
+  writeFile(repoRoot, 'scripts/harness/check-style-drift.mjs', 'const rule = /copilot|TODO/;\n');
+  writeFile(
+    repoRoot,
+    'scripts/harness/check-style-drift.test.mjs',
+    "writeFile(repoRoot, 'README.md', 'Copilot TODO');\n",
+  );
+
+  const findings = findStyleDriftFindings(repoRoot, [
+    'scripts/harness/check-style-drift.mjs',
+    'scripts/harness/check-style-drift.test.mjs',
+  ]);
+
+  assert.deepEqual(findings, []);
+});

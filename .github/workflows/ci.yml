@@ -29,7 +29,7 @@ jobs:
           node-version: '24'
 
       - name: Validator self-tests
-        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs
+        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-api/*.test.mjs
 
       - name: Validate personal paths
         run: node scripts/ci/validate-no-personal-paths.mjs

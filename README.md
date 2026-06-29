@@ -28,6 +28,11 @@ Current state:
 - no business handlers live here
 - consumer adoption is still deferred until later slices
 
+Supported imports are intentionally narrow:
+- `@idenstra/messaging-runtime`
+- `@idenstra/messaging-runtime/core`
+- `@idenstra/messaging-runtime/nest`
+
 ## Purpose
 
 This repo will own:
@@ -40,9 +45,9 @@ This repo will own:
 - package-level tests and verification for the shared runtime
 
 This repo will not own:
-- `CDP` communication handlers
 - app-specific persistence or SES business logic
 - generic broker abstractions across unrelated transports
+- consumer-specific handlers or payload contracts
 
 ## Quick start
 
@@ -62,7 +67,7 @@ make verify
 Current policy:
 - the package is still pre-`1.0`, so published versions stay in the `0.minor.patch` range for now
 - patch releases are for compatible fixes, packaging corrections, and non-breaking maintenance
-- minor releases are for additive public API changes and may also carry intentional pre-`1.0` breaking changes
+- minor releases are for additive public surface changes and may also carry intentional pre-`1.0` breaking changes
 - internal consumers must pin exact versions while the package remains `0.x`
 
 `1.0.0` should happen only once the core runtime, transport helpers, release posture, and first consumer migrations have stabilized enough that we want stricter compatibility guarantees.
@@ -180,7 +185,7 @@ Nest support is optional and intentionally thin.
 What it provides:
 - `OnModuleInit` / `OnModuleDestroy` lifecycle wiring for a worker manager or worker service host
 - a small logger adapter that maps runtime logs onto a Nest `LoggerService`
-- less repeated bootstrap code in Nest-based consumers such as `CDP`
+- less repeated bootstrap code in Nest-based consumers
 
 What it does not provide:
 - higher throughput
@@ -248,7 +253,7 @@ Decode a plain SQS JSON body:
 ```ts
 import { decodeSqsJsonBody } from '@idenstra/messaging-runtime';
 
-const payload = decodeSqsJsonBody<{ tenantId: string }>(message.body);
+const payload = decodeSqsJsonBody<{ jobId: string }>(message.body);
 ```
 
 Decode an SNS notification delivered through SQS:
@@ -274,12 +279,12 @@ import { SQSClient } from '@aws-sdk/client-sqs';
 const sqsPublisher = new SqsPublisher(new AwsSqsTransportClient(new SQSClient({ region: 'us-east-1' })));
 await sqsPublisher.sendJson({
   queue: 'dispatch-queue',
-  payload: { tenantId: 'tenant-1', recipientId: 'recipient-1' },
+  payload: { jobId: 'job-1', messageId: 'message-1' },
 });
 
 const snsPublisher = new SnsPublisher(new AwsSnsTransportClient(new SNSClient({ region: 'us-east-1' })));
 await snsPublisher.publishJson({
-  topic: 'idenstra-email-events',
+  topic: 'runtime-events',
   payload: { eventType: 'DELIVERY' },
 });
 ```
@@ -306,10 +311,9 @@ Configuration boundary:
 - `messaging-runtime` does not load config sources directly
 - resolver caches are only process-local memoization layered on top of injected config and lookups
 
-Current migration seam:
-- `CDP` still contains direct SQS dispatch publishing and SNS-over-SQS parsing
-- `platform` still contains a separate SNS-over-SQS parser in the SES ops-event archiver
-- moving those consumers onto this package is intentionally a later slice
+Migration note:
+- some consumers still carry transitional SNS/SQS plumbing
+- moving those consumers onto this package is intentionally tracked outside package-facing docs
 
 ## Canonical docs
 

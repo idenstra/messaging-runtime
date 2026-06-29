@@ -36,7 +36,7 @@ Consumer dependency policy is intentionally strict:
 
 Release meaning:
 - patch releases are for compatible fixes, packaging corrections, and non-breaking maintenance
-- minor releases are for additive public API changes and any intentional pre-1.0 breaking changes
+- minor releases are for additive public surface changes and any intentional pre-1.0 breaking changes
 - any breaking change under `0.x` must be called out explicitly in:
   - the matching `CHANGELOG.md` section
   - consumer upgrade guidance when needed
@@ -48,8 +48,6 @@ Expected upgrade flow for private consumers:
 2. update the dependency to the exact published version
 3. run the consumer repo’s build, tests, and harness checks
 4. remove any temporary vendored/runtime-copy seam once adoption is complete
-
-`CDP` is the first intended consumer after this release-policy slice lands. That adoption is tracked separately and is not part of `#7`.
 
 ## GitHub Actions consumer posture
 

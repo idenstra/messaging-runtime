@@ -47,10 +47,10 @@ Current state:
   - apps provide the final worker process entrypoint
 - consumer adoption still follows in later slices
 
-Current migration seam:
-- `CDP` still owns direct communication dispatch publishing and provider-feedback envelope parsing
-- `platform` still owns a separate SNS-over-SQS parser in the SES ops-event archiver
-- those consumers should move to this package later, but not in `#5`
+Public package contract:
+- package-facing docs describe only the supported SNS/SQS runtime surface
+- cross-repo migration status belongs in issues, not in library docs
+- consumer examples should stay neutral and reusable
 
 ## Internal structure
 
