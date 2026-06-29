@@ -13,11 +13,17 @@ const root = process.cwd();
 const trackedFiles = listTrackedFiles(root);
 const supportedImportSpecifiers = new Set(supportedPublicImportSpecifiers);
 const packageImportPattern = /@idenstra\/messaging-runtime(?:\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*)?/g;
+const validatorFixturePaths = new Set([
+  'scripts/harness/check-public-import-surface.mjs',
+  'scripts/harness/check-public-import-surface.test.mjs',
+]);
 
 export function findPublicImportSurfaceFindings(repoRoot = root, repoTrackedFiles = trackedFiles) {
   const findings = [];
   const scannableFiles = repoTrackedFiles.filter(
-    (relativePath) => relativePath.endsWith('.md') || relativePath.endsWith('.mjs') || relativePath.endsWith('.ts'),
+    (relativePath) =>
+      !validatorFixturePaths.has(relativePath) &&
+      (relativePath.endsWith('.md') || relativePath.endsWith('.mjs') || relativePath.endsWith('.ts')),
   );
 
   for (const relativePath of scannableFiles) {

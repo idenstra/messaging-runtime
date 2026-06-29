@@ -9,6 +9,9 @@ cd "${REPO_ROOT}"
 
 echo "[messaging-runtime harness] === phase: verify-fast (package and deterministic checks) ==="
 
+echo "[messaging-runtime harness] npm ci"
+npm ci --ignore-scripts
+
 echo "[messaging-runtime harness] validator self-tests"
 node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs
 
@@ -38,9 +41,6 @@ node scripts/harness/check-package-facing-reference-hygiene.mjs
 
 echo "[messaging-runtime harness] validate release state"
 node scripts/release/validate-release-state.mjs
-
-echo "[messaging-runtime harness] npm ci"
-npm ci --ignore-scripts
 
 echo "[messaging-runtime harness] npm run lint"
 npm run lint

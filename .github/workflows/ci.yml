@@ -27,9 +27,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
 
       - name: Validator self-tests
-        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-api/*.test.mjs
+        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs
 
       - name: Validate personal paths
         run: node scripts/ci/validate-no-personal-paths.mjs

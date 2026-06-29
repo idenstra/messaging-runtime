@@ -78,3 +78,21 @@ test('findPackageExportFindings rejects unsupported public subpaths', () => {
     },
   ]);
 });
+
+test('findPublicImportSurfaceFindings ignores the validator self-fixtures', () => {
+  const repoRoot = createTempRepo();
+  writePackageJson(repoRoot, {
+    '.': { types: './dist/index.d.ts', default: './dist/index.js' },
+    './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+    './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
+  });
+  writeFile(
+    repoRoot,
+    'scripts/harness/check-public-import-surface.test.mjs',
+    "'@idenstra/messaging-runtime/dist/core'\n",
+  );
+
+  const findings = findPublicImportSurfaceFindings(repoRoot, ['scripts/harness/check-public-import-surface.test.mjs']);
+
+  assert.deepEqual(findings, []);
+});
