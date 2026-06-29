@@ -1,0 +1,44 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true, "root": "." },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 120,
+    "attributePosition": "auto",
+    "expand": "never"
+  },
+  "assist": { "enabled": true, "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "complexity": { "noStaticOnlyClass": "off", "noThisInStatic": "off", "useLiteralKeys": "off" },
+      "nursery": { "noFloatingPromises": "error" },
+      "style": { "useImportType": "off", "useNamingConvention": "off" },
+      "suspicious": { "noConsole": "error", "noExplicitAny": "error" }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "quoteProperties": "asNeeded",
+      "trailingCommas": "all",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "bracketSameLine": false,
+      "attributePosition": "auto",
+      "expand": "never"
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["scripts/**/*.mjs", "test/**/*.ts"],
+      "linter": { "rules": { "suspicious": { "noConsole": "off" }, "style": { "useNamingConvention": "off" } } }
+    }
+  ]
+}

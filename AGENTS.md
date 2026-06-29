@@ -32,7 +32,7 @@ Read these first and use them intentionally:
 - Keep the repo SNS/SQS-specific. Do not broaden into Kafka, RabbitMQ, or generic broker abstractions.
 - Keep a single package surface: `@idenstra/messaging-runtime`.
 - Do not move consumer business handlers into this repo.
-- Do not leak `CDP`, `bff-product`, or any other repo-specific types into the package API.
+- Do not leak consumer- or repo-specific types into the package API.
 - Keep local verification deterministic by default. Do not require live AWS for the harness gate.
 - Any meaningful behavior change must update the relevant docs in the same change-set.
 - Package publication remains private-first and is allowed only through the guarded manual release workflow.
@@ -58,9 +58,14 @@ Rules:
 - Default final gate for this repo:
   - `make verify`
 
+Local style helpers:
+- `make format`
+- `make lint`
+
 ## Documentation discipline
 Any meaningful change must update the relevant docs in the same change-set:
 - `README.md` for repo purpose and quick-start flow
 - `WORKFLOW.md` for proof expectations
 - this file when repo rules change
 - `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, or `docs/RELIABILITY.md` when package boundaries or verification posture changes
+- `docs/QUALITY_BAR.md` or `docs/AI_ENGINEERING.md` when contributor-style or AI-discipline rules change

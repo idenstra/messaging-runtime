@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import {
   buildLifecycleJsonReport,
   filterResolvedWriteFindings,
@@ -84,11 +84,7 @@ test('filterResolvedWriteFindings removes closed-issue-active-plan findings that
       issueNumber: 42,
       nextPath: 'docs/exec-plans/completed/42-archive-me.md',
     },
-    {
-      code: 'missing-issue',
-      path: 'docs/exec-plans/active/99-missing.md',
-      issueNumber: 99,
-    },
+    { code: 'missing-issue', path: 'docs/exec-plans/active/99-missing.md', issueNumber: 99 },
   ];
 
   const remainingFindings = filterResolvedWriteFindings(findings, [
@@ -100,10 +96,6 @@ test('filterResolvedWriteFindings removes closed-issue-active-plan findings that
   ]);
 
   assert.deepEqual(remainingFindings, [
-    {
-      code: 'missing-issue',
-      path: 'docs/exec-plans/active/99-missing.md',
-      issueNumber: 99,
-    },
+    { code: 'missing-issue', path: 'docs/exec-plans/active/99-missing.md', issueNumber: 99 },
   ]);
 });

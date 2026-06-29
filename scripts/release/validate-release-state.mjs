@@ -1,7 +1,7 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const DEFAULT_REPO_ROOT = process.cwd();
@@ -31,12 +31,7 @@ export function parseChangelogSections(changelogSource) {
         sections.push(current);
       }
 
-      current = {
-        version: match[1],
-        date: match[2] ?? null,
-        heading: line.trim(),
-        bodyLines: [],
-      };
+      current = { version: match[1], date: match[2] ?? null, heading: line.trim(), bodyLines: [] };
       continue;
     }
 
@@ -112,10 +107,7 @@ function defaultPublishedVersionExists({ packageName, version, registry, repoRoo
   }
 }
 
-export async function validateReleaseState(
-  repoRoot = DEFAULT_REPO_ROOT,
-  options = {},
-) {
+export async function validateReleaseState(repoRoot = DEFAULT_REPO_ROOT, options = {}) {
   const packageMetadata = options.packageMetadata ?? readPackageMetadata(repoRoot);
   const changelogSource = options.changelogSource ?? readFile(repoRoot, 'CHANGELOG.md');
   const findings = [];
@@ -141,7 +133,9 @@ export async function validateReleaseState(
   }
 
   if (packageMetadata.private === true) {
-    findings.push(createReleaseStateFinding('package-private', 'package.json must not declare private=true for releaseable state'));
+    findings.push(
+      createReleaseStateFinding('package-private', 'package.json must not declare private=true for releaseable state'),
+    );
   }
 
   if (packageMetadata.publishConfig?.registry !== EXPECTED_REGISTRY) {
@@ -176,7 +170,9 @@ export async function validateReleaseState(
   }
 
   if (!packageMetadata.engines?.node || !String(packageMetadata.engines.node).includes('24')) {
-    findings.push(createReleaseStateFinding('node-baseline', 'package.json engines.node must preserve the Node 24 baseline'));
+    findings.push(
+      createReleaseStateFinding('node-baseline', 'package.json engines.node must preserve the Node 24 baseline'),
+    );
   }
 
   if (!changelogSection) {
@@ -202,7 +198,11 @@ export async function validateReleaseState(
     }
   }
 
-  if (packageMetadata.name && packageMetadata.publishConfig?.registry && SEMVER_PATTERN.test(packageMetadata.version ?? '')) {
+  if (
+    packageMetadata.name &&
+    packageMetadata.publishConfig?.registry &&
+    SEMVER_PATTERN.test(packageMetadata.version ?? '')
+  ) {
     const publishedVersionExists = options.publishedVersionExists ?? defaultPublishedVersionExists;
     if (
       await publishedVersionExists({
@@ -244,12 +244,8 @@ async function runCli() {
   const args = parseArgs(process.argv.slice(2));
 
   const report = await validateReleaseState(DEFAULT_REPO_ROOT, {
-    tagExists: args.checkGitTag
-      ? undefined
-      : async () => false,
-    publishedVersionExists: args.checkPublishedVersion
-      ? undefined
-      : async () => false,
+    tagExists: args.checkGitTag ? undefined : async () => false,
+    publishedVersionExists: args.checkPublishedVersion ? undefined : async () => false,
   });
 
   if (args.json) {

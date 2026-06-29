@@ -18,14 +18,12 @@ const writeMode = process.argv.includes('--write');
 const jsonMode = process.argv.includes('--json');
 
 function normalizeIssueState(value) {
-  return String(value ?? '').trim().toUpperCase();
+  return String(value ?? '')
+    .trim()
+    .toUpperCase();
 }
 
-export function findExecutionPlanLifecycleFindings({
-  activePlanPaths,
-  completedPlanPaths,
-  issueStatesByNumber,
-}) {
+export function findExecutionPlanLifecycleFindings({ activePlanPaths, completedPlanPaths, issueStatesByNumber }) {
   const findings = [];
   const completedPlanPathSet = new Set(
     completedPlanPaths.map((relativePath) => normalizeExecutionPlanPath(relativePath)),
@@ -76,12 +74,7 @@ export function findExecutionPlanLifecycleFindings({
       continue;
     }
 
-    findings.push({
-      code: 'closed-issue-active-plan',
-      path: normalizedPath,
-      issueNumber,
-      nextPath: completedPlanPath,
-    });
+    findings.push({ code: 'closed-issue-active-plan', path: normalizedPath, issueNumber, nextPath: completedPlanPath });
   }
 
   return findings.sort((left, right) =>
@@ -89,18 +82,8 @@ export function findExecutionPlanLifecycleFindings({
   );
 }
 
-export function buildLifecycleJsonReport({
-  repoFullName,
-  writeMode,
-  findings,
-  movedPlans = [],
-}) {
-  return {
-    repo: repoFullName,
-    write_mode: writeMode,
-    findings,
-    movedPlans,
-  };
+export function buildLifecycleJsonReport({ repoFullName, writeMode, findings, movedPlans = [] }) {
+  return { repo: repoFullName, write_mode: writeMode, findings, movedPlans };
 }
 
 export function filterResolvedWriteFindings(findings, movedPlans = []) {
@@ -144,10 +127,7 @@ async function resolveIssueStatesWithToken(repoFullName, issueNumbers, token) {
 
   for (const issueNumber of issueNumbers) {
     try {
-      const payload = await fetchJson(
-        `https://api.github.com/repos/${repoFullName}/issues/${issueNumber}`,
-        token,
-      );
+      const payload = await fetchJson(`https://api.github.com/repos/${repoFullName}/issues/${issueNumber}`, token);
       issueStatesByNumber.set(
         issueNumber,
         payload?.pull_request ? 'MISSING' : String(payload?.state ?? '').toUpperCase(),
@@ -213,26 +193,36 @@ function printFindings(findings) {
 
   for (const finding of findings) {
     if (finding.code === 'closed-issue-active-plan') {
-      console.log(`- ${finding.path} still lives in active/, but issue #${finding.issueNumber} is closed; move it to ${finding.nextPath} or run make plan-sync`);
+      console.log(
+        `- ${finding.path} still lives in active/, but issue #${finding.issueNumber} is closed; move it to ${finding.nextPath} or run make plan-sync`,
+      );
       continue;
     }
 
     if (finding.code === 'completed-path-conflict') {
-      console.log(`- ${finding.path} references closed issue #${finding.issueNumber}, but ${finding.nextPath} already exists; resolve the duplicate manually`);
+      console.log(
+        `- ${finding.path} references closed issue #${finding.issueNumber}, but ${finding.nextPath} already exists; resolve the duplicate manually`,
+      );
       continue;
     }
 
     if (finding.code === 'missing-issue') {
-      console.log(`- ${finding.path} does not map to a live same-repo issue #${finding.issueNumber}; rename it or fix the linked issue`);
+      console.log(
+        `- ${finding.path} does not map to a live same-repo issue #${finding.issueNumber}; rename it or fix the linked issue`,
+      );
       continue;
     }
 
     if (finding.code === 'unresolved-issue-state') {
-      console.log(`- ${finding.path} could not resolve the state for issue #${finding.issueNumber}; retry with GITHUB_TOKEN or authenticated gh`);
+      console.log(
+        `- ${finding.path} could not resolve the state for issue #${finding.issueNumber}; retry with GITHUB_TOKEN or authenticated gh`,
+      );
       continue;
     }
 
-    console.log(`- ${finding.path} is not using the required issue-numbered filename format under ${ACTIVE_EXECUTION_PLANS_DIR}/`);
+    console.log(
+      `- ${finding.path} is not using the required issue-numbered filename format under ${ACTIVE_EXECUTION_PLANS_DIR}/`,
+    );
   }
 }
 
@@ -242,11 +232,7 @@ async function runCli() {
   const issueNumbers = [...new Set(activePlanPaths.map(extractIssueNumberFromExecutionPlanPath).filter(Boolean))];
   const repoFullName = readOriginRepoFullName(root);
   const issueStatesByNumber = await resolveIssueStates(repoFullName, issueNumbers);
-  const findings = findExecutionPlanLifecycleFindings({
-    activePlanPaths,
-    completedPlanPaths,
-    issueStatesByNumber,
-  });
+  const findings = findExecutionPlanLifecycleFindings({ activePlanPaths, completedPlanPaths, issueStatesByNumber });
   const movedPlans = [];
 
   if (writeMode) {
@@ -256,11 +242,7 @@ async function runCli() {
       }
 
       const nextPath = moveExecutionPlanToCompleted(root, finding.path);
-      movedPlans.push({
-        path: finding.path,
-        nextPath,
-        issueNumber: finding.issueNumber,
-      });
+      movedPlans.push({ path: finding.path, nextPath, issueNumber: finding.issueNumber });
     }
   }
 

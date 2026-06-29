@@ -7,18 +7,15 @@ import type {
   ReceiveMessageCommandOutput,
 } from '@aws-sdk/client-sqs';
 import {
-  SqsWorkerManager,
   type SqsRuntimeClient,
   type SqsRuntimeRequestOptions,
+  SqsWorkerManager,
   type SqsWorkerRuntimeEvent,
 } from '../src';
 
 type ReceiveBatch =
   | ReceiveMessageCommandOutput
-  | ((
-      input: ReceiveMessageCommandInput,
-      options?: SqsRuntimeRequestOptions,
-    ) => Promise<ReceiveMessageCommandOutput>);
+  | ((input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions) => Promise<ReceiveMessageCommandOutput>);
 
 class FakeSqsClient implements SqsRuntimeClient {
   readonly receiveInputs: ReceiveMessageCommandInput[] = [];
@@ -51,15 +48,9 @@ class FakeSqsClient implements SqsRuntimeClient {
       return next;
     }
 
-    this.batches.unshift({
-      ...next,
-      Messages: messages.slice(maxMessages),
-    });
+    this.batches.unshift({ ...next, Messages: messages.slice(maxMessages) });
 
-    return {
-      ...next,
-      Messages: messages.slice(0, maxMessages),
-    };
+    return { ...next, Messages: messages.slice(0, maxMessages) };
   }
 
   async deleteMessage(input: DeleteMessageCommandInput): Promise<void> {
@@ -73,9 +64,7 @@ class FakeSqsClient implements SqsRuntimeClient {
 
 test('deletes messages after successful handler execution and updates snapshots', async () => {
   const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
-    },
+    { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] },
   ]);
   const events: string[] = [];
   const manager = new SqsWorkerManager(client, {
@@ -92,11 +81,7 @@ test('deletes messages after successful handler execution and updates snapshots'
       abortSignalObserved = abortSignal;
       assert.equal(payload.kind, 'alpha');
     },
-    config: {
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-    },
+    config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
   });
 
   await manager.start();
@@ -120,11 +105,7 @@ test('deletes messages after successful handler execution and updates snapshots'
 });
 
 test('decode failures use the route default failure action', async () => {
-  const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1' }],
-    },
-  ]);
+  const client = new FakeSqsClient([{ Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1' }] }]);
   const events: string[] = [];
   const manager = new SqsWorkerManager(client, {
     onEvent: (event) => {
@@ -136,12 +117,7 @@ test('decode failures use the route default failure action', async () => {
     name: 'decode-failure',
     queueUrl: 'https://queue.test/email',
     handle: async () => undefined,
-    config: {
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-      failureAction: 'delete',
-    },
+    config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0, failureAction: 'delete' },
   });
 
   await manager.start();
@@ -158,9 +134,7 @@ test('decode failures use the route default failure action', async () => {
 
 test('error hooks can override handler failure action', async () => {
   const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
-    },
+    { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] },
   ]);
   const manager = new SqsWorkerManager(client);
 
@@ -174,12 +148,7 @@ test('error hooks can override handler failure action', async () => {
       assert.equal(context.failureKind, 'handler');
       return 'delete';
     },
-    config: {
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-      failureAction: 'keep',
-    },
+    config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0, failureAction: 'keep' },
   });
 
   await manager.start();
@@ -194,9 +163,7 @@ test('error hooks can override handler failure action', async () => {
 
 test('cooperative timeout aborts, keeps the slot occupied, continues heartbeating, and may delete after settlement', async () => {
   const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
-    },
+    { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] },
   ]);
   const events: SqsWorkerRuntimeEvent[] = [];
   const manager = new SqsWorkerManager(client, {
@@ -246,9 +213,7 @@ test('cooperative timeout aborts, keeps the slot occupied, continues heartbeatin
 
 test('abandon timeout stops heartbeats, keeps the message, and records late settlement', async () => {
   const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
-    },
+    { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] },
   ]);
   const events: SqsWorkerRuntimeEvent[] = [];
   const manager = new SqsWorkerManager(client, {
@@ -286,8 +251,14 @@ test('abandon timeout stops heartbeats, keeps the message, and records late sett
 
   assert.equal(client.deleteInputs.length, 0);
   assert.equal(client.visibilityInputs.length, heartbeatCountAfterTimeout);
-  assert.equal(events.some((event) => event.type === 'heartbeat-failure'), false);
-  assert.equal(events.some((event) => event.type === 'late-settlement'), true);
+  assert.equal(
+    events.some((event) => event.type === 'heartbeat-failure'),
+    false,
+  );
+  assert.equal(
+    events.some((event) => event.type === 'late-settlement'),
+    true,
+  );
 
   const snapshot = manager.getSnapshot();
   assert.equal(snapshot.counters.handlerTimeoutCount, 1);
@@ -298,9 +269,7 @@ test('abandon timeout stops heartbeats, keeps the message, and records late sett
 
 test('metrics hook exceptions do not break runtime processing', async () => {
   const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
-    },
+    { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] },
   ]);
   const manager = new SqsWorkerManager(client, {
     onEvent: () => {
@@ -312,11 +281,7 @@ test('metrics hook exceptions do not break runtime processing', async () => {
     name: 'metrics-errors',
     queueUrl: 'https://queue.test/email',
     handle: async () => undefined,
-    config: {
-      waitTimeSeconds: 0,
-      emptyReceiveDelayMs: 10,
-      heartbeatIntervalMs: 0,
-    },
+    config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
   });
 
   await manager.start();
@@ -328,9 +293,7 @@ test('metrics hook exceptions do not break runtime processing', async () => {
 
 test('cooperative timeout still blocks stop until the timed-out handler settles', async () => {
   const client = new FakeSqsClient([
-    {
-      Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }],
-    },
+    { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] },
   ]);
   const manager = new SqsWorkerManager(client);
 
@@ -381,11 +344,7 @@ test('stop aborts an in-flight long poll instead of waiting for the full receive
   ]);
   const manager = new SqsWorkerManager(client);
 
-  manager.register({
-    name: 'dispatch-email',
-    queueUrl: 'https://queue.test/email',
-    handle: async () => undefined,
-  });
+  manager.register({ name: 'dispatch-email', queueUrl: 'https://queue.test/email', handle: async () => undefined });
 
   await manager.start();
   const stopStartedAt = Date.now();

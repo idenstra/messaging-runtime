@@ -11,6 +11,8 @@ Canonical details:
 - [scripts/README.md](../scripts/README.md)
 
 Command surface:
+- `make format`
+- `make lint`
 - `make audit`
 - `make verify-fast`
 - `make verify`
@@ -20,4 +22,4 @@ Default proof posture:
 - no Docker boot
 - no AWS dependency
 - no live SNS/SQS requirement
-- deterministic package, runtime, and harness validation only
+- deterministic package, runtime, style, public package surface, and harness validation only

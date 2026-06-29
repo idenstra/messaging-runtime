@@ -1,27 +1,27 @@
 import {
   ListTopicsCommand,
-  PublishCommand,
-  SNSClient,
   type ListTopicsCommandInput,
   type ListTopicsCommandOutput,
-  type MessageAttributeValue as SnsSdkMessageAttributeValue,
+  PublishCommand,
   type PublishCommandInput,
   type PublishCommandOutput,
+  SNSClient,
+  type MessageAttributeValue as SnsSdkMessageAttributeValue,
 } from '@aws-sdk/client-sns';
 import {
-  GetQueueUrlCommand,
-  SendMessageBatchCommand,
-  SendMessageCommand,
-  SQSClient,
   type BatchResultErrorEntry,
+  GetQueueUrlCommand,
   type GetQueueUrlCommandInput,
   type GetQueueUrlCommandOutput,
-  type MessageAttributeValue as SqsSdkMessageAttributeValue,
+  SendMessageBatchCommand,
   type SendMessageBatchCommandInput,
   type SendMessageBatchCommandOutput,
   type SendMessageBatchResultEntry,
+  SendMessageCommand,
   type SendMessageCommandInput,
   type SendMessageCommandOutput,
+  SQSClient,
+  type MessageAttributeValue as SqsSdkMessageAttributeValue,
 } from '@aws-sdk/client-sqs';
 
 const SQS_ARN_SERVICE = 'sqs';
@@ -30,10 +30,7 @@ const DEFAULT_SQS_JSON_LABEL = 'SQS message body';
 const DEFAULT_SNS_ENVELOPE_LABEL = 'SNS envelope body';
 const DEFAULT_SNS_NOTIFICATION_LABEL = 'SNS notification message';
 
-export type SnsEnvelopeType =
-  | 'Notification'
-  | 'SubscriptionConfirmation'
-  | 'UnsubscribeConfirmation';
+export type SnsEnvelopeType = 'Notification' | 'SubscriptionConfirmation' | 'UnsubscribeConfirmation';
 
 export type SqsMessageAttributes = Record<string, SqsSdkMessageAttributeValue>;
 export type SnsMessageAttributes = Record<string, SnsSdkMessageAttributeValue>;
@@ -111,8 +108,7 @@ export interface SqsSendJsonInput<TPayload> extends SqsSendJsonOptions {
   payload: TPayload;
 }
 
-export interface SqsSendJsonBatchEntry<TId extends string = string, TPayload = unknown>
-  extends SqsSendJsonOptions {
+export interface SqsSendJsonBatchEntry<TId extends string = string, TPayload = unknown> extends SqsSendJsonOptions {
   id: TId;
   payload: TPayload;
 }
@@ -245,10 +241,7 @@ export function decodeSnsNotificationJson<TPayload>(
     throw new Error(`${label} must be an SNS Notification envelope.`);
   }
 
-  return {
-    envelope,
-    payload: decodeSqsJsonBody<TPayload>(envelope.Message, `${label} payload`),
-  };
+  return { envelope, payload: decodeSqsJsonBody<TPayload>(envelope.Message, `${label} payload`) };
 }
 
 export class SqsQueueUrlResolver {
@@ -277,10 +270,9 @@ export class SqsQueueUrlResolver {
       return queueIdentifier;
     }
 
-    const queueName =
-      isArnForService(queueIdentifier, SQS_ARN_SERVICE)
-        ? extractNameFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN')
-        : queueIdentifier;
+    const queueName = isArnForService(queueIdentifier, SQS_ARN_SERVICE)
+      ? extractNameFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN')
+      : queueIdentifier;
 
     const namedCacheHit = this.queueNameCache.get(queueName);
     if (namedCacheHit) {
@@ -493,11 +485,7 @@ export class SnsPublisher {
       MessageDeduplicationId: input.messageDeduplicationId,
     });
 
-    return {
-      topicArn,
-      messageId: response.MessageId,
-      sequenceNumber: response.SequenceNumber,
-    };
+    return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
   }
 }
 
@@ -527,10 +515,7 @@ export class AwsSnsTransportClient implements SnsTransportClient {
     input: Pick<ListTopicsCommandInput, 'NextToken'>,
   ): Promise<Pick<ListTopicsCommandOutput, 'NextToken' | 'Topics'>> {
     const response = await this.client.send(new ListTopicsCommand(input));
-    return {
-      NextToken: response.NextToken,
-      Topics: response.Topics,
-    };
+    return { NextToken: response.NextToken, Topics: response.Topics };
   }
 
   async publish(input: PublishCommandInput): Promise<PublishCommandOutput> {
@@ -574,9 +559,7 @@ function assertSnsEnvelopeType(value: unknown, label: string): SnsEnvelopeType {
     case 'UnsubscribeConfirmation':
       return value;
     default:
-      throw new Error(
-        `${label} Type must be Notification, SubscriptionConfirmation, or UnsubscribeConfirmation.`,
-      );
+      throw new Error(`${label} Type must be Notification, SubscriptionConfirmation, or UnsubscribeConfirmation.`);
   }
 }
 
@@ -631,9 +614,7 @@ function extractNameFromUrl(value: string, label: string): string {
   }
 }
 
-function assertUniqueBatchEntryIds<TId extends string>(
-  entries: Array<SqsSendJsonBatchEntry<TId, unknown>>,
-): void {
+function assertUniqueBatchEntryIds<TId extends string>(entries: Array<SqsSendJsonBatchEntry<TId, unknown>>): void {
   const seen = new Set<string>();
   for (const entry of entries) {
     const identifier = assertNonEmptyText(entry.id, 'SQS batch entry id');
@@ -685,11 +666,6 @@ function recordFailedBatchEntries<TId extends string>(
       continue;
     }
 
-    failedById[callerId] = {
-      id: callerId,
-      code: entry.Code,
-      message: entry.Message,
-      senderFault: entry.SenderFault,
-    };
+    failedById[callerId] = { id: callerId, code: entry.Code, message: entry.Message, senderFault: entry.SenderFault };
   }
 }

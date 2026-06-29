@@ -6,20 +6,14 @@ import { relativeUnix, walkFiles } from './fs-utils.mjs';
 export const ACTIVE_EXECUTION_PLANS_DIR = 'docs/exec-plans/active';
 export const COMPLETED_EXECUTION_PLANS_DIR = 'docs/exec-plans/completed';
 
-const issueNumberedExecutionPlanPattern =
-  /^docs\/exec-plans\/(?:active|completed)\/(\d+)-[^/]+\.md$/;
+const issueNumberedExecutionPlanPattern = /^docs\/exec-plans\/(?:active|completed)\/(\d+)-[^/]+\.md$/;
 
 export function normalizeExecutionPlanPath(value) {
   if (typeof value !== 'string') {
     return '';
   }
 
-  return value
-    .trim()
-    .replace(/^`+/, '')
-    .replace(/`+$/, '')
-    .replaceAll('\\', '/')
-    .replace(/^\.\//, '');
+  return value.trim().replace(/^`+/, '').replace(/`+$/, '').replaceAll('\\', '/').replace(/^\.\//, '');
 }
 
 export function isExplicitNoExecutionPlan(value) {
@@ -53,10 +47,7 @@ export function createCompletedExecutionPlanPath(activePlanPath) {
     return null;
   }
 
-  return normalizedPath.replace(
-    `${ACTIVE_EXECUTION_PLANS_DIR}/`,
-    `${COMPLETED_EXECUTION_PLANS_DIR}/`,
-  );
+  return normalizedPath.replace(`${ACTIVE_EXECUTION_PLANS_DIR}/`, `${COMPLETED_EXECUTION_PLANS_DIR}/`);
 }
 
 export function listExecutionPlanPaths(repoRoot, relativeDir) {
@@ -111,4 +102,3 @@ export function readOriginRepoFullName(repoRoot) {
 
   return repoFullName;
 }
-

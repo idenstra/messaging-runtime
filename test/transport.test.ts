@@ -1,24 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SNSClient, type ListTopicsCommandInput } from '@aws-sdk/client-sns';
+import { type ListTopicsCommandInput, SNSClient } from '@aws-sdk/client-sns';
 import type {
   GetQueueUrlCommandInput,
-  MessageAttributeValue as SqsMessageAttributeValue,
-  SQSClient,
   SendMessageBatchCommandInput,
   SendMessageCommandInput,
+  SQSClient,
+  MessageAttributeValue as SqsMessageAttributeValue,
 } from '@aws-sdk/client-sqs';
 import {
   AwsSnsTransportClient,
   AwsSqsTransportClient,
-  SnsPublisher,
-  SnsTopicArnResolver,
-  SqsPublisher,
-  SqsQueueUrlResolver,
   decodeSnsEnvelope,
   decodeSnsNotificationJson,
   decodeSqsJsonBody,
+  SnsPublisher,
+  SnsTopicArnResolver,
   type SnsTransportClient,
+  SqsPublisher,
+  SqsQueueUrlResolver,
   type SqsTransportClient,
 } from '../src';
 
@@ -61,18 +61,12 @@ class FakeSqsTransportClient implements SqsTransportClient {
 
   async getQueueUrl(input: GetQueueUrlCommandInput) {
     this.getQueueUrlInputs.push(input);
-    return {
-      QueueUrl: input.QueueName ? this.queueUrls.get(input.QueueName) : undefined,
-    };
+    return { QueueUrl: input.QueueName ? this.queueUrls.get(input.QueueName) : undefined };
   }
 
   async sendMessage(input: SendMessageCommandInput) {
     this.sendMessageInputs.push(input);
-    return {
-      MessageId: 'message-1',
-      SequenceNumber: '1',
-      MD5OfMessageBody: 'md5-body',
-    };
+    return { MessageId: 'message-1', SequenceNumber: '1', MD5OfMessageBody: 'md5-body' };
   }
 
   async sendMessageBatch(input: SendMessageBatchCommandInput) {
@@ -84,10 +78,7 @@ class FakeSqsTransportClient implements SqsTransportClient {
 class FakeSnsTransportClient implements SnsTransportClient {
   readonly listTopicsInputs: ListTopicsCommandInput[] = [];
   readonly publishInputs: Array<Record<string, unknown>> = [];
-  private readonly listTopicsResponses: Array<{
-    NextToken?: string;
-    Topics?: Array<{ TopicArn?: string }>;
-  }> = [];
+  private readonly listTopicsResponses: Array<{ NextToken?: string; Topics?: Array<{ TopicArn?: string }> }> = [];
 
   withListTopicsResponse(response: { NextToken?: string; Topics?: Array<{ TopicArn?: string }> }): this {
     this.listTopicsResponses.push(response);
@@ -101,10 +92,7 @@ class FakeSnsTransportClient implements SnsTransportClient {
 
   async publish(input: Record<string, unknown>) {
     this.publishInputs.push(input);
-    return {
-      MessageId: 'sns-message-1',
-      SequenceNumber: '2',
-    };
+    return { MessageId: 'sns-message-1', SequenceNumber: '2' };
   }
 }
 
@@ -239,8 +227,7 @@ test('SqsQueueUrlResolver supports preloaded mappings and optional no-network mo
   const resolver = new SqsQueueUrlResolver(client, {
     preload: {
       'dispatch-queue': 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
-      'arn:aws:sqs:us-east-1:123456789012:audit-queue':
-        'https://sqs.us-east-1.amazonaws.com/123456789012/audit-queue',
+      'arn:aws:sqs:us-east-1:123456789012:audit-queue': 'https://sqs.us-east-1.amazonaws.com/123456789012/audit-queue',
     },
     allowNetworkLookup: false,
   });
@@ -267,9 +254,7 @@ test('SnsTopicArnResolver resolves topic names with pagination, accepts ARNs, an
       NextToken: 'page-2',
       Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:other-topic' }],
     })
-    .withListTopicsResponse({
-      Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' }],
-    });
+    .withListTopicsResponse({ Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' }] });
   const resolver = new SnsTopicArnResolver(client);
 
   const resolvedByName = await resolver.resolve('idenstra-email-events');
@@ -287,8 +272,7 @@ test('SnsTopicArnResolver supports preloaded mappings and optional no-network mo
   const resolver = new SnsTopicArnResolver(client, {
     preload: {
       'idenstra-email-events': 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
-      'arn:aws:sns:us-east-1:123456789012:tenant-events':
-        'arn:aws:sns:us-east-1:123456789012:tenant-events',
+      'arn:aws:sns:us-east-1:123456789012:tenant-events': 'arn:aws:sns:us-east-1:123456789012:tenant-events',
     },
     allowNetworkLookup: false,
   });
@@ -313,10 +297,7 @@ test('SnsTopicArnResolver fails cleanly when a topic name cannot be found', asyn
 });
 
 test('SqsPublisher sendJson resolves queue identifiers and forwards transport-native options', async () => {
-  const attribute: SqsMessageAttributeValue = {
-    DataType: 'String',
-    StringValue: 'alpha',
-  };
+  const attribute: SqsMessageAttributeValue = { DataType: 'String', StringValue: 'alpha' };
   const client = new FakeSqsTransportClient().withQueueUrl(
     'dispatch-queue',
     'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
@@ -348,10 +329,7 @@ test('SqsPublisher sendJsonBatch chunks entries and returns keyed aggregate resu
   const client = new FakeSqsTransportClient()
     .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue')
     .withBatchResponse({
-      Successful: Array.from({ length: 10 }, (_, index) => ({
-        Id: `entry-${index}`,
-        MessageId: `message-${index}`,
-      })),
+      Successful: Array.from({ length: 10 }, (_, index) => ({ Id: `entry-${index}`, MessageId: `message-${index}` })),
     })
     .withBatchResponse({
       Successful: [{ Id: 'entry-10', MessageId: 'message-10' }],
@@ -361,10 +339,7 @@ test('SqsPublisher sendJsonBatch chunks entries and returns keyed aggregate resu
 
   const result = await publisher.sendJsonBatch({
     queue: 'dispatch-queue',
-    entries: Array.from({ length: 12 }, (_, index) => ({
-      id: `job-${index}`,
-      payload: { index },
-    })),
+    entries: Array.from({ length: 12 }, (_, index) => ({ id: `job-${index}`, payload: { index } })),
   });
 
   assert.equal(client.sendMessageBatchInputs.length, 2);
@@ -388,12 +363,7 @@ test('SnsPublisher publishJson resolves topic identifiers and forwards publish o
     topic: 'idenstra-email-events',
     payload: { kind: 'delivery' },
     subject: 'SES Delivery',
-    messageAttributes: {
-      channel: {
-        DataType: 'String',
-        StringValue: 'email',
-      },
-    },
+    messageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
     messageGroupId: 'group-1',
     messageDeduplicationId: 'dedupe-1',
   });
@@ -403,12 +373,7 @@ test('SnsPublisher publishJson resolves topic identifiers and forwards publish o
     TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
     Message: JSON.stringify({ kind: 'delivery' }),
     Subject: 'SES Delivery',
-    MessageAttributes: {
-      channel: {
-        DataType: 'String',
-        StringValue: 'email',
-      },
-    },
+    MessageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
     MessageGroupId: 'group-1',
     MessageDeduplicationId: 'dedupe-1',
   });

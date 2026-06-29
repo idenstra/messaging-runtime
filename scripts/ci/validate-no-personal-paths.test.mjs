@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { findPersonalPathFindings } from './validate-no-personal-paths.mjs';
 
 function createTempRepo() {
@@ -17,13 +17,7 @@ test('findPersonalPathFindings flags user-specific home paths in tracked docs', 
 
   const findings = findPersonalPathFindings(repoRoot, ['README.md']);
 
-  assert.deepEqual(findings, [
-    {
-      path: 'README.md',
-      line: 1,
-      value: personalPath,
-    },
-  ]);
+  assert.deepEqual(findings, [{ path: 'README.md', line: 1, value: personalPath }]);
 });
 
 test('findPersonalPathFindings ignores non-targeted tracked files', () => {
@@ -37,4 +31,3 @@ test('findPersonalPathFindings ignores non-targeted tracked files', () => {
 
   assert.deepEqual(findings, []);
 });
-

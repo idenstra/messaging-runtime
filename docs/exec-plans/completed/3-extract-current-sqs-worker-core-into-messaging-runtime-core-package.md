@@ -37,4 +37,4 @@ Related:
 
 - consumer adoption remains deferred
 - package publication/release automation remains deferred
-- public API expansion is out of scope for this slice
+- public-surface expansion is out of scope for this slice

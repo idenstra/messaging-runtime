@@ -121,10 +121,7 @@ function validatePlanFreeExemption(planExemption, trivialClassification) {
   }
 
   if (!planFreeExemptions.has(planExemption)) {
-    return {
-      ok: false,
-      message: `invalid \`Plan-free exemption\`: \`${planExemption}\``,
-    };
+    return { ok: false, message: `invalid \`Plan-free exemption\`: \`${planExemption}\`` };
   }
 
   if (trivialExemptions.has(planExemption)) {
@@ -143,10 +140,7 @@ function validatePlanFreeExemption(planExemption, trivialClassification) {
     }
   }
 
-  return {
-    ok: true,
-    message: `validated explicit \`${planExemption}\` plan-free exemption`,
-  };
+  return { ok: true, message: `validated explicit \`${planExemption}\` plan-free exemption` };
 }
 
 export function evaluatePullRequestGovernance({
@@ -234,11 +228,7 @@ export function evaluatePullRequestGovernance({
     };
   }
 
-  return {
-    ok: true,
-    mode: 'trivial',
-    message: `validated explicit \`${trivialClassification}\` exemption`,
-  };
+  return { ok: true, mode: 'trivial', message: `validated explicit \`${trivialClassification}\` exemption` };
 }
 
 async function fetchJson(url, token) {
@@ -271,11 +261,7 @@ async function fetchPullRequestFiles(repoFullName, prNumber, token) {
       break;
     }
 
-    files.push(
-      ...payload
-        .map((entry) => String(entry?.filename ?? '').trim())
-        .filter(Boolean),
-    );
+    files.push(...payload.map((entry) => String(entry?.filename ?? '').trim()).filter(Boolean));
 
     if (payload.length < 100) {
       break;
@@ -292,14 +278,8 @@ async function resolveIssueStates(repoFullName, issueNumbers, token) {
 
   for (const issueNumber of issueNumbers) {
     try {
-      const payload = await fetchJson(
-        `https://api.github.com/repos/${repoFullName}/issues/${issueNumber}`,
-        token,
-      );
-      states.set(
-        issueNumber,
-        payload?.pull_request ? 'MISSING' : String(payload?.state ?? '').toUpperCase(),
-      );
+      const payload = await fetchJson(`https://api.github.com/repos/${repoFullName}/issues/${issueNumber}`, token);
+      states.set(issueNumber, payload?.pull_request ? 'MISSING' : String(payload?.state ?? '').toUpperCase());
     } catch (error) {
       const status = Number.parseInt(String(error.message).match(/\((\d+)\)/)?.[1] ?? '', 10);
       states.set(issueNumber, status === 404 || status === 410 ? 'MISSING' : '');
@@ -333,9 +313,7 @@ async function runCli() {
   const issueRefs = extractIssueRefs(body, repoFullName);
   const issueStates = await resolveIssueStates(repoFullName, issueRefs, process.env.GITHUB_TOKEN);
   const existingIssueNumbers = new Set(
-    [...issueStates.entries()]
-      .filter(([, state]) => state && state !== 'MISSING')
-      .map(([issueNumber]) => issueNumber),
+    [...issueStates.entries()].filter(([, state]) => state && state !== 'MISSING').map(([issueNumber]) => issueNumber),
   );
   const activeExecutionPlans = new Set(listExecutionPlanPaths(root, ACTIVE_EXECUTION_PLANS_DIR));
 
@@ -362,4 +340,3 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(1);
   });
 }
-

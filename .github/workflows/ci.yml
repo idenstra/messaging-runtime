@@ -27,9 +27,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
 
       - name: Validator self-tests
-        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs
+        run: node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs
 
       - name: Validate personal paths
         run: node scripts/ci/validate-no-personal-paths.mjs
@@ -47,6 +51,9 @@ jobs:
     name: Package checks
     runs-on: ubuntu-latest
     needs: harness-validate
+
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
 
     steps:
       - name: Checkout

@@ -41,11 +41,7 @@ export function findBacklogOwnershipFindings(repoRoot, trackedFiles = listTracke
         return;
       }
 
-      findings.push({
-        path: relativePath,
-        line: index + 1,
-        text: lineText.trim(),
-      });
+      findings.push({ path: relativePath, line: index + 1, text: lineText.trim() });
     });
   }
 
@@ -73,4 +69,3 @@ function runCli() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runCli();
 }
-

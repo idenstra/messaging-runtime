@@ -11,5 +11,3 @@ Workflow:
 4. open the PR with the governed template
 
 Cross-repo work should keep the authoritative backlog in the owning repo and use related links for coordination.
-
-Idenstra Backlog remains the umbrella board convention for cross-repo visibility, but runtime ownership for this library lives here.

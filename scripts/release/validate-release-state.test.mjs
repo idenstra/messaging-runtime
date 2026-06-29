@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import {
   getChangelogSectionForVersion,
   getReleaseNotesMarkdown,
@@ -27,26 +27,12 @@ function seedReleaseRepo(repoRoot, overrides = {}) {
     private: false,
     files: ['dist'],
     exports: {
-      '.': {
-        types: './dist/index.d.ts',
-        default: './dist/index.js',
-      },
-      './core': {
-        types: './dist/core.d.ts',
-        default: './dist/core.js',
-      },
-      './nest': {
-        types: './dist/adapters/nest.d.ts',
-        default: './dist/adapters/nest.js',
-      },
+      '.': { types: './dist/index.d.ts', default: './dist/index.js' },
+      './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+      './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
     },
-    engines: {
-      node: '>=24',
-    },
-    publishConfig: {
-      registry: 'https://npm.pkg.github.com',
-      access: 'restricted',
-    },
+    engines: { node: '>=24' },
+    publishConfig: { registry: 'https://npm.pkg.github.com', access: 'restricted' },
     ...overrides.packageMetadata,
   };
 
@@ -55,16 +41,7 @@ function seedReleaseRepo(repoRoot, overrides = {}) {
     repoRoot,
     'CHANGELOG.md',
     overrides.changelogSource ??
-      [
-        '# Changelog',
-        '',
-        '## [0.1.0] - 2026-06-29',
-        '',
-        '### Added',
-        '',
-        '- Initial internal release.',
-        '',
-      ].join('\n'),
+      ['# Changelog', '', '## [0.1.0] - 2026-06-29', '', '### Added', '', '- Initial internal release.', ''].join('\n'),
   );
 }
 
@@ -108,9 +85,7 @@ test('validateReleaseState passes for a releasable repository state', async () =
 
 test('validateReleaseState fails when the matching changelog section is missing', async () => {
   const repoRoot = createTempRepo();
-  seedReleaseRepo(repoRoot, {
-    changelogSource: '# Changelog\n\n## [0.0.9] - 2026-06-01\n\n- Older release.\n',
-  });
+  seedReleaseRepo(repoRoot, { changelogSource: '# Changelog\n\n## [0.0.9] - 2026-06-01\n\n- Older release.\n' });
 
   const report = await validateReleaseState(repoRoot, {
     tagExists: async () => false,
@@ -118,19 +93,16 @@ test('validateReleaseState fails when the matching changelog section is missing'
   });
 
   assert.equal(report.releasable, false);
-  assert.equal(report.findings.some((finding) => finding.code === 'changelog-version'), true);
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'changelog-version'),
+    true,
+  );
 });
 
 test('validateReleaseState fails when package metadata is not publishable', async () => {
   const repoRoot = createTempRepo();
   seedReleaseRepo(repoRoot, {
-    packageMetadata: {
-      private: true,
-      publishConfig: {
-        registry: 'https://registry.npmjs.org',
-        access: 'public',
-      },
-    },
+    packageMetadata: { private: true, publishConfig: { registry: 'https://registry.npmjs.org', access: 'public' } },
   });
 
   const report = await validateReleaseState(repoRoot, {
@@ -139,9 +111,18 @@ test('validateReleaseState fails when package metadata is not publishable', asyn
   });
 
   assert.equal(report.releasable, false);
-  assert.equal(report.findings.some((finding) => finding.code === 'package-private'), true);
-  assert.equal(report.findings.some((finding) => finding.code === 'publish-registry'), true);
-  assert.equal(report.findings.some((finding) => finding.code === 'publish-access'), true);
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'package-private'),
+    true,
+  );
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'publish-registry'),
+    true,
+  );
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'publish-access'),
+    true,
+  );
 });
 
 test('validateReleaseState fails when the git tag or published version already exists', async () => {
@@ -154,6 +135,12 @@ test('validateReleaseState fails when the git tag or published version already e
   });
 
   assert.equal(report.releasable, false);
-  assert.equal(report.findings.some((finding) => finding.code === 'git-tag-exists'), true);
-  assert.equal(report.findings.some((finding) => finding.code === 'published-version-exists'), true);
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'git-tag-exists'),
+    true,
+  );
+  assert.equal(
+    report.findings.some((finding) => finding.code === 'published-version-exists'),
+    true,
+  );
 });

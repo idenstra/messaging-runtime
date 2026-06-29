@@ -62,4 +62,3 @@ export function todayIso() {
 function defaultPredicate(filePath) {
   return filePath.endsWith('.md');
 }
-
