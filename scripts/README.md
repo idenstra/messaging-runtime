@@ -10,4 +10,5 @@ Key scripts:
 - `scripts/harness/check-execution-plan-lifecycle.mjs`
 - `scripts/harness/validate-backlog-ownership.mjs`
 - `scripts/harness/verify.sh`
-
+- `scripts/release/validate-release-state.mjs`
+- `scripts/release/print-release-notes.mjs`

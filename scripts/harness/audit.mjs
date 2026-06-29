@@ -86,20 +86,23 @@ function createVerificationCategory(repoRoot) {
   const makefile = exists('Makefile', repoRoot) ? read('Makefile', repoRoot) : '';
   const verifyScript = exists('scripts/harness/verify.sh', repoRoot) ? read('scripts/harness/verify.sh', repoRoot) : '';
   const ciWorkflow = exists('.github/workflows/ci.yml', repoRoot) ? read('.github/workflows/ci.yml', repoRoot) : '';
+  const releaseWorkflow = exists('.github/workflows/release.yml', repoRoot) ? read('.github/workflows/release.yml', repoRoot) : '';
 
   const checks = [
     ['audit', 'verify-fast', 'verify', 'plan-sync'].every((target) => makefile.includes(`${target}:`))
       ? createCheck('make-targets', 'pass', 'Makefile exposes the harness targets')
       : createCheck('make-targets', 'fail', 'Makefile is missing one or more harness targets', 'Wire audit, verify-fast, verify, and plan-sync into Makefile.'),
     exists('scripts/harness/verify.sh', repoRoot) &&
-    verifyScript.includes('node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs') &&
+    verifyScript.includes('node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs') &&
     verifyScript.includes('validate-no-personal-paths.mjs') &&
     verifyScript.includes('validate-workflow-security.mjs') &&
     verifyScript.includes('validate-pr-governance.mjs') &&
     verifyScript.includes('validate-backlog-ownership.mjs') &&
-    verifyScript.includes('npm ci') &&
+    verifyScript.includes('validate-release-state.mjs') &&
+    verifyScript.includes('npm ci --ignore-scripts') &&
     verifyScript.includes('npm test') &&
     verifyScript.includes('npm run build') &&
+    verifyScript.includes('npm pack --dry-run') &&
     verifyScript.includes('audit.mjs')
       ? createCheck('verify-wrapper', 'pass', 'verify.sh runs the expected library checks')
       : createCheck('verify-wrapper', 'fail', 'verify.sh is missing one or more expected checks', 'Update verify.sh to run validators, package checks, and the audit.'),
@@ -113,6 +116,12 @@ function createVerificationCategory(repoRoot) {
     ciWorkflow.includes('make verify-fast')
       ? createCheck('ci-lanes', 'pass', 'CI exposes the expected harness lane split')
       : createCheck('ci-lanes', 'fail', 'CI does not expose the expected harness lane split', 'Reshape .github/workflows/ci.yml into harness-validate and package-checks.'),
+    releaseWorkflow.includes('workflow_dispatch:') &&
+    releaseWorkflow.includes('npm publish --dry-run') &&
+    releaseWorkflow.includes('validate-release-state.mjs') &&
+    releaseWorkflow.includes('gh release create')
+      ? createCheck('release-workflow', 'pass', 'Release workflow exists with guarded dry-run and publish steps')
+      : createCheck('release-workflow', 'fail', 'Release workflow is missing or does not enforce the guarded release flow', 'Add the manual release workflow with dry-run validation, guarded publish, and GitHub release creation.'),
   ];
 
   return { id: 'verification', status: categoryStatus(checks), checks };
@@ -129,7 +138,9 @@ function createRepoDocsCategory(repoRoot) {
       : createCheck('harness-links', 'fail', 'docs/HARNESS.md does not link the canonical detailed docs', 'Link scripts/README.md and the canonical docs from docs/HARNESS.md.'),
     exists('README.md', repoRoot) &&
     hasText('README.md', 'WORKFLOW.md', repoRoot) &&
-    hasText('README.md', 'docs/HARNESS.md', repoRoot)
+    hasText('README.md', 'docs/HARNESS.md', repoRoot) &&
+    hasText('README.md', 'docs/RELEASES.md', repoRoot) &&
+    hasText('README.md', 'docs/COMPATIBILITY.md', repoRoot)
       ? createCheck('readme-entrypoints', 'pass', 'README.md points readers to the harness docs')
       : createCheck('readme-entrypoints', 'fail', 'README.md does not point to the harness docs', 'Refresh README.md to reference WORKFLOW.md and docs/HARNESS.md.'),
     exists('docs/ARCHITECTURE.md', repoRoot) &&
@@ -137,9 +148,16 @@ function createRepoDocsCategory(repoRoot) {
     hasText('docs/ARCHITECTURE.md', 'Not owned here', repoRoot)
       ? createCheck('architecture-boundaries', 'pass', 'Architecture doc defines repo ownership boundaries')
       : createCheck('architecture-boundaries', 'fail', 'docs/ARCHITECTURE.md does not define the expected repo boundaries', 'Refresh docs/ARCHITECTURE.md with owned and non-owned surfaces.'),
-    ['src/core.ts', 'src/nest.ts', 'test/core.test.ts', 'test/nest.test.ts'].every((relativePath) => exists(relativePath, repoRoot))
-      ? createCheck('runtime-core-surface', 'pass', 'Runtime core source and consumer-agnostic tests are present')
-      : createCheck('runtime-core-surface', 'fail', 'Runtime core source or tests are missing from the repo surface', 'Keep the extracted runtime source and tests in this repo.'),
+    exists('CHANGELOG.md', repoRoot) &&
+    exists('docs/RELEASES.md', repoRoot) &&
+    exists('docs/COMPATIBILITY.md', repoRoot) &&
+    hasText('docs/RELEASES.md', 'package.json', repoRoot) &&
+    hasText('docs/COMPATIBILITY.md', 'exact versions', repoRoot)
+      ? createCheck('release-docs', 'pass', 'Release and compatibility docs define the private-first consumer contract')
+      : createCheck('release-docs', 'fail', 'Release docs are missing or incomplete', 'Add CHANGELOG.md plus the release and compatibility docs.'),
+    ['src/core.ts', 'src/adapters/nest.ts', 'test/core.test.ts', 'test/adapters/nest.test.ts'].every((relativePath) => exists(relativePath, repoRoot))
+      ? createCheck('runtime-and-adapter-surface', 'pass', 'Runtime core and adapter source/tests are present')
+      : createCheck('runtime-and-adapter-surface', 'fail', 'Runtime core or adapter source/tests are missing from the repo surface', 'Keep the extracted runtime source and adapter tests in this repo.'),
   ];
 
   return { id: 'repo-docs', status: categoryStatus(checks), checks };

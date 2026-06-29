@@ -6,8 +6,8 @@ import {
   SqsWorkerServiceHost,
   parseSqsWorkerServiceManifest,
   type SqsRuntimeClient,
-} from '../src';
-import { AbstractNestSqsWorkerHost, NestSqsWorkerLoggerAdapter } from '../src/nest';
+} from '../../src';
+import { AbstractNestSqsWorkerHost, NestSqsWorkerLoggerAdapter } from '../../src/adapters/nest';
 
 class FakeSqsClient implements SqsRuntimeClient {
   async receiveMessage() {

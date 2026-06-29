@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Shared SNS/SQS messaging runtime for Idenstra app-owned worker services",
   "license": "UNLICENSED",
-  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -19,8 +18,8 @@
       "default": "./dist/core.js"
     },
     "./nest": {
-      "types": "./dist/nest.d.ts",
-      "default": "./dist/nest.js"
+      "types": "./dist/adapters/nest.d.ts",
+      "default": "./dist/adapters/nest.js"
     }
   },
   "engines": {
@@ -39,8 +38,8 @@
   },
   "homepage": "https://github.com/idenstra/messaging-runtime#readme",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "tsx --test test/**/*.test.ts"
+    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts test/**/*.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sns": "^3.1075.0",

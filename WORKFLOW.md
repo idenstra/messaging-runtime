@@ -65,13 +65,13 @@ This file adds proof tiers and handoff expectations around that sequence.
 | `docs-only` | `make audit` |
 | `package-or-harness` | `make verify-fast` |
 | `public-surface-or-queue-semantics` | `make verify` |
-| `release-or-registry-posture` | `make verify-fast` plus doc updates |
+| `release-or-registry-posture` | `make verify-fast` plus doc updates and release-state alignment |
 | `incident-hotfix` | `make verify-fast` minimum, with deferred proof called out explicitly |
 
 ## Verify tiers
 
 - `make audit`: deterministic harness audit for docs, templates, CI wiring, and package-governance surface.
-- `make verify-fast`: validator self-tests, repo hygiene checks, and package install/build/test.
+- `make verify-fast`: validator self-tests, repo hygiene checks, package install/build/test, `npm pack --dry-run`, and release-readiness validation.
 - `make verify`: default repo gate; it currently aliases `make verify-fast`.
 - `make plan-sync`: local execution-plan lifecycle sync that moves closed-issue plans from `docs/exec-plans/active/` to `docs/exec-plans/completed/`.
 
@@ -89,7 +89,7 @@ This file adds proof tiers and handoff expectations around that sequence.
 - docs updated in the same change-set;
 - public surface kept aligned with intent;
 - relevant tests updated or added;
+- release/version/changelog state kept coherent when touching registry posture;
 - required proof run for the work type;
 - rollback stated for risky work;
 - human review flagged when required.
-
