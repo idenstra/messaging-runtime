@@ -128,6 +128,19 @@ test('rejects manifest routes that do not match a registered route', () => {
   );
 });
 
+test('rejects duplicate manifest route names after normalization', () => {
+  assert.throws(
+    () =>
+      parseSqsWorkerServiceManifest({
+        routes: {
+          dispatch: {},
+          ' dispatch ': {},
+        },
+      }),
+    /duplicate route entries/i,
+  );
+});
+
 test('rejects enabled routes without a queue binding in the manifest or route definition', () => {
   const client = new FakeSqsClient();
   const resolver = new FakeQueueResolver({});

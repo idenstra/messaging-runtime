@@ -208,7 +208,9 @@ export async function runSqsWorkerServiceUntilSignal(
   } finally {
     cleanup();
     requestStop();
-    await stopPromise;
+    if (stopPromise) {
+      await stopPromise;
+    }
   }
 }
 
@@ -232,6 +234,11 @@ export function parseSqsWorkerServiceManifest(
 
   for (const [routeName, rawRouteEntry] of Object.entries(rawRoutes)) {
     const normalizedRouteName = assertRouteName(routeName);
+    if (normalizedRouteName in routes) {
+      throw new Error(
+        `SQS worker service manifest declares duplicate route entries for ${normalizedRouteName}.`,
+      );
+    }
     const routeEntry = assertRecord(
       rawRouteEntry,
       `SQS worker service manifest route ${normalizedRouteName}`,
