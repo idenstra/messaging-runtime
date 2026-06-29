@@ -67,16 +67,14 @@ export interface SqsWorkerErrorContext<TPayload> {
     timeoutStrategy?: SqsWorkerTimeoutStrategy;
 }
 
-// Warning: (ae-forgotten-export) The symbol "SqsWorkerVoidResult" needs to be exported by the entry point core.d.ts
-//
 // @public (undocumented)
-export type SqsWorkerErrorHook<TPayload> = (context: SqsWorkerErrorContext<TPayload>) => SqsWorkerAckAction | SqsWorkerVoidResult | undefined | Promise<SqsWorkerAckAction | SqsWorkerVoidResult | undefined>;
+export type SqsWorkerErrorHook<TPayload> = (context: SqsWorkerErrorContext<TPayload>) => SqsWorkerAckAction | ReturnType<() => void> | undefined | Promise<SqsWorkerAckAction | ReturnType<() => void> | undefined>;
 
 // @public (undocumented)
 export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 
 // @public (undocumented)
-export type SqsWorkerHandler<TPayload> = (context: SqsWorkerHandlerContext<TPayload>) => Promise<SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined>;
+export type SqsWorkerHandler<TPayload> = (context: SqsWorkerHandlerContext<TPayload>) => Promise<SqsWorkerHandlerResult | ReturnType<() => void> | undefined>;
 
 // @public (undocumented)
 export interface SqsWorkerHandlerContext<TPayload> {

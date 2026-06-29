@@ -57,7 +57,7 @@ type SqsWorkerVoidResult = ReturnType<() => void>;
 
 export type SqsWorkerHandler<TPayload> = (
   context: SqsWorkerHandlerContext<TPayload>,
-) => Promise<SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined>;
+) => Promise<SqsWorkerHandlerResult | ReturnType<() => void> | undefined>;
 
 type SqsWorkerHandlerOutcome = SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined;
 
@@ -79,9 +79,9 @@ export type SqsWorkerErrorHook<TPayload> = (
   context: SqsWorkerErrorContext<TPayload>,
 ) =>
   | SqsWorkerAckAction
-  | SqsWorkerVoidResult
+  | ReturnType<() => void>
   | undefined
-  | Promise<SqsWorkerAckAction | SqsWorkerVoidResult | undefined>;
+  | Promise<SqsWorkerAckAction | ReturnType<() => void> | undefined>;
 
 export interface SqsWorkerRouteConfig {
   concurrency: number;
