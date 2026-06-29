@@ -21,6 +21,13 @@ Unsupported:
 
 ## Versioning policy while `0.x`
 
+Version numbers still use the normal `major.minor.patch` SemVer shape.
+
+Current practical posture:
+- releases remain in the `0.minor.patch` range until we intentionally declare `1.0.0`
+- the package therefore has a major component, but it is intentionally held at `0` for now
+- consumers should read each minor bump as the main upgrade boundary while the package stays pre-`1.0`
+
 Consumer dependency policy is intentionally strict:
 - pin exact versions only
 - do not use branch refs

@@ -51,3 +51,38 @@ Current migration seam:
 - `CDP` still owns direct communication dispatch publishing and provider-feedback envelope parsing
 - `platform` still owns a separate SNS-over-SQS parser in the SES ops-event archiver
 - those consumers should move to this package later, but not in `#5`
+
+## Internal structure
+
+```mermaid
+flowchart TD
+  Root["root package exports"]
+  Core["core runtime"]
+  Host["host/bootstrap"]
+  Transport["transport helpers"]
+  Adapter["optional adapters"]
+
+  Root --> Core
+  Root --> Host
+  Root --> Transport
+  Root --> Adapter
+```
+
+## Consumer integration shape
+
+```mermaid
+flowchart LR
+  App["consumer app"]
+  Config["consumer-loaded config"]
+  Runtime["messaging-runtime"]
+  AWS["AWS SNS/SQS"]
+
+  App --> Config
+  App --> Runtime
+  Config --> Runtime
+  Runtime --> AWS
+```
+
+This separation is deliberate:
+- consumer apps remain responsible for business handlers and configuration sourcing
+- the package remains responsible for reusable SNS/SQS runtime mechanics

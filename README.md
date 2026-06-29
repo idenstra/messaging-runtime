@@ -2,6 +2,17 @@
 
 `messaging-runtime` is Idenstra's dedicated private-first home for the shared TypeScript SNS/SQS messaging runtime.
 
+## Features
+
+- SQS worker runtime with bounded concurrency, long polling, visibility heartbeats, and graceful shutdown
+- route-level decode, failure, timeout, and keep/delete ack control
+- manifest-driven worker host bootstrap for app-owned worker services
+- signal runner ergonomics for consumer-owned worker entrypoints
+- SNS-over-SQS and plain SQS JSON decoding helpers
+- cached SQS queue and SNS topic resolution with optional preload data
+- JSON-oriented SQS and SNS publisher helpers
+- optional Nest lifecycle and logger adapter through `@idenstra/messaging-runtime/nest`
+
 Current state:
 - single package surface: `@idenstra/messaging-runtime`
 - root entrypoint exposes the worker runtime core, worker host/bootstrap helpers, and SNS/SQS transport helpers
@@ -43,6 +54,71 @@ make audit
 make verify-fast
 make verify
 ```
+
+## Versioning
+
+`messaging-runtime` uses the standard `major.minor.patch` shape from SemVer.
+
+Current policy:
+- the package is still pre-`1.0`, so published versions stay in the `0.minor.patch` range for now
+- patch releases are for compatible fixes, packaging corrections, and non-breaking maintenance
+- minor releases are for additive public API changes and may also carry intentional pre-`1.0` breaking changes
+- internal consumers must pin exact versions while the package remains `0.x`
+
+`1.0.0` should happen only once the core runtime, transport helpers, release posture, and first consumer migrations have stabilized enough that we want stricter compatibility guarantees.
+
+## How it fits into a system
+
+```mermaid
+flowchart LR
+  subgraph ConsumerApp["Consumer app / worker service"]
+    Config["env / file / secrets config"]
+    Routes["code-owned route catalog"]
+    Manifest["serializable worker manifest"]
+    Host["SqsWorkerServiceHost"]
+    Runner["runSqsWorkerServiceUntilSignal"]
+  end
+
+  subgraph RuntimePkg["@idenstra/messaging-runtime"]
+    Resolver["SqsQueueUrlResolver / SnsTopicArnResolver"]
+    Manager["SqsWorkerManager"]
+    Transport["publishers + translators"]
+  end
+
+  SQS[(Amazon SQS)]
+  SNS[(Amazon SNS)]
+
+  Config --> Manifest
+  Config --> Resolver
+  Routes --> Host
+  Manifest --> Host
+  Resolver --> Host
+  Host --> Manager
+  Runner --> Host
+  Manager --> SQS
+  Transport --> SQS
+  Transport --> SNS
+```
+
+Boundary:
+- the consumer app owns configuration loading, dependency wiring, route business logic, and the process entrypoint
+- `messaging-runtime` owns queue mechanics, activation rules, lifecycle handling, transport helpers, and adapter conveniences
+
+## How to use
+
+Typical adoption flow:
+1. Create AWS SDK clients and wrap them with the runtime transport adapters.
+2. Load queue/topic identifiers from env, files, or secrets in the consumer app.
+3. Preload any known queue/topic mappings into the resolvers.
+4. Define the route catalog in code.
+5. Parse a manifest that enables only the routes this worker process should own.
+6. Construct `SqsWorkerServiceHost` and run it until signal.
+7. Use the translator and publisher helpers anywhere the consumer needs transport plumbing, rather than reimplementing SNS/SQS parsing and publishing.
+
+Recommended mental model:
+- use the root package for worker runtime, host, manifest, resolver, translator, and publisher concerns
+- use `@idenstra/messaging-runtime/nest` only when you want Nest lifecycle wiring and logger bridging
+- keep domain contracts outside the library; the package should see transport payloads, not application policies
 
 ## Worker host/bootstrap
 
@@ -241,6 +317,7 @@ Current migration seam:
 - [WORKFLOW.md](WORKFLOW.md)
 - [docs/HARNESS.md](docs/HARNESS.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/USAGE.md](docs/USAGE.md)
 - [docs/RELEASES.md](docs/RELEASES.md)
 - [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
 - [docs/EXECUTION_PLANS.md](docs/EXECUTION_PLANS.md)
