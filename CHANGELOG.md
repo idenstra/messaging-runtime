@@ -11,7 +11,7 @@ Format rules:
 
 ### Changed
 
-- unified the consumer-facing AWS wrappers into `AwsSqsAdapter` and `AwsSnsAdapter`, removing the earlier split SQS/SNS adapter names before wider package adoption
+- breaking: unified the consumer-facing AWS wrappers into `AwsSqsAdapter` and `AwsSnsAdapter`, removing the earlier `AwsSqsRuntimeClient`, `AwsSqsTransportClient`, and `AwsSnsTransportClient` names before wider package adoption
 
 ## [0.1.0] - 2026-06-29
 
