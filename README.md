@@ -60,16 +60,23 @@ For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](d
 
 A minimal framework-agnostic worker uses one AWS SDK SQS client wrapped twice: once for runtime operations and once for transport helpers.
 
+The runtime has a built-in JSON body decoder for SQS messages. This example still provides an explicit `decodePayload` so the handler is strongly typed and the snippet stays copy-pasteable.
+
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsRuntimeClient,
   AwsSqsTransportClient,
+  decodeSqsJsonBody,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
   parseSqsWorkerServiceManifest,
   runSqsWorkerServiceUntilSignal,
 } from '@idenstra/messaging-runtime';
+
+type JobMessage = {
+  jobId: string;
+};
 
 const awsSqs = new SQSClient({ region: 'us-east-1' });
 const runtimeClient = new AwsSqsRuntimeClient(awsSqs);
@@ -100,6 +107,7 @@ const host = new SqsWorkerServiceHost({
   routes: [
     {
       name: 'jobs',
+      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
       handle: async ({ payload, message, heartbeat }) => {
         console.log('processing message', message.messageId, payload);
         await heartbeat();

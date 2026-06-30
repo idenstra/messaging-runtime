@@ -29,11 +29,14 @@ The worker runtime and transport helpers are intentionally separate:
 
 Both wrappers can share the same AWS SDK `SQSClient` instance.
 
+The runtime has a built-in JSON body decoder for SQS messages. The example below still provides an explicit `decodePayload` so the handler payload is strongly typed and the snippet is copy-pasteable as written.
+
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsRuntimeClient,
   AwsSqsTransportClient,
+  decodeSqsJsonBody,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
   parseSqsWorkerServiceManifest,
@@ -75,9 +78,9 @@ const host = new SqsWorkerServiceHost({
   routes: [
     {
       name: 'jobs',
+      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
       handle: async ({ payload, heartbeat }) => {
-        const job = payload as JobMessage;
-        await processJob(job.jobId);
+        await processJob(payload.jobId);
         await heartbeat();
       },
     },

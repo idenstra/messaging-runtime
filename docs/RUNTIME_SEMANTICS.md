@@ -9,7 +9,7 @@ For each active route, the runtime loops through this lifecycle:
 1. resolve the configured queue identifier to a queue URL;
 2. long-poll SQS with the route capacity still available;
 3. convert each raw SQS message into a runtime message;
-4. decode the payload;
+4. decode the payload through the route decoder or the built-in JSON body decoder;
 5. call the route handler;
 6. apply the success, failure, or timeout ack policy;
 7. update counters, status fields, and runtime events.
@@ -65,7 +65,7 @@ Failure default:
 
 ## Decode failures
 
-The default decoder parses the SQS body as JSON. Decode failure means the handler is not called.
+If a route does not provide `decodePayload`, the built-in decoder parses the SQS body as JSON. Routes may override that with an explicit decoder when they want stronger typing, extra validation, or a non-default payload shape. Decode failure means the handler is not called.
 
 A decode failure is still eligible for the route failure policy. Use `failureAction: 'delete'` only when malformed messages are intentionally disposable or are already captured elsewhere.
 

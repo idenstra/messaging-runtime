@@ -9,7 +9,7 @@
 | SQS long polling | Yes | Per route through `waitTimeSeconds`. |
 | Bounded concurrency | Yes | Per route through `concurrency`. |
 | SQS max messages per poll | Yes | Capped to SQS maximum of 10. |
-| Plain SQS JSON decoding | Yes | Default route decode parses JSON bodies. `decodeSqsJsonBody` is also exported. |
+| Plain SQS JSON decoding | Yes | Built-in default route decode parses JSON bodies when a route does not supply `decodePayload`. `decodeSqsJsonBody` is also exported for explicit typed decoders. |
 | SNS-over-SQS JSON decoding | Yes | `decodeSnsEnvelope` and `decodeSnsNotificationJson`. |
 | Message delete on success | Yes | Default success action is delete. |
 | Keep message for redelivery | Yes | Handler or error policy can return `keep`. |
