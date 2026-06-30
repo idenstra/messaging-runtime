@@ -41,7 +41,7 @@ Use the package in this order:
 
 2. Build AWS SDK clients in the consumer app.
 
-3. Create runtime transport adapters and preload resolver state when you already know the queue/topic mapping.
+3. Create AWS adapters and preload resolver state when you already know the queue/topic mapping.
 
 4. Define handlers in code as a route catalog.
 

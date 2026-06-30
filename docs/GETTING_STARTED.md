@@ -22,20 +22,16 @@ npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 
 ## Create a worker
 
-The worker runtime and transport helpers are intentionally separate:
+Use one AWS SDK `SQSClient` wrapped by one `AwsSqsAdapter`.
 
-- `AwsSqsRuntimeClient` owns worker-loop operations: receive, delete, and visibility changes.
-- `AwsSqsTransportClient` owns queue URL resolution and SQS publishing.
-
-Both wrappers can share the same AWS SDK `SQSClient` instance.
+The package still keeps runtime and transport interfaces separate internally, but normal consumer setup should not need two different SQS wrapper classes.
 
 The runtime has a built-in JSON body decoder for SQS messages. The example below still provides an explicit `decodePayload` so the handler payload is strongly typed and the snippet is copy-pasteable as written.
 
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
-  AwsSqsRuntimeClient,
-  AwsSqsTransportClient,
+  AwsSqsAdapter,
   decodeSqsJsonBody,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
@@ -48,11 +44,9 @@ type JobMessage = {
 };
 
 const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
 
-const runtimeClient = new AwsSqsRuntimeClient(awsSqs);
-const transportClient = new AwsSqsTransportClient(awsSqs);
-
-const queueResolver = new SqsQueueUrlResolver(transportClient, {
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter, {
   preload: {
     jobs: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
   },
@@ -72,7 +66,7 @@ const manifest = parseSqsWorkerServiceManifest({
 });
 
 const host = new SqsWorkerServiceHost({
-  client: runtimeClient,
+  client: sqsAdapter,
   queueResolver,
   manifest,
   routes: [
@@ -125,17 +119,17 @@ console.log(envelope.TopicArn, payload.userId);
 
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';
-import { AwsSqsTransportClient, SqsPublisher, SqsQueueUrlResolver } from '@idenstra/messaging-runtime';
+import { AwsSqsAdapter, SqsPublisher, SqsQueueUrlResolver } from '@idenstra/messaging-runtime';
 
 const awsSqs = new SQSClient({ region: 'us-east-1' });
-const transportClient = new AwsSqsTransportClient(awsSqs);
-const queueResolver = new SqsQueueUrlResolver(transportClient, {
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter, {
   preload: {
     jobs: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
   },
 });
 
-const publisher = new SqsPublisher(transportClient, queueResolver);
+const publisher = new SqsPublisher(sqsAdapter, queueResolver);
 
 await publisher.sendJson({
   queue: 'jobs',
@@ -163,17 +157,17 @@ The result reports successes and failures keyed by the caller-provided entry IDs
 
 ```ts
 import { SNSClient } from '@aws-sdk/client-sns';
-import { AwsSnsTransportClient, SnsPublisher, SnsTopicArnResolver } from '@idenstra/messaging-runtime';
+import { AwsSnsAdapter, SnsPublisher, SnsTopicArnResolver } from '@idenstra/messaging-runtime';
 
 const awsSns = new SNSClient({ region: 'us-east-1' });
-const transportClient = new AwsSnsTransportClient(awsSns);
-const topicResolver = new SnsTopicArnResolver(transportClient, {
+const snsAdapter = new AwsSnsAdapter(awsSns);
+const topicResolver = new SnsTopicArnResolver(snsAdapter, {
   preload: {
     events: 'arn:aws:sns:us-east-1:123456789012:events',
   },
 });
 
-const publisher = new SnsPublisher(transportClient, topicResolver);
+const publisher = new SnsPublisher(snsAdapter, topicResolver);
 
 await publisher.publishJson({
   topic: 'events',

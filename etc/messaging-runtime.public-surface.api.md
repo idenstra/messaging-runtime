@@ -25,7 +25,7 @@ import { SNSClient } from '@aws-sdk/client-sns';
 import { SQSClient } from '@aws-sdk/client-sqs';
 
 // @public (undocumented)
-export class AwsSnsTransportClient implements SnsTransportClient {
+export class AwsSnsAdapter implements SnsTransportClient {
     constructor(client: SNSClient);
     // (undocumented)
     listTopics(input: Pick<ListTopicsCommandInput, 'NextToken'>): Promise<Pick<ListTopicsCommandOutput, 'NextToken' | 'Topics'>>;
@@ -34,21 +34,16 @@ export class AwsSnsTransportClient implements SnsTransportClient {
 }
 
 // @public (undocumented)
-export class AwsSqsRuntimeClient implements SqsRuntimeClient {
+export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient {
     constructor(client: SQSClient);
     // (undocumented)
     changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
     // (undocumented)
     deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
     // (undocumented)
-    receiveMessage(input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions): Promise<ReceiveMessageCommandOutput>;
-}
-
-// @public (undocumented)
-export class AwsSqsTransportClient implements SqsTransportClient {
-    constructor(client: SQSClient);
-    // (undocumented)
     getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
+    // (undocumented)
+    receiveMessage(input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions): Promise<ReceiveMessageCommandOutput>;
     // (undocumented)
     sendMessage(input: SendMessageCommandInput): Promise<SendMessageCommandOutput>;
     // (undocumented)

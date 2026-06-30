@@ -58,15 +58,14 @@ For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](d
 
 ## Quick start
 
-A minimal framework-agnostic worker uses one AWS SDK SQS client wrapped twice: once for runtime operations and once for transport helpers.
+A minimal framework-agnostic worker uses one AWS SDK `SQSClient` wrapped once by `AwsSqsAdapter`.
 
 The runtime has a built-in JSON body decoder for SQS messages. This example still provides an explicit `decodePayload` so the handler is strongly typed and the snippet stays copy-pasteable.
 
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
-  AwsSqsRuntimeClient,
-  AwsSqsTransportClient,
+  AwsSqsAdapter,
   decodeSqsJsonBody,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
@@ -79,10 +78,9 @@ type JobMessage = {
 };
 
 const awsSqs = new SQSClient({ region: 'us-east-1' });
-const runtimeClient = new AwsSqsRuntimeClient(awsSqs);
-const transportClient = new AwsSqsTransportClient(awsSqs);
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
 
-const queueResolver = new SqsQueueUrlResolver(transportClient, {
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter, {
   preload: {
     jobs: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
   },
@@ -101,7 +99,7 @@ const manifest = parseSqsWorkerServiceManifest({
 });
 
 const host = new SqsWorkerServiceHost({
-  client: runtimeClient,
+  client: sqsAdapter,
   queueResolver,
   manifest,
   routes: [

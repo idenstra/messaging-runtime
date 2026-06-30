@@ -1,12 +1,8 @@
 import {
-  ChangeMessageVisibilityCommand,
   type ChangeMessageVisibilityCommandInput,
-  DeleteMessageCommand,
   type DeleteMessageCommandInput,
-  ReceiveMessageCommand,
   type ReceiveMessageCommandInput,
   type ReceiveMessageCommandOutput,
-  SQSClient,
   type Message as SqsSdkMessage,
 } from '@aws-sdk/client-sqs';
 
@@ -282,25 +278,6 @@ export class SqsWorkerTimeoutError extends Error {
     this.messageId = options.messageId;
     this.timeoutMs = options.timeoutMs;
     this.timeoutStrategy = options.timeoutStrategy;
-  }
-}
-
-export class AwsSqsRuntimeClient implements SqsRuntimeClient {
-  constructor(private readonly client: SQSClient) {}
-
-  receiveMessage(
-    input: ReceiveMessageCommandInput,
-    options?: SqsRuntimeRequestOptions,
-  ): Promise<ReceiveMessageCommandOutput> {
-    return this.client.send(new ReceiveMessageCommand(input), options);
-  }
-
-  async deleteMessage(input: DeleteMessageCommandInput): Promise<void> {
-    await this.client.send(new DeleteMessageCommand(input));
-  }
-
-  async changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void> {
-    await this.client.send(new ChangeMessageVisibilityCommand(input));
   }
 }
 

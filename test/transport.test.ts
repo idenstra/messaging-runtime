@@ -9,8 +9,8 @@ import type {
   MessageAttributeValue as SqsMessageAttributeValue,
 } from '@aws-sdk/client-sqs';
 import {
-  AwsSnsTransportClient,
-  AwsSqsTransportClient,
+  AwsSnsAdapter,
+  AwsSqsAdapter,
   decodeSnsEnvelope,
   decodeSnsNotificationJson,
   decodeSqsJsonBody,
@@ -379,22 +379,29 @@ test('SnsPublisher publishJson resolves topic identifiers and forwards publish o
   });
 });
 
-test('AWS transport client adapters delegate to AWS SDK v3 clients', async () => {
+test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport operations', async () => {
   const sentSqsCommands: unknown[] = [];
   const sentSnsCommands: unknown[] = [];
-  const sqsAdapter = new AwsSqsTransportClient({
+  const sqsAdapter = new AwsSqsAdapter({
     send: async (command: unknown) => {
       sentSqsCommands.push(command);
       return {};
     },
   } as SQSClient);
-  const snsAdapter = new AwsSnsTransportClient({
+  const snsAdapter = new AwsSnsAdapter({
     send: async (command: unknown) => {
       sentSnsCommands.push(command);
       return {};
     },
   } as SNSClient);
 
+  await sqsAdapter.receiveMessage({ QueueUrl: 'https://queue.test/dispatch' });
+  await sqsAdapter.deleteMessage({ QueueUrl: 'https://queue.test/dispatch', ReceiptHandle: 'receipt-1' });
+  await sqsAdapter.changeMessageVisibility({
+    QueueUrl: 'https://queue.test/dispatch',
+    ReceiptHandle: 'receipt-1',
+    VisibilityTimeout: 30,
+  });
   await sqsAdapter.getQueueUrl({ QueueName: 'dispatch-queue' });
   await sqsAdapter.sendMessage({ QueueUrl: 'https://queue.test/dispatch', MessageBody: '{}' });
   await sqsAdapter.sendMessageBatch({
@@ -404,6 +411,6 @@ test('AWS transport client adapters delegate to AWS SDK v3 clients', async () =>
   await snsAdapter.listTopics({ NextToken: undefined });
   await snsAdapter.publish({ TopicArn: 'arn:aws:sns:us-east-1:123456789012:topic', Message: '{}' });
 
-  assert.equal(sentSqsCommands.length, 3);
+  assert.equal(sentSqsCommands.length, 6);
   assert.equal(sentSnsCommands.length, 2);
 });
