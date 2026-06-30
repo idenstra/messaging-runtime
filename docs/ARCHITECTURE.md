@@ -37,6 +37,7 @@ Current state:
   - cached SQS queue URL resolution from name, URL, or ARN
   - cached SNS topic ARN resolution from name or ARN
   - JSON-oriented SQS/SNS publisher helpers
+  - combined AWS adapter setup for consumer-facing SQS and SNS wiring
 - resolver preload configuration is consumer-owned:
   - apps may inject known queue/topic mappings at startup
   - apps may disable runtime network lookup for strict environments

@@ -14,6 +14,10 @@ Supported imports are limited to:
 - `@idenstra/messaging-runtime/core`
 - `@idenstra/messaging-runtime/nest`
 
+Supported consumer-facing AWS wrapper classes are:
+- `AwsSqsAdapter`
+- `AwsSnsAdapter`
+
 Unsupported:
 - deep imports into `dist/`
 - deep imports into internal source files

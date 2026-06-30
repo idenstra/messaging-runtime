@@ -27,7 +27,10 @@ This repository is not public-ready until the following readiness criteria are o
 
 - Review the public export surface and remove accidental exports.
 - Keep API Extractor reports and export snapshots aligned.
-- Document the split between runtime clients and transport clients, or introduce a single SQS AWS adapter that satisfies both roles.
+- Keep the combined AWS adapter contract stable and documented:
+  - `AwsSqsAdapter` for SQS runtime and transport operations
+  - `AwsSnsAdapter` for SNS publish and topic-resolution operations
+  - separate capability interfaces remain internal architecture, not setup burden
 - Document the supported Node baseline and why it is `>=24`.
 - Define the `1.0.0` criteria.
 - Add migration notes for breaking changes while pre-`1.0`.

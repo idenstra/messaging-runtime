@@ -9,18 +9,6 @@ import { DeleteMessageCommandInput } from '@aws-sdk/client-sqs';
 import { Message } from '@aws-sdk/client-sqs';
 import { ReceiveMessageCommandInput } from '@aws-sdk/client-sqs';
 import { ReceiveMessageCommandOutput } from '@aws-sdk/client-sqs';
-import { SQSClient } from '@aws-sdk/client-sqs';
-
-// @public (undocumented)
-export class AwsSqsRuntimeClient implements SqsRuntimeClient {
-    constructor(client: SQSClient);
-    // (undocumented)
-    changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
-    // (undocumented)
-    deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
-    // (undocumented)
-    receiveMessage(input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions): Promise<ReceiveMessageCommandOutput>;
-}
 
 // @public (undocumented)
 export interface SqsRuntimeClient {

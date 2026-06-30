@@ -63,7 +63,7 @@ The core feature set is credible, but the public maturity story is not complete 
 1. Public package posture: license, package metadata, registry access, contribution docs, security policy, issue templates, and release instructions.
 2. Performance proof: deterministic benchmark suite with published baseline numbers.
 3. Optional integration proof: emulator-backed or LocalStack-style tests for receive, delete, visibility, publish, and resolver flows.
-4. API ergonomics review: clarify the split between runtime clients and transport clients, or provide a single AWS SQS adapter that satisfies both surfaces.
+4. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
 5. Production guidance: document idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings.
 6. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
 

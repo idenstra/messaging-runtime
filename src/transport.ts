@@ -10,9 +10,16 @@ import {
 } from '@aws-sdk/client-sns';
 import {
   type BatchResultErrorEntry,
+  ChangeMessageVisibilityCommand,
+  type ChangeMessageVisibilityCommandInput,
+  DeleteMessageCommand,
+  type DeleteMessageCommandInput,
   GetQueueUrlCommand,
   type GetQueueUrlCommandInput,
   type GetQueueUrlCommandOutput,
+  ReceiveMessageCommand,
+  type ReceiveMessageCommandInput,
+  type ReceiveMessageCommandOutput,
   SendMessageBatchCommand,
   type SendMessageBatchCommandInput,
   type SendMessageBatchCommandOutput,
@@ -23,6 +30,7 @@ import {
   SQSClient,
   type MessageAttributeValue as SqsSdkMessageAttributeValue,
 } from '@aws-sdk/client-sqs';
+import type { SqsRuntimeClient, SqsRuntimeRequestOptions } from './core';
 
 const SQS_ARN_SERVICE = 'sqs';
 const SNS_ARN_SERVICE = 'sns';
@@ -489,8 +497,23 @@ export class SnsPublisher {
   }
 }
 
-export class AwsSqsTransportClient implements SqsTransportClient {
+export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient {
   constructor(private readonly client: SQSClient) {}
+
+  receiveMessage(
+    input: ReceiveMessageCommandInput,
+    options?: SqsRuntimeRequestOptions,
+  ): Promise<ReceiveMessageCommandOutput> {
+    return this.client.send(new ReceiveMessageCommand(input), options);
+  }
+
+  async deleteMessage(input: DeleteMessageCommandInput): Promise<void> {
+    await this.client.send(new DeleteMessageCommand(input));
+  }
+
+  async changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void> {
+    await this.client.send(new ChangeMessageVisibilityCommand(input));
+  }
 
   async getQueueUrl(
     input: Pick<GetQueueUrlCommandInput, 'QueueName'>,
@@ -508,7 +531,7 @@ export class AwsSqsTransportClient implements SqsTransportClient {
   }
 }
 
-export class AwsSnsTransportClient implements SnsTransportClient {
+export class AwsSnsAdapter implements SnsTransportClient {
   constructor(private readonly client: SNSClient) {}
 
   async listTopics(

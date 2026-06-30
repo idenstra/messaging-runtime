@@ -6,9 +6,8 @@
       "importSpecifier": "@idenstra/messaging-runtime",
       "declarationPath": "dist/index.d.ts",
       "symbols": [
-        "AwsSnsTransportClient",
-        "AwsSqsRuntimeClient",
-        "AwsSqsTransportClient",
+        "AwsSnsAdapter",
+        "AwsSqsAdapter",
         "DecodedSnsNotificationJson",
         "decodeSnsEnvelope",
         "decodeSnsNotificationJson",
@@ -99,7 +98,6 @@
       "importSpecifier": "@idenstra/messaging-runtime/core",
       "declarationPath": "dist/core.d.ts",
       "symbols": [
-        "AwsSqsRuntimeClient",
         "SqsRuntimeClient",
         "SqsRuntimeRequestOptions",
         "SqsWorkerAckAction",

@@ -6,10 +6,9 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (86):
-  - `AwsSnsTransportClient`
-  - `AwsSqsRuntimeClient`
-  - `AwsSqsTransportClient`
+- exported symbols (85):
+  - `AwsSnsAdapter`
+  - `AwsSqsAdapter`
   - `DecodedSnsNotificationJson`
   - `decodeSnsEnvelope`
   - `decodeSnsNotificationJson`
@@ -98,8 +97,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core.d.ts`
-- exported symbols (38):
-  - `AwsSqsRuntimeClient`
+- exported symbols (37):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsWorkerAckAction`
