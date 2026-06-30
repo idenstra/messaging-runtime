@@ -35,6 +35,12 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 
 Consumer applications own configuration, dependency wiring, process entrypoints, and domain behavior. This package owns reusable SNS/SQS mechanics.
 
+Supported imports are intentionally narrow:
+
+- `@idenstra/messaging-runtime`
+- `@idenstra/messaging-runtime/core`
+- `@idenstra/messaging-runtime/nest`
+
 ## Documentation order
 
 Read the docs in this order:
@@ -48,6 +54,7 @@ Read the docs in this order:
 7. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
 
 Contributor and governance docs remain available under [`AGENTS.md`](AGENTS.md), [`WORKFLOW.md`](WORKFLOW.md), and `docs/`.
+For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](docs/HARNESS.md) and [`WORKFLOW.md`](WORKFLOW.md).
 
 ## Quick start
 
@@ -138,3 +145,6 @@ The default verification path is deterministic and does not require live AWS.
 The package is pre-`1.0`. While it stays in the `0.x` range, consumers should pin exact versions and treat minor releases as the main upgrade boundary.
 
 Before a public release, the package needs public license metadata, public registry posture, public-facing contribution/security docs, benchmark evidence, and a release checklist closeout. See [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md).
+
+Release policy and operator flow are documented in [`docs/RELEASES.md`](docs/RELEASES.md).
+Consumer versioning and supported-surface expectations are documented in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
