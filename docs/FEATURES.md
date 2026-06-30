@@ -1,0 +1,78 @@
+# Features
+
+`messaging-runtime` is a focused SNS/SQS runtime. Its maturity should come from being excellent at one transport family, not from pretending every broker has the same semantics.
+
+## Runtime capabilities
+
+| Capability | Supported | Notes |
+| --- | --- | --- |
+| SQS long polling | Yes | Per route through `waitTimeSeconds`. |
+| Bounded concurrency | Yes | Per route through `concurrency`. |
+| SQS max messages per poll | Yes | Capped to SQS maximum of 10. |
+| Plain SQS JSON decoding | Yes | Default route decode parses JSON bodies. `decodeSqsJsonBody` is also exported. |
+| SNS-over-SQS JSON decoding | Yes | `decodeSnsEnvelope` and `decodeSnsNotificationJson`. |
+| Message delete on success | Yes | Default success action is delete. |
+| Keep message for redelivery | Yes | Handler or error policy can return `keep`. |
+| Route-level error hook | Yes | `onError` can override failure action. |
+| Handler timeout | Yes | Optional `handlerTimeoutMs`. |
+| Timeout strategies | Yes | `cooperative` waits for handler settlement; `abandon` finalizes immediately and observes late settlement. |
+| Visibility heartbeat | Yes | Interval heartbeat and manual `heartbeat()` callback. |
+| Graceful shutdown | Yes | Poll abort plus in-flight task settlement. |
+| Runtime events | Yes | Hook through `onEvent`. |
+| Health snapshot | Yes | `getStatus()` and `getSnapshot()`. |
+| Manifest-driven route activation | Yes | `parseSqsWorkerServiceManifest` and `SqsWorkerServiceHost`. |
+| Queue URL resolver | Yes | Name, URL, ARN, preload, optional no-network mode. |
+| SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
+| SQS JSON publisher | Yes | Single-message and batch publishing. |
+| SNS JSON publisher | Yes | Single-message publishing. |
+| Nest adapter | Yes | Optional lifecycle and logger bridge. |
+| Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
+| Published benchmark suite | Not yet | Required before public performance claims. |
+
+## Public API shape
+
+Supported imports are intentionally narrow:
+
+```ts
+import { ... } from '@idenstra/messaging-runtime';
+import { ... } from '@idenstra/messaging-runtime/core';
+import { ... } from '@idenstra/messaging-runtime/nest';
+```
+
+Avoid deep imports into `dist/` or internal source files. The public surface should stay small enough that breaking changes are visible in API review.
+
+## Deliberate non-goals
+
+The package should not add:
+
+- Kafka, RabbitMQ, Redis stream, Pub/Sub, or generic broker providers;
+- provider-neutral route abstractions that hide SNS/SQS semantics;
+- business handlers;
+- application payload contracts;
+- persistence, outbox, inbox, or idempotency storage;
+- environment or secrets loading;
+- dynamic module or handler discovery;
+- runtime dependencies on Nest in the core package path.
+
+These omissions are part of the design. Generic broker abstractions tend to erase the exact behavior that matters most for SQS: visibility timeout, receive batch size, delete semantics, redelivery, and long-poll cost.
+
+## Feature gaps to close before public release
+
+The core feature set is credible, but the public maturity story is not complete until the following gaps are closed:
+
+1. Public package posture: license, package metadata, registry access, contribution docs, security policy, issue templates, and release instructions.
+2. Performance proof: deterministic benchmark suite with published baseline numbers.
+3. Optional integration proof: emulator-backed or LocalStack-style tests for receive, delete, visibility, publish, and resolver flows.
+4. API ergonomics review: clarify the split between runtime clients and transport clients, or provide a single AWS SQS adapter that satisfies both surfaces.
+5. Production guidance: document idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings.
+6. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
+
+## Feature acceptance rule
+
+A new feature belongs here only when all of these are true:
+
+- it is specific to SNS/SQS runtime or publishing behavior;
+- it can be tested without live AWS by default;
+- it does not force a framework dependency into the core path;
+- it has clear failure and ack semantics;
+- it is documented in the same change set.
