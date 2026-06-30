@@ -75,6 +75,26 @@ test('evaluatePullRequestGovernance passes for a closing PR with a completed exe
   assert.equal(evaluation.mode, 'issue-linked-closeout');
 });
 
+test('evaluatePullRequestGovernance rejects closing PRs when the matching active plan still exists', () => {
+  const evaluation = evaluatePullRequestGovernance({
+    body: [
+      'Closes #1',
+      'Execution plan: docs/exec-plans/completed/1-demo-plan.md',
+      'Plan-free exemption: none',
+      '',
+    ].join('\n'),
+    changedFiles: ['scripts/harness/verify.sh'],
+    existingIssueNumbers: new Set([1]),
+    repoFullName,
+    activeExecutionPlans: new Set(['docs/exec-plans/active/1-demo-plan.md']),
+    completedExecutionPlans: new Set(['docs/exec-plans/completed/1-demo-plan.md']),
+  });
+
+  assert.equal(evaluation.ok, false);
+  assert.equal(evaluation.mode, 'issue-linked-closeout');
+  assert.match(evaluation.message, /lingering active plan/);
+});
+
 test('evaluatePullRequestGovernance rejects completed plans that do not match the closing issue', () => {
   const evaluation = evaluatePullRequestGovernance({
     body: [

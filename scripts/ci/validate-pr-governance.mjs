@@ -114,6 +114,12 @@ export function classifyTrivialChange(changedFiles) {
   return null;
 }
 
+function listActivePlansForIssue(activeExecutionPlans, issueNumber) {
+  return [...activeExecutionPlans]
+    .filter((planPath) => extractIssueNumberFromExecutionPlanPath(planPath) === issueNumber)
+    .sort((left, right) => left.localeCompare(right));
+}
+
 function validatePlanFreeExemption(planExemption, trivialClassification) {
   if (!planExemption || planExemption === 'none') {
     return {
@@ -218,6 +224,15 @@ export function evaluatePullRequestGovernance({
           ok: false,
           mode: 'issue-linked',
           message: `completed execution plan path does not exist in the repo: ${executionPlan}`,
+        };
+      }
+
+      const lingeringActivePlans = listActivePlansForIssue(activeExecutionPlans, planIssueNumber);
+      if (lingeringActivePlans.length > 0) {
+        return {
+          ok: false,
+          mode: 'issue-linked-closeout',
+          message: `closing issue-linked pull requests must move the matching execution plan out of ${ACTIVE_EXECUTION_PLANS_DIR}/ before merge; lingering active plan(s): ${lingeringActivePlans.join(', ')}`,
         };
       }
 
