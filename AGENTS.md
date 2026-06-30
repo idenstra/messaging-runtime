@@ -58,6 +58,12 @@ Rules:
 - Default final gate for this repo:
   - `make verify`
 
+Execution-plan lifecycle:
+- if the PR body closes a same-repo issue, treat that PR as the closeout PR
+- move the linked plan into `docs/exec-plans/completed/` in the same change-set
+- use `make plan-close ISSUE=<number>` for deliberate pre-merge closeout moves
+- keep `make plan-sync` for stale closed-plan cleanup after issue closure
+
 Local style helpers:
 - `make format`
 - `make lint`

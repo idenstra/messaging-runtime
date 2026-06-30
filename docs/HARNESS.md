@@ -17,6 +17,7 @@ Command surface:
 - `make verify-fast`
 - `make verify`
 - `make plan-sync`
+- `make plan-close ISSUE=<number>`
 
 Default proof posture:
 - no Docker boot

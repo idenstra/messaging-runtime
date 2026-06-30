@@ -5,6 +5,7 @@ Closes #
 ## Execution plan
 
 Execution plan: N/A
+<!-- If this PR closes the linked issue, run `make plan-close ISSUE=<n>`, move the plan into docs/exec-plans/completed/, and update `Execution plan:` to that completed path before merge. -->
 
 ## Plan-free exemption
 
@@ -36,4 +37,3 @@ Plan-free reason: N/A
 
 Issue-free exemption: none
 Exemption reason: N/A
-
