@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   ACTIVE_EXECUTION_PLANS_DIR,
+  COMPLETED_EXECUTION_PLANS_DIR,
+  extractIssueNumberFromExecutionPlanPath,
   isActiveExecutionPlanPath,
+  isCompletedExecutionPlanPath,
   isExplicitNoExecutionPlan,
   listExecutionPlanPaths,
   normalizeExecutionPlanPath,
@@ -149,6 +152,7 @@ export function evaluatePullRequestGovernance({
   existingIssueNumbers,
   repoFullName,
   activeExecutionPlans,
+  completedExecutionPlans = new Set(),
 }) {
   const issueRefs = extractIssueRefs(body, repoFullName);
   const executionPlan = extractExecutionPlan(body);
@@ -167,19 +171,53 @@ export function evaluatePullRequestGovernance({
     }
 
     if (executionPlan && !isExplicitNoExecutionPlan(executionPlan)) {
-      if (!isActiveExecutionPlanPath(executionPlan)) {
+      const planIssueNumber = extractIssueNumberFromExecutionPlanPath(executionPlan);
+
+      if (!planIssueNumber) {
         return {
           ok: false,
           mode: 'issue-linked',
-          message: `execution plan must reference ${ACTIVE_EXECUTION_PLANS_DIR}/<issue>-slug.md`,
+          message: `execution plan must reference an issue-numbered path under ${ACTIVE_EXECUTION_PLANS_DIR}/ or ${COMPLETED_EXECUTION_PLANS_DIR}/`,
         };
       }
 
-      if (!activeExecutionPlans.has(executionPlan)) {
+      if (!issueRefs.includes(planIssueNumber)) {
         return {
           ok: false,
           mode: 'issue-linked',
-          message: `execution plan path does not exist in the repo: ${executionPlan}`,
+          message: `execution plan issue #${planIssueNumber} must match one of the closing issue refs: ${issueRefs.map((issueNumber) => `#${issueNumber}`).join(', ')}`,
+        };
+      }
+
+      if (isActiveExecutionPlanPath(executionPlan)) {
+        if (!activeExecutionPlans.has(executionPlan)) {
+          return {
+            ok: false,
+            mode: 'issue-linked',
+            message: `execution plan path does not exist in the repo: ${executionPlan}`,
+          };
+        }
+
+        return {
+          ok: false,
+          mode: 'issue-linked-closeout',
+          message: `closing issue-linked pull requests must move their execution plan to ${COMPLETED_EXECUTION_PLANS_DIR}/ before merge; run \`make plan-close ISSUE=${planIssueNumber}\` and update \`Execution plan:\` to the completed path`,
+        };
+      }
+
+      if (!isCompletedExecutionPlanPath(executionPlan)) {
+        return {
+          ok: false,
+          mode: 'issue-linked',
+          message: `execution plan must reference an issue-numbered path under ${ACTIVE_EXECUTION_PLANS_DIR}/ or ${COMPLETED_EXECUTION_PLANS_DIR}/`,
+        };
+      }
+
+      if (!completedExecutionPlans.has(executionPlan)) {
+        return {
+          ok: false,
+          mode: 'issue-linked',
+          message: `completed execution plan path does not exist in the repo: ${executionPlan}`,
         };
       }
 
@@ -187,14 +225,14 @@ export function evaluatePullRequestGovernance({
         return {
           ok: false,
           mode: 'issue-linked',
-          message: 'remove `Plan-free exemption` when the PR already references an active execution plan',
+          message: 'remove `Plan-free exemption` when the PR already references an execution plan',
         };
       }
 
       return {
         ok: true,
-        mode: 'issue-linked',
-        message: `validated same-repo issue link(s) and active execution plan: ${issueRefs.map((issueNumber) => `#${issueNumber}`).join(', ')}; ${executionPlan}`,
+        mode: 'issue-linked-closeout',
+        message: `validated same-repo closing issue link(s) and completed execution plan: ${issueRefs.map((issueNumber) => `#${issueNumber}`).join(', ')}; ${executionPlan}`,
       };
     }
 
@@ -316,6 +354,7 @@ async function runCli() {
     [...issueStates.entries()].filter(([, state]) => state && state !== 'MISSING').map(([issueNumber]) => issueNumber),
   );
   const activeExecutionPlans = new Set(listExecutionPlanPaths(root, ACTIVE_EXECUTION_PLANS_DIR));
+  const completedExecutionPlans = new Set(listExecutionPlanPaths(root, COMPLETED_EXECUTION_PLANS_DIR));
 
   const evaluation = evaluatePullRequestGovernance({
     body,
@@ -323,6 +362,7 @@ async function runCli() {
     existingIssueNumbers,
     repoFullName,
     activeExecutionPlans,
+    completedExecutionPlans,
   });
 
   if (evaluation.ok) {

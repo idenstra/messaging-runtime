@@ -129,13 +129,15 @@ function createVerificationCategory(repoRoot) {
   const packageJson = exists('package.json', repoRoot) ? read('package.json', repoRoot) : '';
 
   const checks = [
-    ['format', 'lint', 'audit', 'verify-fast', 'verify', 'plan-sync'].every((target) => makefile.includes(`${target}:`))
+    ['format', 'lint', 'audit', 'verify-fast', 'verify', 'plan-sync', 'plan-close'].every((target) =>
+      makefile.includes(`${target}:`),
+    )
       ? createCheck('make-targets', 'pass', 'Makefile exposes the harness targets')
       : createCheck(
           'make-targets',
           'fail',
           'Makefile is missing one or more harness targets',
-          'Wire format, lint, audit, verify-fast, verify, and plan-sync into Makefile.',
+          'Wire format, lint, audit, verify-fast, verify, plan-sync, and plan-close into Makefile.',
         ),
     exists('biome.json', repoRoot) &&
     packageJson.includes('"format"') &&

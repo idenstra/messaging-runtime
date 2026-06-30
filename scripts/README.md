@@ -11,6 +11,7 @@ Key scripts:
 - `scripts/harness/check-style-drift.mjs`
 - `scripts/harness/check-public-import-surface.mjs`
 - `scripts/harness/check-execution-plan-lifecycle.mjs`
+- `scripts/harness/close-execution-plan.mjs`
 - `scripts/harness/validate-backlog-ownership.mjs`
 - `scripts/harness/verify.sh`
 - `scripts/public-surface/run-interface-reports.mjs`
@@ -25,3 +26,7 @@ Package-level code-shape tooling:
 - `npm run public-surface:report`
 - `npm run public-surface:snapshot`
 - `npm run public-surface:check`
+
+Execution-plan helpers:
+- `make plan-sync`
+- `make plan-close ISSUE=<number>`

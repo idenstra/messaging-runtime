@@ -74,6 +74,7 @@ This file adds proof tiers and handoff expectations around that sequence.
 - `make verify-fast`: validator self-tests, repo hygiene checks, style-drift validation, public-surface validation, Biome lint, package install/build/test, package-interface report and export-snapshot checks, `npm pack --dry-run`, and release-readiness validation.
 - `make verify`: default repo gate; it currently aliases `make verify-fast`.
 - `make plan-sync`: local execution-plan lifecycle sync that moves closed-issue plans from `docs/exec-plans/active/` to `docs/exec-plans/completed/`.
+- `make plan-close ISSUE=<number>`: local closeout helper that moves a numbered active plan into `docs/exec-plans/completed/` before merging the PR that closes the issue.
 
 ## Exception protocol
 

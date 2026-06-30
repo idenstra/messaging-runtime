@@ -40,7 +40,7 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(
     repoRoot,
     'docs/EXECUTION_PLANS.md',
-    'docs/templates/execution-plan.md\ndocs/templates/handoff.md\nmake plan-sync\n',
+    'docs/templates/execution-plan.md\ndocs/templates/handoff.md\nmake plan-sync\nmake plan-close ISSUE=123\n',
   );
   writeFile(
     repoRoot,
@@ -83,7 +83,7 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(
     repoRoot,
     'Makefile',
-    '.PHONY: format lint audit verify-fast verify plan-sync\nformat:\nlint:\naudit:\nverify-fast:\nverify:\nplan-sync:\n',
+    '.PHONY: format lint audit verify-fast verify plan-sync plan-close\nformat:\nlint:\naudit:\nverify-fast:\nverify:\nplan-sync:\nplan-close:\n',
   );
   writeFile(
     repoRoot,

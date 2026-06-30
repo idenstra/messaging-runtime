@@ -29,6 +29,10 @@ export function isActiveExecutionPlanPath(relativePath) {
   return /^docs\/exec-plans\/active\/\d+-[^/]+\.md$/.test(normalizeExecutionPlanPath(relativePath));
 }
 
+export function isCompletedExecutionPlanPath(relativePath) {
+  return /^docs\/exec-plans\/completed\/\d+-[^/]+\.md$/.test(normalizeExecutionPlanPath(relativePath));
+}
+
 export function extractIssueNumberFromExecutionPlanPath(relativePath) {
   const match = normalizeExecutionPlanPath(relativePath).match(issueNumberedExecutionPlanPattern);
 
