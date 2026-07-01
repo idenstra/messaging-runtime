@@ -403,6 +403,21 @@ test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport o
     VisibilityTimeout: 30,
   });
   await sqsAdapter.getQueueUrl({ QueueName: 'dispatch-queue' });
+  await sqsAdapter.getQueueAttributes({
+    QueueUrl: 'https://queue.test/dispatch',
+    AttributeNames: ['QueueArn', 'ApproximateNumberOfMessages'],
+  });
+  await sqsAdapter.listDeadLetterSourceQueues({ QueueUrl: 'https://queue.test/dispatch', MaxResults: 10 });
+  await sqsAdapter.startMessageMoveTask({
+    SourceArn: 'arn:aws:sqs:us-east-1:123456789012:dispatch-dlq',
+    DestinationArn: 'arn:aws:sqs:us-east-1:123456789012:dispatch-primary',
+    MaxNumberOfMessagesPerSecond: 25,
+  });
+  await sqsAdapter.listMessageMoveTasks({
+    SourceArn: 'arn:aws:sqs:us-east-1:123456789012:dispatch-dlq',
+    MaxResults: 5,
+  });
+  await sqsAdapter.cancelMessageMoveTask({ TaskHandle: 'task-1' });
   await sqsAdapter.sendMessage({ QueueUrl: 'https://queue.test/dispatch', MessageBody: '{}' });
   await sqsAdapter.sendMessageBatch({
     QueueUrl: 'https://queue.test/dispatch',
@@ -411,6 +426,6 @@ test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport o
   await snsAdapter.listTopics({ NextToken: undefined });
   await snsAdapter.publish({ TopicArn: 'arn:aws:sns:us-east-1:123456789012:topic', Message: '{}' });
 
-  assert.equal(sentSqsCommands.length, 6);
+  assert.equal(sentSqsCommands.length, 11);
   assert.equal(sentSnsCommands.length, 2);
 });

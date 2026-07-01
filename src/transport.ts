@@ -10,13 +10,25 @@ import {
 } from '@aws-sdk/client-sns';
 import {
   type BatchResultErrorEntry,
+  CancelMessageMoveTaskCommand,
+  type CancelMessageMoveTaskCommandInput,
+  type CancelMessageMoveTaskCommandOutput,
   ChangeMessageVisibilityCommand,
   type ChangeMessageVisibilityCommandInput,
   DeleteMessageCommand,
   type DeleteMessageCommandInput,
+  GetQueueAttributesCommand,
+  type GetQueueAttributesCommandInput,
+  type GetQueueAttributesCommandOutput,
   GetQueueUrlCommand,
   type GetQueueUrlCommandInput,
   type GetQueueUrlCommandOutput,
+  ListDeadLetterSourceQueuesCommand,
+  type ListDeadLetterSourceQueuesCommandInput,
+  type ListDeadLetterSourceQueuesCommandOutput,
+  ListMessageMoveTasksCommand,
+  type ListMessageMoveTasksCommandInput,
+  type ListMessageMoveTasksCommandOutput,
   ReceiveMessageCommand,
   type ReceiveMessageCommandInput,
   type ReceiveMessageCommandOutput,
@@ -29,8 +41,12 @@ import {
   type SendMessageCommandOutput,
   SQSClient,
   type MessageAttributeValue as SqsSdkMessageAttributeValue,
+  StartMessageMoveTaskCommand,
+  type StartMessageMoveTaskCommandInput,
+  type StartMessageMoveTaskCommandOutput,
 } from '@aws-sdk/client-sqs';
 import type { SqsRuntimeClient, SqsRuntimeRequestOptions } from './core';
+import type { SqsQueueOperationsClient } from './queue-ops';
 
 const SQS_ARN_SERVICE = 'sqs';
 const SNS_ARN_SERVICE = 'sns';
@@ -497,7 +513,7 @@ export class SnsPublisher {
   }
 }
 
-export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient {
+export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient {
   constructor(private readonly client: SQSClient) {}
 
   receiveMessage(
@@ -520,6 +536,41 @@ export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient {
   ): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>> {
     const response = await this.client.send(new GetQueueUrlCommand(input));
     return { QueueUrl: response.QueueUrl };
+  }
+
+  async getQueueAttributes(
+    input: Pick<GetQueueAttributesCommandInput, 'QueueUrl' | 'AttributeNames'>,
+  ): Promise<Pick<GetQueueAttributesCommandOutput, 'Attributes'>> {
+    const response = await this.client.send(new GetQueueAttributesCommand(input));
+    return { Attributes: response.Attributes };
+  }
+
+  async listDeadLetterSourceQueues(
+    input: Pick<ListDeadLetterSourceQueuesCommandInput, 'QueueUrl' | 'NextToken' | 'MaxResults'>,
+  ): Promise<Pick<ListDeadLetterSourceQueuesCommandOutput, 'queueUrls' | 'NextToken'>> {
+    const response = await this.client.send(new ListDeadLetterSourceQueuesCommand(input));
+    return { queueUrls: response.queueUrls, NextToken: response.NextToken };
+  }
+
+  async startMessageMoveTask(
+    input: Pick<StartMessageMoveTaskCommandInput, 'SourceArn' | 'DestinationArn' | 'MaxNumberOfMessagesPerSecond'>,
+  ): Promise<Pick<StartMessageMoveTaskCommandOutput, 'TaskHandle'>> {
+    const response = await this.client.send(new StartMessageMoveTaskCommand(input));
+    return { TaskHandle: response.TaskHandle };
+  }
+
+  async listMessageMoveTasks(
+    input: Pick<ListMessageMoveTasksCommandInput, 'SourceArn' | 'MaxResults'>,
+  ): Promise<Pick<ListMessageMoveTasksCommandOutput, 'Results'>> {
+    const response = await this.client.send(new ListMessageMoveTasksCommand(input));
+    return { Results: response.Results };
+  }
+
+  async cancelMessageMoveTask(
+    input: Pick<CancelMessageMoveTaskCommandInput, 'TaskHandle'>,
+  ): Promise<Pick<CancelMessageMoveTaskCommandOutput, 'ApproximateNumberOfMessagesMoved'>> {
+    const response = await this.client.send(new CancelMessageMoveTaskCommand(input));
+    return { ApproximateNumberOfMessagesMoved: response.ApproximateNumberOfMessagesMoved };
   }
 
   async sendMessage(input: SendMessageCommandInput): Promise<SendMessageCommandOutput> {

@@ -23,6 +23,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - SNS-over-SQS and plain SQS JSON decoding helpers
 - cached SQS queue URL and SNS topic ARN resolvers
 - JSON SQS/SNS publishers, including SQS batch publishing
+- queue inspection helpers and native SQS DLQ redrive task management
 - optional Nest lifecycle and logger adapter through `@idenstra/messaging-runtime/nest`
 
 ## What it deliberately does not provide
@@ -31,6 +32,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - business handlers or application message contracts
 - environment, secrets, or config-file loading
 - dynamic handler discovery
+- generic manual message replay helpers
 - live AWS requirements for the default test harness
 
 Consumer applications own configuration, dependency wiring, process entrypoints, and domain behavior. This package owns reusable SNS/SQS mechanics.
@@ -50,8 +52,9 @@ Read the docs in this order:
 3. [`docs/FEATURES.md`](docs/FEATURES.md) - supported feature set and non-goals
 4. [`docs/RUNTIME_SEMANTICS.md`](docs/RUNTIME_SEMANTICS.md) - polling, ack, timeout, and shutdown behavior
 5. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) - configuration, observability, testing, and Nest usage
-6. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
-7. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
+6. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
+7. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
+8. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
 
 Contributor and governance docs remain available under [`AGENTS.md`](AGENTS.md), [`WORKFLOW.md`](WORKFLOW.md), and `docs/`.
 For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](docs/HARNESS.md) and [`WORKFLOW.md`](WORKFLOW.md).
@@ -132,6 +135,23 @@ const route = {
   },
 };
 ```
+
+For operator queue work, use the queue-ops helpers rather than ad hoc AWS calls:
+
+```ts
+import { SQSClient } from '@aws-sdk/client-sqs';
+import { AwsSqsAdapter, SqsDlqRedriveManager, SqsQueueInspector } from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const inspector = new SqsQueueInspector(sqsAdapter);
+const redriveManager = new SqsDlqRedriveManager(sqsAdapter, { queueInspector: inspector });
+
+const queueSnapshot = await inspector.inspectQueue('jobs-dlq');
+const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-dlq' });
+```
+
+Manual message-level replay remains consumer-owned because idempotency and safety rules depend on the consuming system. See [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md).
 
 ## Development
 

@@ -6,13 +6,17 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (85):
+- exported symbols (102):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
+  - `CancelSqsDlqRedriveInput`
+  - `CancelSqsDlqRedriveResult`
   - `DecodedSnsNotificationJson`
   - `decodeSnsEnvelope`
   - `decodeSnsNotificationJson`
   - `decodeSqsJsonBody`
+  - `ListSqsDlqRedriveTasksInput`
+  - `ListSqsDlqRedriveTasksResult`
   - `packageMetadata`
   - `parseSqsWorkerServiceManifest`
   - `runSqsWorkerServiceUntilSignal`
@@ -32,9 +36,20 @@ Package: `@idenstra/messaging-runtime`
   - `SnsTopicArnResolverOptions`
   - `SnsTransportClient`
   - `SnsUnsubscribeConfirmationEnvelope`
+  - `SqsDeadLetterSourceQueuesResult`
+  - `SqsDlqRedriveManager`
+  - `SqsDlqRedriveManagerOptions`
   - `SqsMessageAttributes`
+  - `SqsMessageMoveTaskStatus`
+  - `SqsMessageMoveTaskSummary`
   - `SqsPublishClient`
   - `SqsPublisher`
+  - `SqsQueueDescription`
+  - `SqsQueueInspector`
+  - `SqsQueueInspectorOptions`
+  - `SqsQueueOperationsClient`
+  - `SqsQueueRedriveAllowPolicy`
+  - `SqsQueueRedrivePolicy`
   - `SqsQueueUrlResolver`
   - `SqsQueueUrlResolverClient`
   - `SqsQueueUrlResolverOptions`
@@ -92,6 +107,8 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerServiceRunOptions`
   - `SqsWorkerTimeoutError`
   - `SqsWorkerTimeoutStrategy`
+  - `StartSqsDlqRedriveInput`
+  - `StartSqsDlqRedriveResult`
 
 ## @idenstra/messaging-runtime/core
 

@@ -9,6 +9,11 @@ Format rules:
 
 ## [Unreleased]
 
+### Added
+
+- added queue inspection helpers and native SQS DLQ redrive task management through `SqsQueueInspector`, `SqsDlqRedriveManager`, and the combined `AwsSqsAdapter`
+- added a consumer-owned queue-ops example script and explicit docs that keep manual message replay outside the shared package
+
 ### Changed
 
 - breaking: unified the consumer-facing AWS wrappers into `AwsSqsAdapter` and `AwsSnsAdapter`, removing the earlier `AwsSqsRuntimeClient`, `AwsSqsTransportClient`, and `AwsSnsTransportClient` names before wider package adoption

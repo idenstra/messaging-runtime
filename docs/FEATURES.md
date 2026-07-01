@@ -25,6 +25,10 @@
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
 | SQS JSON publisher | Yes | Single-message and batch publishing. |
 | SNS JSON publisher | Yes | Single-message publishing. |
+| Queue inspection | Yes | `SqsQueueInspector` resolves queue identifiers and normalizes queue attributes. |
+| DLQ source-queue discovery | Yes | `SqsQueueInspector.listDeadLetterSourceQueues(...)` paginates `ListDeadLetterSourceQueues`. |
+| Native DLQ redrive control | Yes | `SqsDlqRedriveManager` wraps `StartMessageMoveTask`, `ListMessageMoveTasks`, and `CancelMessageMoveTask`. |
+| Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
 | Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
 | Published benchmark suite | Not yet | Required before public performance claims. |
@@ -50,6 +54,7 @@ The package should not add:
 - business handlers;
 - application payload contracts;
 - persistence, outbox, inbox, or idempotency storage;
+- generic manual replay or message mutation tooling;
 - environment or secrets loading;
 - dynamic module or handler discovery;
 - runtime dependencies on Nest in the core package path.
@@ -64,7 +69,7 @@ The core feature set is credible, but the public maturity story is not complete 
 2. Performance proof: deterministic benchmark suite with published baseline numbers.
 3. Optional integration proof: emulator-backed or LocalStack-style tests for receive, delete, visibility, publish, and resolver flows.
 4. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
-5. Production guidance: document idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings.
+5. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.
 6. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
 
 ## Feature acceptance rule

@@ -25,7 +25,12 @@ The package currently provides four capability groups:
    - cached queue/topic resolution
    - JSON SQS/SNS publishers
 
-4. Optional Nest adapter
+4. Queue operations
+   - queue inspection
+   - dead-letter source queue discovery
+   - native DLQ redrive task management
+
+5. Optional Nest adapter
    - Nest lifecycle glue
    - Nest logger bridging
 
@@ -92,6 +97,21 @@ flowchart LR
   Consumer --> Decoder
 ```
 
+## Queue-ops flow
+
+```mermaid
+flowchart LR
+  Operator["consumer-owned admin command"]
+  Inspector["SqsQueueInspector"]
+  Redrive["SqsDlqRedriveManager"]
+  Broker["AWS SQS"]
+
+  Operator --> Inspector
+  Operator --> Redrive
+  Inspector --> Broker
+  Redrive --> Broker
+```
+
 ## Framework-agnostic usage
 
 Choose this when:
@@ -131,6 +151,7 @@ The library does:
 - resolve queue identifiers into queue URLs
 - own polling, timeout, heartbeat, shutdown, and ack behavior
 - provide reusable transport decoding and publish helpers
+- provide reusable queue inspection and native redrive helpers
 
 ## Current non-goals
 
@@ -138,6 +159,7 @@ The package does not currently own:
 - domain message contracts
 - provider-neutral broker abstractions
 - campaign or communication business logic
+- generic manual message replay tooling
 - direct consumer app wiring or deployment topology
 
 Those belong in the consuming repos.
