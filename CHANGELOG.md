@@ -11,6 +11,8 @@ Format rules:
 
 ### Added
 
+- added `@idenstra/messaging-runtime/observability` with OTEL metrics adapters, W3C trace propagation helpers, and worker span wrappers
+- added OTEL/SigNoz observability docs, a compile-checked example worker, and AWS-aware autoscaling guidance for ECS/Fargate and Kubernetes
 - added queue inspection helpers and native SQS DLQ redrive task management through `SqsQueueInspector`, `SqsDlqRedriveManager`, and the combined `AwsSqsAdapter`
 - added a consumer-owned queue-ops example script and explicit docs that keep manual message replay outside the shared package
 - added transport-level batch helpers for SQS delete / visibility changes through `SqsMessageBatchOperator`

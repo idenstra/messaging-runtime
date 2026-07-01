@@ -25,6 +25,14 @@ export const publicEntrypoints = [
     reportConfigPath: 'public-surface-report.nest.json',
     reportPath: 'etc/messaging-runtime-nest.public-surface.api.md',
   },
+  {
+    id: 'observability',
+    exportKey: './observability',
+    importSpecifier: '@idenstra/messaging-runtime/observability',
+    declarationPath: 'dist/observability.d.ts',
+    reportConfigPath: 'public-surface-report.observability.json',
+    reportPath: 'etc/messaging-runtime-observability.public-surface.api.md',
+  },
 ];
 
 export const supportedPublicImportSpecifiers = publicEntrypoints.map((entrypoint) => entrypoint.importSpecifier);

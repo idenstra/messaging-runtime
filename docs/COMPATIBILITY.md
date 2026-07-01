@@ -13,6 +13,7 @@ Supported imports are limited to:
 - `@idenstra/messaging-runtime`
 - `@idenstra/messaging-runtime/core`
 - `@idenstra/messaging-runtime/nest`
+- `@idenstra/messaging-runtime/observability`
 
 Supported consumer-facing AWS wrapper classes are:
 - `AwsSqsAdapter`
@@ -22,6 +23,11 @@ Unsupported:
 - deep imports into `dist/`
 - deep imports into internal source files
 - relying on undocumented package structure
+
+Observability subpath notes:
+- `@idenstra/messaging-runtime/observability` depends on `@opentelemetry/api`
+- OTEL SDK and exporter packages remain consumer-installed, not runtime-owned
+- the root, `core`, and `nest` entrypoints stay usable without installing OTEL SDK/exporter packages
 
 ## Versioning policy while `0.x`
 

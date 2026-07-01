@@ -68,7 +68,11 @@ function seedMinimalHarnessRepo(repoRoot) {
   );
   writeFile(repoRoot, 'CHANGELOG.md', '# Changelog\n\n## [0.1.0] - 2026-06-29\n\n- Initial release.\n');
   writeFile(repoRoot, 'docs/RELEASES.md', 'package.json\nGitHub Packages\n');
-  writeFile(repoRoot, 'docs/COMPATIBILITY.md', 'exact versions\nNode 24\n@idenstra/messaging-runtime/core\n');
+  writeFile(
+    repoRoot,
+    'docs/COMPATIBILITY.md',
+    'exact versions\nNode 24\n@idenstra/messaging-runtime/core\n@idenstra/messaging-runtime/observability\n',
+  );
   writeFile(repoRoot, 'scripts/README.md', 'verify.sh\n');
   writeFile(repoRoot, 'biome.json', '{}\n');
   writeFile(
@@ -117,9 +121,11 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(repoRoot, 'public-surface-report.root.json', '{}\n');
   writeFile(repoRoot, 'public-surface-report.core.json', '{}\n');
   writeFile(repoRoot, 'public-surface-report.nest.json', '{}\n');
+  writeFile(repoRoot, 'public-surface-report.observability.json', '{}\n');
   writeFile(repoRoot, 'etc/messaging-runtime.public-surface.api.md', '# surface\n');
   writeFile(repoRoot, 'etc/messaging-runtime-core.public-surface.api.md', '# surface\n');
   writeFile(repoRoot, 'etc/messaging-runtime-nest.public-surface.api.md', '# surface\n');
+  writeFile(repoRoot, 'etc/messaging-runtime-observability.public-surface.api.md', '# surface\n');
   writeFile(repoRoot, 'reports/public-surface/exports.json', '{}\n');
   writeFile(repoRoot, 'reports/public-surface/exports.md', '# exports\n');
   writeFile(

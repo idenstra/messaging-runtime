@@ -3,7 +3,7 @@ import childProcess from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 
-test('queue-ops example script type-checks against the supported public imports', () => {
+test('example scripts type-check against the supported public imports', () => {
   const repoRoot = process.cwd();
   const tscBinary = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
 

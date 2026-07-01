@@ -20,6 +20,9 @@
 | Graceful shutdown | Yes | Poll abort plus in-flight task settlement. |
 | Runtime events | Yes | Hook through `onEvent`. |
 | Health snapshot | Yes | `getStatus()` and `getSnapshot()`. |
+| OTEL metrics adapter | Yes | `@idenstra/messaging-runtime/observability` maps runtime events and snapshots into an injected `Meter`. |
+| W3C trace propagation helpers | Yes | Inject and extract `traceparent`, `tracestate`, and `baggage` through SNS/SQS message attributes. |
+| Consumer span wrapper | Yes | `withOpenTelemetrySqsWorkerTracing(...)` wraps a route without changing worker-core semantics. |
 | Manifest-driven route activation | Yes | `parseSqsWorkerServiceManifest` and `SqsWorkerServiceHost`. |
 | Queue URL resolver | Yes | Name, URL, ARN, preload, optional no-network mode. |
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
@@ -29,6 +32,8 @@
 | Queue inspection | Yes | `SqsQueueInspector` resolves queue identifiers and normalizes queue attributes. |
 | DLQ source-queue discovery | Yes | `SqsQueueInspector.listDeadLetterSourceQueues(...)` paginates `ListDeadLetterSourceQueues`. |
 | Native DLQ redrive control | Yes | `SqsDlqRedriveManager` wraps `StartMessageMoveTask`, `ListMessageMoveTasks`, and `CancelMessageMoveTask`. |
+| SigNoz backend support | Docs only | Package code stays OTEL-first and vendor-neutral; SigNoz is the first documented OTLP backend example. |
+| AWS-aware worker autoscaling guidance | Yes | ECS/Fargate and Kubernetes guidance is documented at the runbook level, not baked into the package. |
 | Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
 | Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
@@ -42,6 +47,7 @@ Supported imports are intentionally narrow:
 import { ... } from '@idenstra/messaging-runtime';
 import { ... } from '@idenstra/messaging-runtime/core';
 import { ... } from '@idenstra/messaging-runtime/nest';
+import { ... } from '@idenstra/messaging-runtime/observability';
 ```
 
 Avoid deep imports into `dist/` or internal source files. The public surface should stay small enough that breaking changes are visible in API review.

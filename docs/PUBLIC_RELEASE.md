@@ -27,10 +27,19 @@ This repository is not public-ready until the following readiness criteria are o
 
 - Review the public export surface and remove accidental exports.
 - Keep API Extractor reports and export snapshots aligned.
+- Keep the supported subpath set explicit and stable:
+  - `@idenstra/messaging-runtime`
+  - `@idenstra/messaging-runtime/core`
+  - `@idenstra/messaging-runtime/nest`
+  - `@idenstra/messaging-runtime/observability`
 - Keep the combined AWS adapter contract stable and documented:
   - `AwsSqsAdapter` for SQS runtime and transport operations
   - `AwsSnsAdapter` for SNS publish and topic-resolution operations
   - separate capability interfaces remain internal architecture, not setup burden
+- Keep OTEL posture stable and documented:
+  - `@opentelemetry/api` stays the only package-level observability peer dependency
+  - SDK/exporter choices remain consumer-owned
+  - SigNoz remains a documented backend example, not a runtime-specific adapter
 - Document the supported Node baseline and why it is `>=24`.
 - Define the `1.0.0` criteria.
 - Add migration notes for breaking changes while pre-`1.0`.

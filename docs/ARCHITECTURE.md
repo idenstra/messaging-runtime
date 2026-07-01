@@ -6,6 +6,7 @@ Owned surfaces:
 - queue polling/runtime behavior
 - route-level failure policy and timeout semantics
 - runtime event hooks and status/snapshot surfaces
+- OTEL metrics/tracing helpers and W3C trace propagation helpers
 - worker-service host/bootstrap and signal-runner ergonomics
 - explicit SNS/SQS transport helpers
 - queue inspection and native DLQ redrive task helpers
@@ -40,6 +41,11 @@ Current state:
   - JSON-oriented SQS/SNS publisher helpers
   - queue inspection and normalized queue attribute snapshots
   - native SQS DLQ redrive task management
+  - observability helpers exported from `@idenstra/messaging-runtime/observability`
+    - OTEL metrics mapping from runtime events
+    - snapshot-derived observable metrics
+    - W3C trace-context injection/extraction helpers
+    - consumer span wrappers for worker handlers
   - combined AWS adapter setup for consumer-facing SQS and SNS wiring
 - resolver preload configuration is consumer-owned:
   - apps may inject known queue/topic mappings at startup
@@ -64,11 +70,13 @@ flowchart TD
   Core["core runtime"]
   Host["host/bootstrap"]
   Transport["transport helpers"]
+  Observability["observability helpers"]
   Adapter["optional adapters"]
 
   Root --> Core
   Root --> Host
   Root --> Transport
+  Root --> Observability
   Root --> Adapter
 ```
 
@@ -79,11 +87,14 @@ flowchart LR
   App["consumer app"]
   Config["consumer-loaded config"]
   Runtime["messaging-runtime"]
+  Otel["OpenTelemetry SDK / OTLP"]
   AWS["AWS SNS/SQS"]
 
   App --> Config
   App --> Runtime
   Config --> Runtime
+  App --> Otel
+  Runtime --> Otel
   Runtime --> AWS
 ```
 
