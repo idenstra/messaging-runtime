@@ -2,10 +2,15 @@ import {
   ListTopicsCommand,
   type ListTopicsCommandInput,
   type ListTopicsCommandOutput,
+  PublishBatchCommand,
+  type PublishBatchCommandInput,
+  type PublishBatchCommandOutput,
+  type PublishBatchResultEntry,
   PublishCommand,
   type PublishCommandInput,
   type PublishCommandOutput,
   SNSClient,
+  type BatchResultErrorEntry as SnsBatchResultErrorEntry,
   type MessageAttributeValue as SnsSdkMessageAttributeValue,
 } from '@aws-sdk/client-sns';
 import {
@@ -13,8 +18,16 @@ import {
   CancelMessageMoveTaskCommand,
   type CancelMessageMoveTaskCommandInput,
   type CancelMessageMoveTaskCommandOutput,
+  ChangeMessageVisibilityBatchCommand,
+  type ChangeMessageVisibilityBatchCommandInput,
+  type ChangeMessageVisibilityBatchCommandOutput,
+  type ChangeMessageVisibilityBatchResultEntry,
   ChangeMessageVisibilityCommand,
   type ChangeMessageVisibilityCommandInput,
+  DeleteMessageBatchCommand,
+  type DeleteMessageBatchCommandInput,
+  type DeleteMessageBatchCommandOutput,
+  type DeleteMessageBatchResultEntry,
   DeleteMessageCommand,
   type DeleteMessageCommandInput,
   GetQueueAttributesCommand,
@@ -113,11 +126,19 @@ export interface SqsPublishClient {
   sendMessageBatch(input: SendMessageBatchCommandInput): Promise<SendMessageBatchCommandOutput>;
 }
 
-export interface SnsPublishClient {
-  publish(input: PublishCommandInput): Promise<PublishCommandOutput>;
+export interface SqsBatchOperationClient {
+  deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput>;
+  changeMessageVisibilityBatch(
+    input: ChangeMessageVisibilityBatchCommandInput,
+  ): Promise<ChangeMessageVisibilityBatchCommandOutput>;
 }
 
-export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient;
+export interface SnsPublishClient {
+  publish(input: PublishCommandInput): Promise<PublishCommandOutput>;
+  publishBatch(input: PublishBatchCommandInput): Promise<PublishBatchCommandOutput>;
+}
+
+export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
 export type SnsTransportClient = SnsTopicArnResolverClient & SnsPublishClient;
 
 export interface SqsSendJsonOptions {
@@ -176,6 +197,56 @@ export interface SqsSendJsonBatchResult<TId extends string = string> {
   failedById: Record<string, SqsSendJsonBatchFailure<TId>>;
 }
 
+export interface SqsBatchOperationSuccess<TId extends string = string> {
+  id: TId;
+}
+
+export interface SqsBatchOperationFailure<TId extends string = string> {
+  id: TId;
+  code?: string;
+  message?: string;
+  senderFault?: boolean;
+}
+
+export interface SqsDeleteMessagesBatchEntry<TId extends string = string> {
+  id: TId;
+  receiptHandle: string;
+}
+
+export interface SqsDeleteMessagesInput<TId extends string = string> {
+  queue: string;
+  entries: Array<SqsDeleteMessagesBatchEntry<TId>>;
+}
+
+export interface SqsDeleteMessagesResult<TId extends string = string> {
+  queueUrl: string;
+  requestedCount: number;
+  successfulCount: number;
+  failedCount: number;
+  successfulById: Record<string, SqsBatchOperationSuccess<TId>>;
+  failedById: Record<string, SqsBatchOperationFailure<TId>>;
+}
+
+export interface SqsChangeMessageVisibilityBatchEntry<TId extends string = string> {
+  id: TId;
+  receiptHandle: string;
+  visibilityTimeoutSeconds: number;
+}
+
+export interface SqsChangeMessageVisibilityInput<TId extends string = string> {
+  queue: string;
+  entries: Array<SqsChangeMessageVisibilityBatchEntry<TId>>;
+}
+
+export interface SqsChangeMessageVisibilityResult<TId extends string = string> {
+  queueUrl: string;
+  requestedCount: number;
+  successfulCount: number;
+  failedCount: number;
+  successfulById: Record<string, SqsBatchOperationSuccess<TId>>;
+  failedById: Record<string, SqsBatchOperationFailure<TId>>;
+}
+
 export interface SnsPublishJsonOptions {
   subject?: string;
   messageAttributes?: SnsMessageAttributes;
@@ -192,6 +263,39 @@ export interface SnsPublishJsonResult {
   topicArn: string;
   messageId?: string;
   sequenceNumber?: string;
+}
+
+export interface SnsPublishJsonBatchEntry<TId extends string = string, TPayload = unknown>
+  extends SnsPublishJsonOptions {
+  id: TId;
+  payload: TPayload;
+}
+
+export interface SnsPublishJsonBatchInput<TId extends string = string, TPayload = unknown> {
+  topic: string;
+  entries: Array<SnsPublishJsonBatchEntry<TId, TPayload>>;
+}
+
+export interface SnsPublishJsonBatchSuccess<TId extends string = string> {
+  id: TId;
+  messageId?: string;
+  sequenceNumber?: string;
+}
+
+export interface SnsPublishJsonBatchFailure<TId extends string = string> {
+  id: TId;
+  code?: string;
+  message?: string;
+  senderFault?: boolean;
+}
+
+export interface SnsPublishJsonBatchResult<TId extends string = string> {
+  topicArn: string;
+  requestedCount: number;
+  successfulCount: number;
+  failedCount: number;
+  successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>>;
+  failedById: Record<string, SnsPublishJsonBatchFailure<TId>>;
 }
 
 export interface SqsQueueUrlResolverOptions {
@@ -448,7 +552,7 @@ export class SqsPublisher {
   async sendJsonBatch<TId extends string, TPayload>(
     input: SqsSendJsonBatchInput<TId, TPayload>,
   ): Promise<SqsSendJsonBatchResult<TId>> {
-    assertUniqueBatchEntryIds(input.entries);
+    assertUniqueBatchEntryIds(input.entries, 'SQS batch publish entry id');
     const queueUrl = await this.resolver.resolve(input.queue);
     const successfulById: Record<string, SqsSendJsonBatchSuccess<TId>> = {};
     const failedById: Record<string, SqsSendJsonBatchFailure<TId>> = {};
@@ -488,6 +592,89 @@ export class SqsPublisher {
   }
 }
 
+export class SqsMessageBatchOperator {
+  private readonly resolver: SqsQueueUrlResolver;
+
+  constructor(
+    private readonly client: SqsQueueUrlResolverClient & SqsBatchOperationClient,
+    resolver?: SqsQueueUrlResolver,
+  ) {
+    this.resolver = resolver ?? new SqsQueueUrlResolver(client);
+  }
+
+  async deleteMessages<TId extends string>(input: SqsDeleteMessagesInput<TId>): Promise<SqsDeleteMessagesResult<TId>> {
+    assertUniqueBatchEntryIds(input.entries, 'SQS delete batch entry id');
+    const queueUrl = await this.resolver.resolve(input.queue);
+    const successfulById: Record<string, SqsBatchOperationSuccess<TId>> = {};
+    const failedById: Record<string, SqsBatchOperationFailure<TId>> = {};
+
+    for (let offset = 0; offset < input.entries.length; offset += 10) {
+      const chunk = input.entries.slice(offset, offset + 10);
+      const internalIdMap = new Map<string, TId>();
+      const response = await this.client.deleteMessageBatch({
+        QueueUrl: queueUrl,
+        Entries: chunk.map((entry, index) => {
+          const internalId = createInternalBatchEntryId(offset, index);
+          internalIdMap.set(internalId, entry.id);
+
+          return {
+            Id: internalId,
+            ReceiptHandle: assertNonEmptyText(
+              entry.receiptHandle,
+              `receiptHandle for SQS delete batch entry ${entry.id}`,
+            ),
+          };
+        }),
+      });
+
+      recordSimpleSuccessfulBatchEntries(internalIdMap, response.Successful ?? [], successfulById);
+      recordFailedBatchEntries(internalIdMap, response.Failed ?? [], failedById);
+    }
+
+    return createSimpleBatchResult(queueUrl, input.entries.length, successfulById, failedById);
+  }
+
+  async changeMessageVisibility<TId extends string>(
+    input: SqsChangeMessageVisibilityInput<TId>,
+  ): Promise<SqsChangeMessageVisibilityResult<TId>> {
+    assertUniqueBatchEntryIds(input.entries, 'SQS visibility batch entry id');
+    const queueUrl = await this.resolver.resolve(input.queue);
+    const successfulById: Record<string, SqsBatchOperationSuccess<TId>> = {};
+    const failedById: Record<string, SqsBatchOperationFailure<TId>> = {};
+
+    for (let offset = 0; offset < input.entries.length; offset += 10) {
+      const chunk = input.entries.slice(offset, offset + 10);
+      const internalIdMap = new Map<string, TId>();
+      const response = await this.client.changeMessageVisibilityBatch({
+        QueueUrl: queueUrl,
+        Entries: chunk.map((entry, index) => {
+          const internalId = createInternalBatchEntryId(offset, index);
+          internalIdMap.set(internalId, entry.id);
+
+          return {
+            Id: internalId,
+            ReceiptHandle: assertNonEmptyText(
+              entry.receiptHandle,
+              `receiptHandle for SQS visibility batch entry ${entry.id}`,
+            ),
+            VisibilityTimeout: assertIntegerInRange(
+              entry.visibilityTimeoutSeconds,
+              `visibilityTimeoutSeconds for SQS visibility batch entry ${entry.id}`,
+              0,
+              43_200,
+            ),
+          };
+        }),
+      });
+
+      recordSimpleSuccessfulBatchEntries(internalIdMap, response.Successful ?? [], successfulById);
+      recordFailedBatchEntries(internalIdMap, response.Failed ?? [], failedById);
+    }
+
+    return createSimpleBatchResult(queueUrl, input.entries.length, successfulById, failedById);
+  }
+}
+
 export class SnsPublisher {
   private readonly resolver: SnsTopicArnResolver;
 
@@ -511,6 +698,50 @@ export class SnsPublisher {
 
     return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
   }
+
+  async publishJsonBatch<TId extends string, TPayload>(
+    input: SnsPublishJsonBatchInput<TId, TPayload>,
+  ): Promise<SnsPublishJsonBatchResult<TId>> {
+    assertUniqueBatchEntryIds(input.entries, 'SNS batch publish entry id');
+    const topicArn = await this.resolver.resolve(input.topic);
+    const fifoTopic = topicArn.endsWith('.fifo');
+    const successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>> = {};
+    const failedById: Record<string, SnsPublishJsonBatchFailure<TId>> = {};
+
+    for (let offset = 0; offset < input.entries.length; offset += 10) {
+      const chunk = input.entries.slice(offset, offset + 10);
+      const internalIdMap = new Map<string, TId>();
+      const response = await this.client.publishBatch({
+        TopicArn: topicArn,
+        PublishBatchRequestEntries: chunk.map((entry, index) => {
+          validateSnsBatchEntry(entry, fifoTopic);
+          const internalId = createInternalBatchEntryId(offset, index);
+          internalIdMap.set(internalId, entry.id);
+
+          return {
+            Id: internalId,
+            Message: JSON.stringify(entry.payload),
+            Subject: entry.subject,
+            MessageAttributes: entry.messageAttributes,
+            MessageGroupId: entry.messageGroupId,
+            MessageDeduplicationId: entry.messageDeduplicationId,
+          };
+        }),
+      });
+
+      recordSnsPublishSuccessfulBatchEntries(internalIdMap, response.Successful ?? [], successfulById);
+      recordFailedBatchEntries(internalIdMap, response.Failed ?? [], failedById);
+    }
+
+    return {
+      topicArn,
+      requestedCount: input.entries.length,
+      successfulCount: Object.keys(successfulById).length,
+      failedCount: Object.keys(failedById).length,
+      successfulById,
+      failedById,
+    };
+  }
 }
 
 export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient {
@@ -529,6 +760,16 @@ export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQ
 
   async changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void> {
     await this.client.send(new ChangeMessageVisibilityCommand(input));
+  }
+
+  async deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput> {
+    return this.client.send(new DeleteMessageBatchCommand(input));
+  }
+
+  async changeMessageVisibilityBatch(
+    input: ChangeMessageVisibilityBatchCommandInput,
+  ): Promise<ChangeMessageVisibilityBatchCommandOutput> {
+    return this.client.send(new ChangeMessageVisibilityBatchCommand(input));
   }
 
   async getQueueUrl(
@@ -594,6 +835,10 @@ export class AwsSnsAdapter implements SnsTransportClient {
 
   async publish(input: PublishCommandInput): Promise<PublishCommandOutput> {
     return this.client.send(new PublishCommand(input));
+  }
+
+  async publishBatch(input: PublishBatchCommandInput): Promise<PublishBatchCommandOutput> {
+    return this.client.send(new PublishBatchCommand(input));
   }
 }
 
@@ -688,15 +933,19 @@ function extractNameFromUrl(value: string, label: string): string {
   }
 }
 
-function assertUniqueBatchEntryIds<TId extends string>(entries: Array<SqsSendJsonBatchEntry<TId, unknown>>): void {
+function assertUniqueBatchEntryIds<TId extends string>(entries: Array<{ id: TId }>, label: string): void {
   const seen = new Set<string>();
   for (const entry of entries) {
-    const identifier = assertNonEmptyText(entry.id, 'SQS batch entry id');
+    const identifier = assertNonEmptyText(entry.id, label);
     if (seen.has(identifier)) {
-      throw new Error(`Duplicate SQS batch entry id "${identifier}" is not allowed.`);
+      throw new Error(`Duplicate ${label} "${identifier}" is not allowed.`);
     }
     seen.add(identifier);
   }
+}
+
+function createInternalBatchEntryId(offset: number, index: number): string {
+  return `entry-${offset + index}`;
 }
 
 function recordSuccessfulBatchEntries<TId extends string>(
@@ -725,10 +974,29 @@ function recordSuccessfulBatchEntries<TId extends string>(
   }
 }
 
+function recordSimpleSuccessfulBatchEntries<TId extends string>(
+  internalIdMap: Map<string, TId>,
+  successfulEntries: Array<DeleteMessageBatchResultEntry | ChangeMessageVisibilityBatchResultEntry>,
+  successfulById: Record<string, SqsBatchOperationSuccess<TId>>,
+): void {
+  for (const entry of successfulEntries) {
+    if (!entry.Id) {
+      continue;
+    }
+
+    const callerId = internalIdMap.get(entry.Id);
+    if (!callerId) {
+      continue;
+    }
+
+    successfulById[callerId] = { id: callerId };
+  }
+}
+
 function recordFailedBatchEntries<TId extends string>(
   internalIdMap: Map<string, TId>,
-  failedEntries: BatchResultErrorEntry[],
-  failedById: Record<string, SqsSendJsonBatchFailure<TId>>,
+  failedEntries: Array<BatchResultErrorEntry | SnsBatchResultErrorEntry>,
+  failedById: Record<string, { id: TId; code?: string; message?: string; senderFault?: boolean }>,
 ): void {
   for (const entry of failedEntries) {
     if (!entry.Id) {
@@ -742,4 +1010,76 @@ function recordFailedBatchEntries<TId extends string>(
 
     failedById[callerId] = { id: callerId, code: entry.Code, message: entry.Message, senderFault: entry.SenderFault };
   }
+}
+
+function recordSnsPublishSuccessfulBatchEntries<TId extends string>(
+  internalIdMap: Map<string, TId>,
+  successfulEntries: PublishBatchResultEntry[],
+  successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>>,
+): void {
+  for (const entry of successfulEntries) {
+    if (!entry.Id) {
+      continue;
+    }
+
+    const callerId = internalIdMap.get(entry.Id);
+    if (!callerId) {
+      continue;
+    }
+
+    successfulById[callerId] = { id: callerId, messageId: entry.MessageId, sequenceNumber: entry.SequenceNumber };
+  }
+}
+
+function createSimpleBatchResult<TId extends string>(
+  queueUrl: string,
+  requestedCount: number,
+  successfulById: Record<string, SqsBatchOperationSuccess<TId>>,
+  failedById: Record<string, SqsBatchOperationFailure<TId>>,
+): {
+  queueUrl: string;
+  requestedCount: number;
+  successfulCount: number;
+  failedCount: number;
+  successfulById: Record<string, SqsBatchOperationSuccess<TId>>;
+  failedById: Record<string, SqsBatchOperationFailure<TId>>;
+} {
+  return {
+    queueUrl,
+    requestedCount,
+    successfulCount: Object.keys(successfulById).length,
+    failedCount: Object.keys(failedById).length,
+    successfulById,
+    failedById,
+  };
+}
+
+function validateSnsBatchEntry(entry: SnsPublishJsonBatchEntry<string, unknown>, fifoTopic: boolean): void {
+  if (entry.subject !== undefined) {
+    assertNonEmptyText(entry.subject, `subject for SNS batch entry ${entry.id}`);
+  }
+
+  if (fifoTopic) {
+    assertNonEmptyText(entry.messageGroupId, `messageGroupId for SNS FIFO batch entry ${entry.id}`);
+    if (entry.messageDeduplicationId !== undefined) {
+      assertNonEmptyText(entry.messageDeduplicationId, `messageDeduplicationId for SNS FIFO batch entry ${entry.id}`);
+    }
+    return;
+  }
+
+  if (entry.messageGroupId !== undefined) {
+    throw new Error(`SNS standard topic batch entry ${entry.id} must not declare messageGroupId.`);
+  }
+
+  if (entry.messageDeduplicationId !== undefined) {
+    throw new Error(`SNS standard topic batch entry ${entry.id} must not declare messageDeduplicationId.`);
+  }
+}
+
+function assertIntegerInRange(value: number, label: string, min: number, max: number): number {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`${label} must be an integer between ${min} and ${max}.`);
+  }
+
+  return value;
 }

@@ -51,6 +51,9 @@ npm test
 echo "[messaging-runtime harness] npm run build"
 npm run build
 
+echo "[messaging-runtime harness] npm run benchmark:ci"
+npm run benchmark:ci >/dev/null
+
 echo "[messaging-runtime harness] npm run public-surface:check"
 npm run public-surface:check
 

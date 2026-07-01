@@ -19,6 +19,9 @@
   "scripts": {
     "format": "biome format --write .",
     "build": "rm -rf dist && tsc -p tsconfig.json",
+    "benchmark": "tsx scripts/benchmarks/run.ts",
+    "benchmark:ci": "tsx scripts/benchmarks/run.ts --json",
+    "benchmark:baseline": "tsx scripts/benchmarks/run.ts --write-baseline",
     "public-surface:report": "node scripts/public-surface/run-interface-reports.mjs --write",
     "public-surface:snapshot": "node scripts/public-surface/check-export-snapshot.mjs --write",
     "public-surface:check": "node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs",

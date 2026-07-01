@@ -46,8 +46,8 @@ This repository is not public-ready until the following readiness criteria are o
 
 ## Performance maturity
 
-- Add the benchmark suite described in [`PERFORMANCE.md`](PERFORMANCE.md).
-- Commit a benchmark baseline.
+- Keep the benchmark suite in [`PERFORMANCE.md`](PERFORMANCE.md) current as the runtime grows.
+- Refresh and review the tracked benchmark baseline when performance-relevant behavior changes.
 - Add benchmark regression guidance for PR review.
 - Publish benchmark methodology before making speed claims.
 - Avoid marketing terms such as "blazingly fast" until evidence exists.

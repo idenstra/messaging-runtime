@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (103):
+- exported symbols (118):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -27,6 +27,11 @@ Package: `@idenstra/messaging-runtime`
   - `SnsNotificationEnvelope`
   - `SnsPublishClient`
   - `SnsPublisher`
+  - `SnsPublishJsonBatchEntry`
+  - `SnsPublishJsonBatchFailure`
+  - `SnsPublishJsonBatchInput`
+  - `SnsPublishJsonBatchResult`
+  - `SnsPublishJsonBatchSuccess`
   - `SnsPublishJsonInput`
   - `SnsPublishJsonOptions`
   - `SnsPublishJsonResult`
@@ -36,10 +41,20 @@ Package: `@idenstra/messaging-runtime`
   - `SnsTopicArnResolverOptions`
   - `SnsTransportClient`
   - `SnsUnsubscribeConfirmationEnvelope`
+  - `SqsBatchOperationClient`
+  - `SqsBatchOperationFailure`
+  - `SqsBatchOperationSuccess`
+  - `SqsChangeMessageVisibilityBatchEntry`
+  - `SqsChangeMessageVisibilityInput`
+  - `SqsChangeMessageVisibilityResult`
   - `SqsDeadLetterSourceQueuesResult`
+  - `SqsDeleteMessagesBatchEntry`
+  - `SqsDeleteMessagesInput`
+  - `SqsDeleteMessagesResult`
   - `SqsDlqRedriveManager`
   - `SqsDlqRedriveManagerOptions`
   - `SqsMessageAttributes`
+  - `SqsMessageBatchOperator`
   - `SqsMessageMoveTaskStatus`
   - `SqsMessageMoveTaskSummary`
   - `SqsPublishClient`
