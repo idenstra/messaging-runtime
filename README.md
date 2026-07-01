@@ -20,6 +20,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - explicit ack policy: delete the message or keep it for SQS redelivery
 - runtime events and snapshots for health and observability
 - manifest-driven worker host bootstrap for app-owned worker processes
+- OpenTelemetry metrics and tracing helpers through `@idenstra/messaging-runtime/observability`
 - SNS-over-SQS and plain SQS JSON decoding helpers
 - cached SQS queue URL and SNS topic ARN resolvers
 - JSON SQS/SNS publishers, including SQS and SNS batch publishing
@@ -43,6 +44,7 @@ Supported imports are intentionally narrow:
 - `@idenstra/messaging-runtime`
 - `@idenstra/messaging-runtime/core`
 - `@idenstra/messaging-runtime/nest`
+- `@idenstra/messaging-runtime/observability`
 
 ## Documentation order
 
@@ -53,9 +55,10 @@ Read the docs in this order:
 3. [`docs/FEATURES.md`](docs/FEATURES.md) - supported feature set and non-goals
 4. [`docs/RUNTIME_SEMANTICS.md`](docs/RUNTIME_SEMANTICS.md) - polling, ack, timeout, and shutdown behavior
 5. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) - configuration, observability, testing, and Nest usage
-6. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
-7. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
-8. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
+6. [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) - OTEL metrics, W3C tracing, SigNoz wiring, and autoscaling guidance
+7. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
+8. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
+9. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
 
 Contributor and governance docs remain available under [`AGENTS.md`](AGENTS.md), [`WORKFLOW.md`](WORKFLOW.md), and `docs/`.
 For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](docs/HARNESS.md) and [`WORKFLOW.md`](WORKFLOW.md).
@@ -153,6 +156,8 @@ const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-
 ```
 
 Manual message-level replay remains consumer-owned because idempotency and safety rules depend on the consuming system. See [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md).
+
+For OTEL metrics, W3C trace propagation, and a SigNoz-backed worker example, use the dedicated observability subpath and start with [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) plus [`examples/observability/otel-signoz-worker.ts`](examples/observability/otel-signoz-worker.ts).
 
 For transport-level batch message operations outside the worker core, use `SqsMessageBatchOperator` and `SnsPublisher.publishJsonBatch(...)`. These helpers chunk automatically to AWS's 10-entry batch limit while keeping caller entry IDs stable in the result maps.
 

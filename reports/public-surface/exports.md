@@ -183,3 +183,48 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteStatus`
   - `SqsWorkerServiceLifecycle`
+
+## @idenstra/messaging-runtime/observability
+
+- subpath: `./observability`
+- declarations: `dist/observability.d.ts`
+- exported symbols (39):
+  - `createOpenTelemetrySqsWorkerMetricsAdapter`
+  - `extractTraceContextFromSqsMessage`
+  - `ExtractTraceContextFromSqsMessageOptions`
+  - `injectTraceContextIntoSnsMessageAttributes`
+  - `injectTraceContextIntoSqsMessageAttributes`
+  - `OpenTelemetrySqsWorkerMetricsAdapter`
+  - `OpenTelemetrySqsWorkerMetricsOptions`
+  - `OpenTelemetrySqsWorkerTracingOptions`
+  - `SnsMessageAttributes`
+  - `SqsMessageAttributes`
+  - `SqsWorkerAckAction`
+  - `SqsWorkerFailureKind`
+  - `SqsWorkerHandler`
+  - `SqsWorkerHandlerContext`
+  - `SqsWorkerHandlerFailureEvent`
+  - `SqsWorkerHandlerResult`
+  - `SqsWorkerHandlerStartEvent`
+  - `SqsWorkerHandlerSuccessEvent`
+  - `SqsWorkerHandlerTimeoutEvent`
+  - `SqsWorkerHeartbeatFailureEvent`
+  - `SqsWorkerHeartbeatSource`
+  - `SqsWorkerHeartbeatSuccessEvent`
+  - `SqsWorkerLateSettlementEvent`
+  - `SqsWorkerLateSettlementOutcome`
+  - `SqsWorkerManagerSnapshot`
+  - `SqsWorkerMessage`
+  - `SqsWorkerMessageAttributeValue`
+  - `SqsWorkerMessageDeleteEvent`
+  - `SqsWorkerMessageKeepEvent`
+  - `SqsWorkerMessagesReceivedEvent`
+  - `SqsWorkerReceiveEmptyEvent`
+  - `SqsWorkerRouteCounters`
+  - `SqsWorkerRouteStatus`
+  - `SqsWorkerRuntimeEvent`
+  - `SqsWorkerRuntimeEventBase`
+  - `SqsWorkerRuntimeEventHook`
+  - `SqsWorkerTimeoutStrategy`
+  - `TraceContextMessageAttributeOptions`
+  - `withOpenTelemetrySqsWorkerTracing`

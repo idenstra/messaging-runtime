@@ -137,7 +137,7 @@ export interface ListSqsDlqRedriveTasksResult {
 // @public (undocumented)
 export const packageMetadata: {
     readonly name: "@idenstra/messaging-runtime";
-    readonly phase: "runtime-core-transport-host-and-queue-ops";
+    readonly phase: "runtime-core-transport-host-queue-ops-and-observability";
 };
 
 // @public (undocumented)

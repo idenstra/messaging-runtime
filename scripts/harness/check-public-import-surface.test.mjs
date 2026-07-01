@@ -25,8 +25,13 @@ test('findPublicImportSurfaceFindings accepts the supported public imports', () 
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core.d.ts', default: './dist/core.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
+    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
   });
-  writeFile(repoRoot, 'README.md', '`@idenstra/messaging-runtime` and `@idenstra/messaging-runtime/nest`\n');
+  writeFile(
+    repoRoot,
+    'README.md',
+    '`@idenstra/messaging-runtime`, `@idenstra/messaging-runtime/nest`, and `@idenstra/messaging-runtime/observability`\n',
+  );
   writeFile(repoRoot, 'src/index.ts', "export { packageMetadata } from '@idenstra/messaging-runtime';\n");
 
   const findings = findPublicImportSurfaceFindings(repoRoot, ['README.md', 'src/index.ts']);
@@ -40,6 +45,7 @@ test('findPublicImportSurfaceFindings rejects unsupported deep imports in code a
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core.d.ts', default: './dist/core.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
+    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
   });
   writeFile(repoRoot, 'README.md', '`@idenstra/messaging-runtime/dist/core`\n');
   writeFile(repoRoot, 'src/index.ts', "export * from '@idenstra/messaging-runtime/src/core';\n");
@@ -63,6 +69,7 @@ test('findPackageExportFindings rejects unsupported public subpaths', () => {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core.d.ts', default: './dist/core.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
+    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
     './transport': { types: './dist/transport.d.ts', default: './dist/transport.js' },
   });
 
@@ -72,9 +79,9 @@ test('findPackageExportFindings rejects unsupported public subpaths', () => {
     {
       code: 'unsupported-export-subpaths',
       path: 'package.json',
-      message: 'package exports must stay exactly ., ./core, ./nest',
-      actualExportKeys: ['.', './core', './nest', './transport'],
-      expectedExportKeys: ['.', './core', './nest'],
+      message: 'package exports must stay exactly ., ./core, ./nest, ./observability',
+      actualExportKeys: ['.', './core', './nest', './observability', './transport'],
+      expectedExportKeys: ['.', './core', './nest', './observability'],
     },
   ]);
 });
@@ -85,6 +92,7 @@ test('findPublicImportSurfaceFindings ignores the validator self-fixtures', () =
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core.d.ts', default: './dist/core.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
+    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
   });
   writeFile(
     repoRoot,

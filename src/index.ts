@@ -1,6 +1,6 @@
 export const packageMetadata = {
   name: '@idenstra/messaging-runtime',
-  phase: 'runtime-core-transport-host-and-queue-ops',
+  phase: 'runtime-core-transport-host-queue-ops-and-observability',
 } as const;
 
 export * from './core';

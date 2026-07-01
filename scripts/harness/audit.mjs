@@ -195,9 +195,11 @@ function createVerificationCategory(repoRoot) {
     exists('public-surface-report.root.json', repoRoot) &&
     exists('public-surface-report.core.json', repoRoot) &&
     exists('public-surface-report.nest.json', repoRoot) &&
+    exists('public-surface-report.observability.json', repoRoot) &&
     exists('etc/messaging-runtime.public-surface.api.md', repoRoot) &&
     exists('etc/messaging-runtime-core.public-surface.api.md', repoRoot) &&
     exists('etc/messaging-runtime-nest.public-surface.api.md', repoRoot) &&
+    exists('etc/messaging-runtime-observability.public-surface.api.md', repoRoot) &&
     exists('reports/public-surface/exports.json', repoRoot) &&
     exists('reports/public-surface/exports.md', repoRoot) &&
     packageJson.includes('"public-surface:report"') &&

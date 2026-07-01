@@ -78,9 +78,17 @@ A basic readiness check should consider:
 
 Do not use snapshots as the only source of business-level delivery assurance. They are runtime process state, not end-to-end message processing state.
 
-## Metrics and logs
+## Metrics, traces, and scaling
 
-Use `onEvent` to map runtime events to metrics.
+The runtime emits process-local events and snapshots. The recommended path is:
+
+1. use `@idenstra/messaging-runtime/observability` to map those events into OTEL metrics and worker spans;
+2. use AWS-native queue metrics for queue-depth and oldest-message-age signals;
+3. derive scaling decisions from queue pressure first, then use runtime metrics as health/saturation guardrails.
+
+The full OTEL and SigNoz wiring guidance lives in [`OBSERVABILITY.md`](OBSERVABILITY.md). A compile-checked example also exists at [`../examples/observability/otel-signoz-worker.ts`](../examples/observability/otel-signoz-worker.ts).
+
+`onEvent` remains the lowest-level hook and can still be mapped directly when a consumer does not use the OTEL helper surface.
 
 ```ts
 const host = new SqsWorkerServiceHost({
@@ -116,6 +124,13 @@ Recommended alerting:
 - rising in-flight count with low success count;
 - queue age and dead-letter queue depth from AWS metrics.
 - failed or stuck native DLQ redrive tasks.
+
+Recommended scaling signals:
+
+- backlog per worker/task, not raw queue depth alone;
+- oldest visible message age for latency-sensitive queues;
+- runtime in-flight saturation from `getSnapshot()` or OTEL observable gauges;
+- failure and timeout rate as scale-in guardrails, not as the only scale-out trigger.
 
 ## Idempotency and duplicates
 
@@ -227,5 +242,8 @@ Before a worker uses this package in production, confirm:
 - DLQ inspection and native redrive use a documented operator path;
 - manual replay, if it exists at all, is owned and guarded in the consumer application;
 - runtime events are mapped to metrics;
+- W3C trace propagation is either intentionally enabled or intentionally omitted;
+- raw SNS -> SQS delivery is enabled if trace attributes must survive SNS fanout into worker queues;
 - queue depth, oldest message age, and DLQ depth are monitored;
+- autoscaling uses queue-aware metrics rather than CPU-only policies;
 - shutdown behavior is tested in the service runtime.

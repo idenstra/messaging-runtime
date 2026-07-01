@@ -8,6 +8,7 @@ This guide shows the smallest useful setup for a plain Node.js worker that consu
 - TypeScript
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
+- `@opentelemetry/api` when using `@idenstra/messaging-runtime/observability`
 - access to the package registry currently used by `@idenstra/messaging-runtime`
 
 The package is not yet public-ready. Public installation guidance should be updated when `docs/PUBLIC_RELEASE.md` is complete.
@@ -228,6 +229,50 @@ await publisher.publishJsonBatch({
 
 FIFO-specific fields such as `messageGroupId` and `messageDeduplicationId` are forwarded per entry and validated against the resolved topic type.
 
+## Add OTEL metrics and traces
+
+The observability helpers live on a dedicated public subpath:
+
+```ts
+import {
+  createOpenTelemetrySqsWorkerMetricsAdapter,
+  withOpenTelemetrySqsWorkerTracing,
+} from '@idenstra/messaging-runtime/observability';
+```
+
+Use an injected `Meter` to map runtime events into OTEL metrics:
+
+```ts
+const metrics = createOpenTelemetrySqsWorkerMetricsAdapter({
+  meter,
+  getSnapshot: () => host.getSnapshot(),
+  staticAttributes: {
+    service_name: 'worker-email',
+  },
+});
+
+const host = new SqsWorkerServiceHost({
+  client: sqsAdapter,
+  queueResolver,
+  manifest,
+  managerOptions: {
+    onEvent: metrics.onEvent,
+  },
+  routes,
+});
+```
+
+Use an injected `Tracer` plus a W3C propagator to create consumer spans around route handlers:
+
+```ts
+const tracedRoute = withOpenTelemetrySqsWorkerTracing(route, {
+  tracer,
+  propagator,
+});
+```
+
+For a full OTLP + SigNoz example, see [`../examples/observability/otel-signoz-worker.ts`](../examples/observability/otel-signoz-worker.ts) and [`OBSERVABILITY.md`](OBSERVABILITY.md).
+
 ## Inspect or redrive a DLQ
 
 ```ts
@@ -253,4 +298,5 @@ Manual message-level replay remains outside this package. It must stay in the co
 - Read [`FEATURES.md`](FEATURES.md) for the supported surface.
 - Read [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) before setting ack, timeout, heartbeat, or concurrency policies.
 - Read [`OPERATIONS.md`](OPERATIONS.md) before production adoption.
+- Read [`OBSERVABILITY.md`](OBSERVABILITY.md) before wiring metrics, traces, or autoscaling.
 - Read [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) before inspecting DLQs or starting a redrive task.
