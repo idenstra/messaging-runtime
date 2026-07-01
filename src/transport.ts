@@ -596,7 +596,7 @@ export class SqsMessageBatchOperator {
   private readonly resolver: SqsQueueUrlResolver;
 
   constructor(
-    private readonly client: SqsTransportClient,
+    private readonly client: SqsQueueUrlResolverClient & SqsBatchOperationClient,
     resolver?: SqsQueueUrlResolver,
   ) {
     this.resolver = resolver ?? new SqsQueueUrlResolver(client);
@@ -996,7 +996,7 @@ function recordSimpleSuccessfulBatchEntries<TId extends string>(
 function recordFailedBatchEntries<TId extends string>(
   internalIdMap: Map<string, TId>,
   failedEntries: Array<BatchResultErrorEntry | SnsBatchResultErrorEntry>,
-  failedById: Record<string, SqsBatchOperationFailure<TId> | SnsPublishJsonBatchFailure<TId>>,
+  failedById: Record<string, { id: TId; code?: string; message?: string; senderFault?: boolean }>,
 ): void {
   for (const entry of failedEntries) {
     if (!entry.Id) {
@@ -1055,10 +1055,14 @@ function createSimpleBatchResult<TId extends string>(
 }
 
 function validateSnsBatchEntry(entry: SnsPublishJsonBatchEntry<string, unknown>, fifoTopic: boolean): void {
+  if (entry.subject !== undefined) {
+    assertNonEmptyText(entry.subject, `subject for SNS batch entry ${entry.id}`);
+  }
+
   if (fifoTopic) {
     assertNonEmptyText(entry.messageGroupId, `messageGroupId for SNS FIFO batch entry ${entry.id}`);
-    if (entry.subject !== undefined) {
-      assertNonEmptyText(entry.subject, `subject for SNS batch entry ${entry.id}`);
+    if (entry.messageDeduplicationId !== undefined) {
+      assertNonEmptyText(entry.messageDeduplicationId, `messageDeduplicationId for SNS FIFO batch entry ${entry.id}`);
     }
     return;
   }
@@ -1069,10 +1073,6 @@ function validateSnsBatchEntry(entry: SnsPublishJsonBatchEntry<string, unknown>,
 
   if (entry.messageDeduplicationId !== undefined) {
     throw new Error(`SNS standard topic batch entry ${entry.id} must not declare messageDeduplicationId.`);
-  }
-
-  if (entry.subject !== undefined) {
-    assertNonEmptyText(entry.subject, `subject for SNS batch entry ${entry.id}`);
   }
 }
 

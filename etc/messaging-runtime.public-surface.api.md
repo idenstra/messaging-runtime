@@ -458,7 +458,7 @@ export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
 
 // @public (undocumented)
 export class SqsMessageBatchOperator {
-    constructor(client: SqsTransportClient, resolver?: SqsQueueUrlResolver);
+    constructor(client: SqsQueueUrlResolverClient & SqsBatchOperationClient, resolver?: SqsQueueUrlResolver);
     // (undocumented)
     changeMessageVisibility<TId extends string>(input: SqsChangeMessageVisibilityInput<TId>): Promise<SqsChangeMessageVisibilityResult<TId>>;
     // (undocumented)

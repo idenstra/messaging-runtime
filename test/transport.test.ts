@@ -579,6 +579,17 @@ test('SnsPublisher publishJsonBatch forwards FIFO fields and rejects FIFO violat
   await assert.rejects(
     () =>
       publisher.publishJsonBatch({
+        topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+        entries: [
+          { id: 'event-1b', payload: { kind: 'delivery' }, messageGroupId: 'group-1', messageDeduplicationId: '' },
+        ],
+      }),
+    /messageDeduplicationId for SNS FIFO batch entry event-1b/i,
+  );
+
+  await assert.rejects(
+    () =>
+      publisher.publishJsonBatch({
         topic: 'arn:aws:sns:us-east-1:123456789012:events',
         entries: [{ id: 'event-2', payload: { kind: 'delivery' }, messageGroupId: 'group-2' }],
       }),

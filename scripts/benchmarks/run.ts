@@ -1,3 +1,4 @@
+import childProcess from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -163,7 +164,7 @@ async function main(): Promise<void> {
     platform: process.platform,
     arch: process.arch,
     cpuModel: os.cpus()[0]?.model,
-    command: args.has('--json') ? 'npm run benchmark:ci' : 'npm run benchmark',
+    command: getBenchmarkCommandLabel(args),
     warmupSamples,
     measuredSamples,
     scenarios: results,
@@ -173,6 +174,7 @@ async function main(): Promise<void> {
     await fs.mkdir(path.dirname(baselineJsonPath), { recursive: true });
     await fs.writeFile(baselineJsonPath, `${JSON.stringify(report, null, 2)}\n`);
     await fs.writeFile(baselineMarkdownPath, renderMarkdownReport(report));
+    formatBaselineArtifacts();
   }
 
   if (args.has('--json')) {
@@ -181,6 +183,26 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(renderMarkdownReport(report));
+}
+
+function getBenchmarkCommandLabel(args: Set<string>): string {
+  if (args.has('--write-baseline')) {
+    return 'npm run benchmark:baseline';
+  }
+
+  if (args.has('--json')) {
+    return 'npm run benchmark:ci';
+  }
+
+  return 'npm run benchmark';
+}
+
+function formatBaselineArtifacts(): void {
+  const biomeBinary = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'biome.cmd' : 'biome');
+  childProcess.execFileSync(biomeBinary, ['format', '--write', baselineJsonPath, baselineMarkdownPath], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
 }
 
 function createBenchmarkScenarios(): BenchmarkScenario[] {
