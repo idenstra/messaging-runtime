@@ -16,6 +16,7 @@ import {
 import { CompositePropagator, W3CBaggagePropagator, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type {
   SqsWorkerHandlerContext,
+  SqsWorkerHandlerResult,
   SqsWorkerManagerSnapshot,
   SqsWorkerMessage,
   SqsWorkerRoute,
