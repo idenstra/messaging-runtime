@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (102):
+- exported symbols (103):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -44,6 +44,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsMessageMoveTaskSummary`
   - `SqsPublishClient`
   - `SqsPublisher`
+  - `SqsQueueAttributesMap`
   - `SqsQueueDescription`
   - `SqsQueueInspector`
   - `SqsQueueInspectorOptions`

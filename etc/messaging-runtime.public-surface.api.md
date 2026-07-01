@@ -337,6 +337,9 @@ export class SqsPublisher {
 }
 
 // @public (undocumented)
+export type SqsQueueAttributesMap = Partial<Record<QueueAttributeName, string>>;
+
+// @public (undocumented)
 export interface SqsQueueDescription {
     // (undocumented)
     approximateNumberOfMessages?: number;
@@ -344,10 +347,8 @@ export interface SqsQueueDescription {
     approximateNumberOfMessagesDelayed?: number;
     // (undocumented)
     approximateNumberOfMessagesNotVisible?: number;
-    // Warning: (ae-forgotten-export) The symbol "QueueAttributesMap" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    attributes: QueueAttributesMap;
+    attributes: SqsQueueAttributesMap;
     // (undocumented)
     delaySeconds?: number;
     // (undocumented)

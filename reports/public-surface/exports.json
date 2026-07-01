@@ -43,6 +43,7 @@
         "SqsMessageMoveTaskSummary",
         "SqsPublishClient",
         "SqsPublisher",
+        "SqsQueueAttributesMap",
         "SqsQueueDescription",
         "SqsQueueInspector",
         "SqsQueueInspectorOptions",

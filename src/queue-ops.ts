@@ -33,7 +33,7 @@ const QUEUE_INSPECTION_ATTRIBUTE_NAMES: QueueAttributeName[] = [
   'RedriveAllowPolicy',
 ];
 
-type QueueAttributesMap = Partial<Record<QueueAttributeName, string>>;
+export type SqsQueueAttributesMap = Partial<Record<QueueAttributeName, string>>;
 
 export type SqsMessageMoveTaskStatus = 'RUNNING' | 'COMPLETED' | 'CANCELLING' | 'CANCELLED' | 'FAILED' | (string & {});
 
@@ -82,7 +82,7 @@ export interface SqsQueueDescription {
   delaySeconds?: number;
   redrivePolicy?: SqsQueueRedrivePolicy;
   redriveAllowPolicy?: SqsQueueRedriveAllowPolicy;
-  attributes: QueueAttributesMap;
+  attributes: SqsQueueAttributesMap;
 }
 
 export interface SqsDeadLetterSourceQueuesResult {
@@ -291,7 +291,7 @@ export class SqsDlqRedriveManager {
 function buildQueueDescription(input: {
   queueIdentifier: string;
   queueUrl: string;
-  attributes: QueueAttributesMap;
+  attributes: SqsQueueAttributesMap;
 }): SqsQueueDescription {
   const queueArn = readOptionalNonEmptyText(input.attributes.QueueArn, 'SQS queue QueueArn attribute');
 
@@ -385,7 +385,7 @@ function assertIntegerInRange(value: number, label: string, min: number, max: nu
 }
 
 function readOptionalIntegerAttribute(
-  attributes: QueueAttributesMap,
+  attributes: SqsQueueAttributesMap,
   attributeName: QueueAttributeName,
 ): number | undefined {
   const value = attributes[attributeName];
@@ -397,7 +397,7 @@ function readOptionalIntegerAttribute(
 }
 
 function readOptionalBooleanAttribute(
-  attributes: QueueAttributesMap,
+  attributes: SqsQueueAttributesMap,
   attributeName: QueueAttributeName,
 ): boolean | undefined {
   const value = attributes[attributeName];
