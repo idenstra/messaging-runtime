@@ -115,6 +115,7 @@ Recommended alerting:
 - late settlements after abandon timeout;
 - rising in-flight count with low success count;
 - queue age and dead-letter queue depth from AWS metrics.
+- failed or stuck native DLQ redrive tasks.
 
 ## Idempotency and duplicates
 
@@ -170,6 +171,30 @@ class FakeSqsRuntimeClient {
 
 Default repository verification must not require live AWS. Live AWS or emulator-backed tests should be optional lanes.
 
+## Queue operations and DLQ recovery
+
+Use the queue-ops helpers for operational inspection and native SQS redrive:
+
+- `SqsQueueInspector.inspectQueue(...)`
+- `SqsQueueInspector.listDeadLetterSourceQueues(...)`
+- `SqsDlqRedriveManager.listRedriveTasks(...)`
+- `SqsDlqRedriveManager.startRedrive(...)`
+- `SqsDlqRedriveManager.cancelRedrive(...)`
+
+These helpers intentionally stop at the queue-operation boundary:
+- queue inspection is package-owned;
+- native SQS DLQ redrive is package-owned;
+- manual message-level replay remains consumer-owned.
+
+This boundary is deliberate. Manual replay needs consumer-domain rules for:
+- idempotency;
+- payload validation;
+- destination selection;
+- safe mutation order;
+- auditability and rollback.
+
+Start from the consumer-owned example script in [`../examples/queue-ops/native-dlq-redrive.ts`](../examples/queue-ops/native-dlq-redrive.ts) and keep any message-level replay logic in the consuming system, not in the shared library.
+
 ## Nest adapter
 
 Use `@idenstra/messaging-runtime/nest` only when the worker already runs inside Nest.
@@ -196,6 +221,8 @@ Before a worker uses this package in production, confirm:
 - handler timeout policy is documented;
 - failure ack policy is documented per route;
 - idempotency and DLQ behavior are owned by the consumer;
+- DLQ inspection and native redrive use a documented operator path;
+- manual replay, if it exists at all, is owned and guarded in the consumer application;
 - runtime events are mapped to metrics;
 - queue depth, oldest message age, and DLQ depth are monitored;
 - shutdown behavior is tested in the service runtime.

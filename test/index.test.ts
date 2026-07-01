@@ -4,5 +4,5 @@ import { packageMetadata } from '../src/index';
 
 test('exports the runtime-core package metadata', () => {
   assert.equal(packageMetadata.name, '@idenstra/messaging-runtime');
-  assert.equal(packageMetadata.phase, 'runtime-core-transport-and-host');
+  assert.equal(packageMetadata.phase, 'runtime-core-transport-host-and-queue-ops');
 });

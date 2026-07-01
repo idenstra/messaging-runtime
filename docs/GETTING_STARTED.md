@@ -175,8 +175,29 @@ await publisher.publishJson({
 });
 ```
 
+## Inspect or redrive a DLQ
+
+```ts
+import { SQSClient } from '@aws-sdk/client-sqs';
+import { AwsSqsAdapter, SqsDlqRedriveManager, SqsQueueInspector } from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const inspector = new SqsQueueInspector(sqsAdapter);
+const redriveManager = new SqsDlqRedriveManager(sqsAdapter, { queueInspector: inspector });
+
+const queueSnapshot = await inspector.inspectQueue('jobs-dlq');
+const sourceQueues = await inspector.listDeadLetterSourceQueues('jobs-dlq');
+const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-dlq' });
+```
+
+Use the example script in [`../examples/queue-ops/native-dlq-redrive.ts`](../examples/queue-ops/native-dlq-redrive.ts) as the starting point for a consumer-owned admin command.
+
+Manual message-level replay remains outside this package. It must stay in the consuming system because idempotency, payload validation, and replay safety are domain-specific.
+
 ## Next steps
 
 - Read [`FEATURES.md`](FEATURES.md) for the supported surface.
 - Read [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) before setting ack, timeout, heartbeat, or concurrency policies.
 - Read [`OPERATIONS.md`](OPERATIONS.md) before production adoption.
+- Read [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) before inspecting DLQs or starting a redrive task.

@@ -4,10 +4,18 @@
 
 ```ts
 
+import { CancelMessageMoveTaskCommandInput } from '@aws-sdk/client-sqs';
+import { CancelMessageMoveTaskCommandOutput } from '@aws-sdk/client-sqs';
 import { ChangeMessageVisibilityCommandInput } from '@aws-sdk/client-sqs';
 import { DeleteMessageCommandInput } from '@aws-sdk/client-sqs';
+import { GetQueueAttributesCommandInput } from '@aws-sdk/client-sqs';
+import { GetQueueAttributesCommandOutput } from '@aws-sdk/client-sqs';
 import { GetQueueUrlCommandInput } from '@aws-sdk/client-sqs';
 import { GetQueueUrlCommandOutput } from '@aws-sdk/client-sqs';
+import { ListDeadLetterSourceQueuesCommandInput } from '@aws-sdk/client-sqs';
+import { ListDeadLetterSourceQueuesCommandOutput } from '@aws-sdk/client-sqs';
+import { ListMessageMoveTasksCommandInput } from '@aws-sdk/client-sqs';
+import { ListMessageMoveTasksCommandOutput } from '@aws-sdk/client-sqs';
 import { ListTopicsCommandInput } from '@aws-sdk/client-sns';
 import { ListTopicsCommandOutput } from '@aws-sdk/client-sns';
 import { Message } from '@aws-sdk/client-sqs';
@@ -15,6 +23,7 @@ import { MessageAttributeValue } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue as MessageAttributeValue_2 } from '@aws-sdk/client-sns';
 import { PublishCommandInput } from '@aws-sdk/client-sns';
 import { PublishCommandOutput } from '@aws-sdk/client-sns';
+import type { QueueAttributeName } from '@aws-sdk/client-sqs';
 import { ReceiveMessageCommandInput } from '@aws-sdk/client-sqs';
 import { ReceiveMessageCommandOutput } from '@aws-sdk/client-sqs';
 import { SendMessageBatchCommandInput } from '@aws-sdk/client-sqs';
@@ -23,6 +32,8 @@ import { SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { SendMessageCommandOutput } from '@aws-sdk/client-sqs';
 import { SNSClient } from '@aws-sdk/client-sns';
 import { SQSClient } from '@aws-sdk/client-sqs';
+import { StartMessageMoveTaskCommandInput } from '@aws-sdk/client-sqs';
+import { StartMessageMoveTaskCommandOutput } from '@aws-sdk/client-sqs';
 
 // @public (undocumented)
 export class AwsSnsAdapter implements SnsTransportClient {
@@ -34,20 +45,44 @@ export class AwsSnsAdapter implements SnsTransportClient {
 }
 
 // @public (undocumented)
-export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient {
+export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient {
     constructor(client: SQSClient);
+    // (undocumented)
+    cancelMessageMoveTask(input: Pick<CancelMessageMoveTaskCommandInput, 'TaskHandle'>): Promise<Pick<CancelMessageMoveTaskCommandOutput, 'ApproximateNumberOfMessagesMoved'>>;
     // (undocumented)
     changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
     // (undocumented)
     deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
     // (undocumented)
+    getQueueAttributes(input: Pick<GetQueueAttributesCommandInput, 'QueueUrl' | 'AttributeNames'>): Promise<Pick<GetQueueAttributesCommandOutput, 'Attributes'>>;
+    // (undocumented)
     getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
+    // (undocumented)
+    listDeadLetterSourceQueues(input: Pick<ListDeadLetterSourceQueuesCommandInput, 'QueueUrl' | 'NextToken' | 'MaxResults'>): Promise<Pick<ListDeadLetterSourceQueuesCommandOutput, 'queueUrls' | 'NextToken'>>;
+    // (undocumented)
+    listMessageMoveTasks(input: Pick<ListMessageMoveTasksCommandInput, 'SourceArn' | 'MaxResults'>): Promise<Pick<ListMessageMoveTasksCommandOutput, 'Results'>>;
     // (undocumented)
     receiveMessage(input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions): Promise<ReceiveMessageCommandOutput>;
     // (undocumented)
     sendMessage(input: SendMessageCommandInput): Promise<SendMessageCommandOutput>;
     // (undocumented)
     sendMessageBatch(input: SendMessageBatchCommandInput): Promise<SendMessageBatchCommandOutput>;
+    // (undocumented)
+    startMessageMoveTask(input: Pick<StartMessageMoveTaskCommandInput, 'SourceArn' | 'DestinationArn' | 'MaxNumberOfMessagesPerSecond'>): Promise<Pick<StartMessageMoveTaskCommandOutput, 'TaskHandle'>>;
+}
+
+// @public (undocumented)
+export interface CancelSqsDlqRedriveInput {
+    // (undocumented)
+    taskHandle: string;
+}
+
+// @public (undocumented)
+export interface CancelSqsDlqRedriveResult {
+    // (undocumented)
+    approximateNumberOfMessagesMoved?: number;
+    // (undocumented)
+    taskHandle: string;
 }
 
 // @public (undocumented)
@@ -68,9 +103,29 @@ export function decodeSnsNotificationJson<TPayload>(body: string | undefined, la
 export function decodeSqsJsonBody<TPayload>(body: string | undefined, label?: string): TPayload;
 
 // @public (undocumented)
+export interface ListSqsDlqRedriveTasksInput {
+    // (undocumented)
+    maxResults?: number;
+    // (undocumented)
+    sourceQueue: string;
+}
+
+// @public (undocumented)
+export interface ListSqsDlqRedriveTasksResult {
+    // (undocumented)
+    sourceQueueArn: string;
+    // (undocumented)
+    sourceQueueIdentifier: string;
+    // (undocumented)
+    sourceQueueUrl: string;
+    // (undocumented)
+    tasks: SqsMessageMoveTaskSummary[];
+}
+
+// @public (undocumented)
 export const packageMetadata: {
     readonly name: "@idenstra/messaging-runtime";
-    readonly phase: "runtime-core-transport-and-host";
+    readonly phase: "runtime-core-transport-host-and-queue-ops";
 };
 
 // @public (undocumented)
@@ -206,7 +261,63 @@ export interface SnsUnsubscribeConfirmationEnvelope extends SnsEnvelopeBase {
 }
 
 // @public (undocumented)
+export interface SqsDeadLetterSourceQueuesResult {
+    // (undocumented)
+    queueArn?: string;
+    // (undocumented)
+    queueIdentifier: string;
+    // (undocumented)
+    queueUrl: string;
+    // (undocumented)
+    sourceQueueUrls: string[];
+}
+
+// @public (undocumented)
+export class SqsDlqRedriveManager {
+    constructor(client: SqsQueueOperationsClient & SqsQueueUrlResolverClient, options?: SqsDlqRedriveManagerOptions);
+    // (undocumented)
+    cancelRedrive(input: CancelSqsDlqRedriveInput): Promise<CancelSqsDlqRedriveResult>;
+    // (undocumented)
+    listRedriveTasks(input: ListSqsDlqRedriveTasksInput): Promise<ListSqsDlqRedriveTasksResult>;
+    // (undocumented)
+    startRedrive(input: StartSqsDlqRedriveInput): Promise<StartSqsDlqRedriveResult>;
+}
+
+// @public (undocumented)
+export interface SqsDlqRedriveManagerOptions {
+    // (undocumented)
+    queueInspector?: SqsQueueInspector;
+    // (undocumented)
+    queueResolver?: SqsQueueUrlResolver;
+}
+
+// @public (undocumented)
 export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
+
+// @public (undocumented)
+export type SqsMessageMoveTaskStatus = 'RUNNING' | 'COMPLETED' | 'CANCELLING' | 'CANCELLED' | 'FAILED' | (string & {});
+
+// @public (undocumented)
+export interface SqsMessageMoveTaskSummary {
+    // (undocumented)
+    approximateNumberOfMessagesMoved?: number;
+    // (undocumented)
+    approximateNumberOfMessagesToMove?: number;
+    // (undocumented)
+    destinationArn?: string;
+    // (undocumented)
+    failureReason?: string;
+    // (undocumented)
+    maxMessagesPerSecond?: number;
+    // (undocumented)
+    sourceArn?: string;
+    // (undocumented)
+    startedTimestamp?: number;
+    // (undocumented)
+    status?: SqsMessageMoveTaskStatus;
+    // (undocumented)
+    taskHandle?: string;
+}
 
 // @public (undocumented)
 export interface SqsPublishClient {
@@ -223,6 +334,94 @@ export class SqsPublisher {
     sendJson<TPayload>(input: SqsSendJsonInput<TPayload>): Promise<SqsSendJsonResult>;
     // (undocumented)
     sendJsonBatch<TId extends string, TPayload>(input: SqsSendJsonBatchInput<TId, TPayload>): Promise<SqsSendJsonBatchResult<TId>>;
+}
+
+// @public (undocumented)
+export type SqsQueueAttributesMap = Partial<Record<QueueAttributeName, string>>;
+
+// @public (undocumented)
+export interface SqsQueueDescription {
+    // (undocumented)
+    approximateNumberOfMessages?: number;
+    // (undocumented)
+    approximateNumberOfMessagesDelayed?: number;
+    // (undocumented)
+    approximateNumberOfMessagesNotVisible?: number;
+    // (undocumented)
+    attributes: SqsQueueAttributesMap;
+    // (undocumented)
+    delaySeconds?: number;
+    // (undocumented)
+    fifo: boolean;
+    // (undocumented)
+    messageRetentionSeconds?: number;
+    // (undocumented)
+    queueArn?: string;
+    // (undocumented)
+    queueIdentifier: string;
+    // (undocumented)
+    queueName: string;
+    // (undocumented)
+    queueUrl: string;
+    // (undocumented)
+    receiveMessageWaitTimeSeconds?: number;
+    // (undocumented)
+    redriveAllowPolicy?: SqsQueueRedriveAllowPolicy;
+    // (undocumented)
+    redrivePolicy?: SqsQueueRedrivePolicy;
+    // (undocumented)
+    visibilityTimeoutSeconds?: number;
+}
+
+// @public (undocumented)
+export class SqsQueueInspector {
+    constructor(client: SqsQueueOperationsClient & SqsQueueUrlResolverClient, options?: SqsQueueInspectorOptions);
+    // (undocumented)
+    inspectQueue(queue: string): Promise<SqsQueueDescription>;
+    // (undocumented)
+    listDeadLetterSourceQueues(queue: string, options?: {
+        pageSize?: number;
+    }): Promise<SqsDeadLetterSourceQueuesResult>;
+}
+
+// @public (undocumented)
+export interface SqsQueueInspectorOptions {
+    // (undocumented)
+    queueResolver?: SqsQueueUrlResolver;
+}
+
+// @public (undocumented)
+export interface SqsQueueOperationsClient {
+    // (undocumented)
+    cancelMessageMoveTask(input: Pick<CancelMessageMoveTaskCommandInput, 'TaskHandle'>): Promise<Pick<CancelMessageMoveTaskCommandOutput, 'ApproximateNumberOfMessagesMoved'>>;
+    // (undocumented)
+    getQueueAttributes(input: Pick<GetQueueAttributesCommandInput, 'QueueUrl' | 'AttributeNames'>): Promise<Pick<GetQueueAttributesCommandOutput, 'Attributes'>>;
+    // (undocumented)
+    listDeadLetterSourceQueues(input: Pick<ListDeadLetterSourceQueuesCommandInput, 'QueueUrl' | 'NextToken' | 'MaxResults'>): Promise<Pick<ListDeadLetterSourceQueuesCommandOutput, 'queueUrls' | 'NextToken'>>;
+    // (undocumented)
+    listMessageMoveTasks(input: Pick<ListMessageMoveTasksCommandInput, 'SourceArn' | 'MaxResults'>): Promise<Pick<ListMessageMoveTasksCommandOutput, 'Results'>>;
+    // (undocumented)
+    startMessageMoveTask(input: Pick<StartMessageMoveTaskCommandInput, 'SourceArn' | 'DestinationArn' | 'MaxNumberOfMessagesPerSecond'>): Promise<Pick<StartMessageMoveTaskCommandOutput, 'TaskHandle'>>;
+}
+
+// @public (undocumented)
+export interface SqsQueueRedriveAllowPolicy {
+    // (undocumented)
+    raw: Record<string, unknown>;
+    // (undocumented)
+    redrivePermission?: string;
+    // (undocumented)
+    sourceQueueArns?: string[];
+}
+
+// @public (undocumented)
+export interface SqsQueueRedrivePolicy {
+    // (undocumented)
+    deadLetterTargetArn?: string;
+    // (undocumented)
+    maxReceiveCount?: number;
+    // (undocumented)
+    raw: Record<string, unknown>;
 }
 
 // @public (undocumented)
@@ -855,6 +1054,34 @@ export class SqsWorkerTimeoutError extends Error {
 
 // @public (undocumented)
 export type SqsWorkerTimeoutStrategy = 'cooperative' | 'abandon';
+
+// @public (undocumented)
+export interface StartSqsDlqRedriveInput {
+    // (undocumented)
+    destinationQueue?: string;
+    // (undocumented)
+    maxMessagesPerSecond?: number;
+    // (undocumented)
+    sourceQueue: string;
+}
+
+// @public (undocumented)
+export interface StartSqsDlqRedriveResult {
+    // (undocumented)
+    destinationQueueArn?: string;
+    // (undocumented)
+    destinationQueueIdentifier?: string;
+    // (undocumented)
+    destinationQueueUrl?: string;
+    // (undocumented)
+    sourceQueueArn: string;
+    // (undocumented)
+    sourceQueueIdentifier: string;
+    // (undocumented)
+    sourceQueueUrl: string;
+    // (undocumented)
+    taskHandle?: string;
+}
 
 // (No @packageDocumentation comment for this package)
 

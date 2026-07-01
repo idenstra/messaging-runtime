@@ -8,6 +8,7 @@ Owned surfaces:
 - runtime event hooks and status/snapshot surfaces
 - worker-service host/bootstrap and signal-runner ergonomics
 - explicit SNS/SQS transport helpers
+- queue inspection and native DLQ redrive task helpers
 - worker host/bootstrap ergonomics
 - package-level verification and documentation
 
@@ -37,6 +38,8 @@ Current state:
   - cached SQS queue URL resolution from name, URL, or ARN
   - cached SNS topic ARN resolution from name or ARN
   - JSON-oriented SQS/SNS publisher helpers
+  - queue inspection and normalized queue attribute snapshots
+  - native SQS DLQ redrive task management
   - combined AWS adapter setup for consumer-facing SQS and SNS wiring
 - resolver preload configuration is consumer-owned:
   - apps may inject known queue/topic mappings at startup
@@ -86,4 +89,5 @@ flowchart LR
 
 This separation is deliberate:
 - consumer apps remain responsible for business handlers and configuration sourcing
+- consumer apps remain responsible for manual replay, idempotency storage, and domain-safe recovery rules
 - the package remains responsible for reusable SNS/SQS runtime mechanics
