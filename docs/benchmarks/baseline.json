@@ -1,0 +1,73 @@
+{
+  "packageName": "@idenstra/messaging-runtime",
+  "packageVersion": "0.1.0",
+  "nodeVersion": "v24.18.0",
+  "platform": "linux",
+  "arch": "x64",
+  "cpuModel": "AMD Ryzen 7 3700X 8-Core Processor",
+  "command": "npm run benchmark",
+  "warmupSamples": 1,
+  "measuredSamples": 3,
+  "scenarios": [
+    {
+      "name": "publisher:sqs-batch",
+      "description": "SQS batch publish chunking and result aggregation.",
+      "iterationsPerSample": 50,
+      "sampleDurationsMs": [9.510525, 9.466362, 10.436717],
+      "meanMsPerIteration": 0.196091,
+      "medianMsPerIteration": 0.190211,
+      "p95MsPerIteration": 0.208734,
+      "minMsPerIteration": 0.189327,
+      "maxMsPerIteration": 0.208734,
+      "opsPerSecond": 5099.681086
+    },
+    {
+      "name": "publisher:sns-batch",
+      "description": "SNS batch publish chunking and result aggregation.",
+      "iterationsPerSample": 50,
+      "sampleDurationsMs": [4.478977, 5.548931, 5.949195],
+      "meanMsPerIteration": 0.106514,
+      "medianMsPerIteration": 0.110979,
+      "p95MsPerIteration": 0.118984,
+      "minMsPerIteration": 0.08958,
+      "maxMsPerIteration": 0.118984,
+      "opsPerSecond": 9388.435438
+    },
+    {
+      "name": "worker:ack-delete",
+      "description": "Single-message delete finalization baseline.",
+      "iterationsPerSample": 20,
+      "sampleDurationsMs": [21.940102, 22.359172, 22.638187],
+      "meanMsPerIteration": 1.115624,
+      "medianMsPerIteration": 1.117959,
+      "p95MsPerIteration": 1.131909,
+      "minMsPerIteration": 1.097005,
+      "maxMsPerIteration": 1.131909,
+      "opsPerSecond": 896.359066
+    },
+    {
+      "name": "worker:visibility-heartbeat",
+      "description": "Single-message visibility heartbeat baseline.",
+      "iterationsPerSample": 20,
+      "sampleDurationsMs": [22.696857, 22.743385, 22.834656],
+      "meanMsPerIteration": 1.137915,
+      "medianMsPerIteration": 1.137169,
+      "p95MsPerIteration": 1.141733,
+      "minMsPerIteration": 1.134843,
+      "maxMsPerIteration": 1.141733,
+      "opsPerSecond": 878.800288
+    },
+    {
+      "name": "worker:single-route-full-batch",
+      "description": "Current full-batch receive and dispatch baseline.",
+      "iterationsPerSample": 20,
+      "sampleDurationsMs": [1026.332436, 1024.998115, 1025.901465],
+      "meanMsPerIteration": 51.2872,
+      "medianMsPerIteration": 51.295073,
+      "p95MsPerIteration": 51.316622,
+      "minMsPerIteration": 51.249906,
+      "maxMsPerIteration": 51.316622,
+      "opsPerSecond": 19.498042
+    }
+  ]
+}

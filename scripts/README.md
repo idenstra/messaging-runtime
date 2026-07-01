@@ -16,6 +16,7 @@ Key scripts:
 - `scripts/harness/verify.sh`
 - `scripts/public-surface/run-interface-reports.mjs`
 - `scripts/public-surface/check-export-snapshot.mjs`
+- `scripts/benchmarks/run.ts`
 - `scripts/release/validate-release-state.mjs`
 - `scripts/release/print-release-notes.mjs`
 
@@ -23,6 +24,9 @@ Package-level code-shape tooling:
 - `npm run format`
 - `npm run lint`
 - `npm run lint:fix`
+- `npm run benchmark`
+- `npm run benchmark:ci`
+- `npm run benchmark:baseline`
 - `npm run public-surface:report`
 - `npm run public-surface:snapshot`
 - `npm run public-surface:check`

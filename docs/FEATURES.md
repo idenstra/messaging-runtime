@@ -24,14 +24,15 @@
 | Queue URL resolver | Yes | Name, URL, ARN, preload, optional no-network mode. |
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
 | SQS JSON publisher | Yes | Single-message and batch publishing. |
-| SNS JSON publisher | Yes | Single-message publishing. |
+| SQS batch delete / visibility helpers | Yes | `SqsMessageBatchOperator` chunks automatically and normalizes partial success/failure by caller entry ID. |
+| SNS JSON publisher | Yes | Single-message and batch publishing. |
 | Queue inspection | Yes | `SqsQueueInspector` resolves queue identifiers and normalizes queue attributes. |
 | DLQ source-queue discovery | Yes | `SqsQueueInspector.listDeadLetterSourceQueues(...)` paginates `ListDeadLetterSourceQueues`. |
 | Native DLQ redrive control | Yes | `SqsDlqRedriveManager` wraps `StartMessageMoveTask`, `ListMessageMoveTasks`, and `CancelMessageMoveTask`. |
 | Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
 | Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
-| Published benchmark suite | Not yet | Required before public performance claims. |
+| Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, and tracked baseline artifacts under `docs/benchmarks/`. |
 
 ## Public API shape
 
@@ -66,11 +67,11 @@ These omissions are part of the design. Generic broker abstractions tend to eras
 The core feature set is credible, but the public maturity story is not complete until the following gaps are closed:
 
 1. Public package posture: license, package metadata, registry access, contribution docs, security policy, issue templates, and release instructions.
-2. Performance proof: deterministic benchmark suite with published baseline numbers.
-3. Optional integration proof: emulator-backed or LocalStack-style tests for receive, delete, visibility, publish, and resolver flows.
-4. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
-5. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.
-6. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
+2. Optional integration proof: emulator-backed or LocalStack-style tests for receive, delete, visibility, publish, and resolver flows.
+3. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
+4. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.
+5. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
+6. Worker-core throughput review: benchmark-backed decisions for any future buffered prefetch or runtime batch-finalization changes.
 
 ## Feature acceptance rule
 

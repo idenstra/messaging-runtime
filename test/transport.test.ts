@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { type ListTopicsCommandInput, SNSClient } from '@aws-sdk/client-sns';
+import { type ListTopicsCommandInput, type PublishBatchCommandInput, SNSClient } from '@aws-sdk/client-sns';
 import type {
+  ChangeMessageVisibilityBatchCommandInput,
+  DeleteMessageBatchCommandInput,
   GetQueueUrlCommandInput,
   SendMessageBatchCommandInput,
   SendMessageCommandInput,
@@ -17,6 +19,7 @@ import {
   SnsPublisher,
   SnsTopicArnResolver,
   type SnsTransportClient,
+  SqsMessageBatchOperator,
   SqsPublisher,
   SqsQueueUrlResolver,
   type SqsTransportClient,
@@ -26,6 +29,8 @@ class FakeSqsTransportClient implements SqsTransportClient {
   readonly getQueueUrlInputs: GetQueueUrlCommandInput[] = [];
   readonly sendMessageInputs: SendMessageCommandInput[] = [];
   readonly sendMessageBatchInputs: SendMessageBatchCommandInput[] = [];
+  readonly deleteMessageBatchInputs: DeleteMessageBatchCommandInput[] = [];
+  readonly changeMessageVisibilityBatchInputs: ChangeMessageVisibilityBatchCommandInput[] = [];
   private readonly queueUrls = new Map<string, string>();
   private readonly batchResponses: Array<{
     Successful?: Array<{
@@ -36,6 +41,14 @@ class FakeSqsTransportClient implements SqsTransportClient {
       MD5OfMessageAttributes?: string;
       MD5OfMessageSystemAttributes?: string;
     }>;
+    Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
+  }> = [];
+  private readonly deleteBatchResponses: Array<{
+    Successful?: Array<{ Id?: string }>;
+    Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
+  }> = [];
+  private readonly visibilityBatchResponses: Array<{
+    Successful?: Array<{ Id?: string }>;
     Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
   }> = [];
 
@@ -59,6 +72,22 @@ class FakeSqsTransportClient implements SqsTransportClient {
     return this;
   }
 
+  withDeleteBatchResponse(response: {
+    Successful?: Array<{ Id?: string }>;
+    Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
+  }): this {
+    this.deleteBatchResponses.push(response);
+    return this;
+  }
+
+  withVisibilityBatchResponse(response: {
+    Successful?: Array<{ Id?: string }>;
+    Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
+  }): this {
+    this.visibilityBatchResponses.push(response);
+    return this;
+  }
+
   async getQueueUrl(input: GetQueueUrlCommandInput) {
     this.getQueueUrlInputs.push(input);
     return { QueueUrl: input.QueueName ? this.queueUrls.get(input.QueueName) : undefined };
@@ -73,15 +102,38 @@ class FakeSqsTransportClient implements SqsTransportClient {
     this.sendMessageBatchInputs.push(input);
     return this.batchResponses.shift() ?? { Successful: [], Failed: [] };
   }
+
+  async deleteMessageBatch(input: DeleteMessageBatchCommandInput) {
+    this.deleteMessageBatchInputs.push(input);
+    return this.deleteBatchResponses.shift() ?? { Successful: [], Failed: [] };
+  }
+
+  async changeMessageVisibilityBatch(input: ChangeMessageVisibilityBatchCommandInput) {
+    this.changeMessageVisibilityBatchInputs.push(input);
+    return this.visibilityBatchResponses.shift() ?? { Successful: [], Failed: [] };
+  }
 }
 
 class FakeSnsTransportClient implements SnsTransportClient {
   readonly listTopicsInputs: ListTopicsCommandInput[] = [];
   readonly publishInputs: Array<Record<string, unknown>> = [];
+  readonly publishBatchInputs: PublishBatchCommandInput[] = [];
   private readonly listTopicsResponses: Array<{ NextToken?: string; Topics?: Array<{ TopicArn?: string }> }> = [];
+  private readonly publishBatchResponses: Array<{
+    Successful?: Array<{ Id?: string; MessageId?: string; SequenceNumber?: string }>;
+    Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
+  }> = [];
 
   withListTopicsResponse(response: { NextToken?: string; Topics?: Array<{ TopicArn?: string }> }): this {
     this.listTopicsResponses.push(response);
+    return this;
+  }
+
+  withPublishBatchResponse(response: {
+    Successful?: Array<{ Id?: string; MessageId?: string; SequenceNumber?: string }>;
+    Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
+  }): this {
+    this.publishBatchResponses.push(response);
     return this;
   }
 
@@ -93,6 +145,11 @@ class FakeSnsTransportClient implements SnsTransportClient {
   async publish(input: Record<string, unknown>) {
     this.publishInputs.push(input);
     return { MessageId: 'sns-message-1', SequenceNumber: '2' };
+  }
+
+  async publishBatch(input: PublishBatchCommandInput) {
+    this.publishBatchInputs.push(input);
+    return this.publishBatchResponses.shift() ?? { Successful: [], Failed: [] };
   }
 }
 
@@ -353,6 +410,80 @@ test('SqsPublisher sendJsonBatch chunks entries and returns keyed aggregate resu
   assert.equal(result.failedById['job-11']?.code, 'InternalError');
 });
 
+test('SqsMessageBatchOperator deleteMessages chunks entries and returns keyed aggregate results', async () => {
+  const client = new FakeSqsTransportClient()
+    .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue')
+    .withDeleteBatchResponse({ Successful: Array.from({ length: 10 }, (_, index) => ({ Id: `entry-${index}` })) })
+    .withDeleteBatchResponse({
+      Successful: [{ Id: 'entry-10' }],
+      Failed: [{ Id: 'entry-11', Code: 'ReceiptHandleIsInvalid', Message: 'boom', SenderFault: true }],
+    });
+  const operator = new SqsMessageBatchOperator(client);
+
+  const result = await operator.deleteMessages({
+    queue: 'dispatch-queue',
+    entries: Array.from({ length: 12 }, (_, index) => ({ id: `job-${index}`, receiptHandle: `receipt-${index}` })),
+  });
+
+  assert.equal(client.deleteMessageBatchInputs.length, 2);
+  assert.equal(client.deleteMessageBatchInputs[0]?.Entries?.length, 10);
+  assert.equal(client.deleteMessageBatchInputs[1]?.Entries?.length, 2);
+  assert.equal(result.requestedCount, 12);
+  assert.equal(result.successfulCount, 11);
+  assert.equal(result.failedCount, 1);
+  assert.deepEqual(result.successfulById['job-0'], { id: 'job-0' });
+  assert.equal(result.failedById['job-11']?.code, 'ReceiptHandleIsInvalid');
+});
+
+test('SqsMessageBatchOperator changeMessageVisibility chunks entries, forwards per-entry timeouts, and normalizes results', async () => {
+  const client = new FakeSqsTransportClient()
+    .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue')
+    .withVisibilityBatchResponse({
+      Successful: [{ Id: 'entry-0' }],
+      Failed: [{ Id: 'entry-1', Code: 'InternalError', Message: 'boom', SenderFault: false }],
+    });
+  const operator = new SqsMessageBatchOperator(client);
+
+  const result = await operator.changeMessageVisibility({
+    queue: 'dispatch-queue',
+    entries: [
+      { id: 'job-0', receiptHandle: 'receipt-0', visibilityTimeoutSeconds: 30 },
+      { id: 'job-1', receiptHandle: 'receipt-1', visibilityTimeoutSeconds: 45 },
+    ],
+  });
+
+  assert.deepEqual(client.changeMessageVisibilityBatchInputs[0], {
+    QueueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+    Entries: [
+      { Id: 'entry-0', ReceiptHandle: 'receipt-0', VisibilityTimeout: 30 },
+      { Id: 'entry-1', ReceiptHandle: 'receipt-1', VisibilityTimeout: 45 },
+    ],
+  });
+  assert.deepEqual(result.successfulById['job-0'], { id: 'job-0' });
+  assert.equal(result.failedById['job-1']?.message, 'boom');
+});
+
+test('SqsMessageBatchOperator rejects duplicate caller IDs before any AWS call', async () => {
+  const client = new FakeSqsTransportClient().withQueueUrl(
+    'dispatch-queue',
+    'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+  );
+  const operator = new SqsMessageBatchOperator(client);
+
+  await assert.rejects(
+    () =>
+      operator.deleteMessages({
+        queue: 'dispatch-queue',
+        entries: [
+          { id: 'job-0', receiptHandle: 'receipt-0' },
+          { id: 'job-0', receiptHandle: 'receipt-1' },
+        ],
+      }),
+    /Duplicate SQS delete batch entry id "job-0" is not allowed\./i,
+  );
+  assert.equal(client.deleteMessageBatchInputs.length, 0);
+});
+
 test('SnsPublisher publishJson resolves topic identifiers and forwards publish options', async () => {
   const client = new FakeSnsTransportClient().withListTopicsResponse({
     Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' }],
@@ -379,6 +510,82 @@ test('SnsPublisher publishJson resolves topic identifiers and forwards publish o
   });
 });
 
+test('SnsPublisher publishJsonBatch chunks entries and returns keyed aggregate results', async () => {
+  const client = new FakeSnsTransportClient()
+    .withPublishBatchResponse({
+      Successful: Array.from({ length: 10 }, (_, index) => ({ Id: `entry-${index}`, MessageId: `message-${index}` })),
+    })
+    .withPublishBatchResponse({
+      Successful: [{ Id: 'entry-10', MessageId: 'message-10', SequenceNumber: '10' }],
+      Failed: [{ Id: 'entry-11', Code: 'InternalError', Message: 'boom', SenderFault: false }],
+    });
+  const publisher = new SnsPublisher(client);
+
+  const result = await publisher.publishJsonBatch({
+    topic: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+    entries: Array.from({ length: 12 }, (_, index) => ({
+      id: `event-${index}`,
+      payload: { index },
+      subject: `Event ${index}`,
+    })),
+  });
+
+  assert.equal(client.publishBatchInputs.length, 2);
+  assert.equal(client.publishBatchInputs[0]?.PublishBatchRequestEntries?.length, 10);
+  assert.equal(client.publishBatchInputs[1]?.PublishBatchRequestEntries?.length, 2);
+  assert.equal(result.requestedCount, 12);
+  assert.equal(result.successfulCount, 11);
+  assert.equal(result.failedCount, 1);
+  assert.equal(result.successfulById['event-10']?.sequenceNumber, '10');
+  assert.equal(result.failedById['event-11']?.code, 'InternalError');
+});
+
+test('SnsPublisher publishJsonBatch forwards FIFO fields and rejects FIFO violations', async () => {
+  const client = new FakeSnsTransportClient().withPublishBatchResponse({
+    Successful: [{ Id: 'entry-0', MessageId: 'message-0', SequenceNumber: '1' }],
+  });
+  const publisher = new SnsPublisher(client);
+
+  await publisher.publishJsonBatch({
+    topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+    entries: [
+      { id: 'event-0', payload: { kind: 'delivery' }, messageGroupId: 'group-1', messageDeduplicationId: 'dedupe-1' },
+    ],
+  });
+
+  assert.deepEqual(client.publishBatchInputs[0], {
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+    PublishBatchRequestEntries: [
+      {
+        Id: 'entry-0',
+        Message: JSON.stringify({ kind: 'delivery' }),
+        Subject: undefined,
+        MessageAttributes: undefined,
+        MessageGroupId: 'group-1',
+        MessageDeduplicationId: 'dedupe-1',
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () =>
+      publisher.publishJsonBatch({
+        topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+        entries: [{ id: 'event-1', payload: { kind: 'delivery' } }],
+      }),
+    /messageGroupId for SNS FIFO batch entry event-1/i,
+  );
+
+  await assert.rejects(
+    () =>
+      publisher.publishJsonBatch({
+        topic: 'arn:aws:sns:us-east-1:123456789012:events',
+        entries: [{ id: 'event-2', payload: { kind: 'delivery' }, messageGroupId: 'group-2' }],
+      }),
+    /SNS standard topic batch entry event-2 must not declare messageGroupId/i,
+  );
+});
+
 test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport operations', async () => {
   const sentSqsCommands: unknown[] = [];
   const sentSnsCommands: unknown[] = [];
@@ -401,6 +608,14 @@ test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport o
     QueueUrl: 'https://queue.test/dispatch',
     ReceiptHandle: 'receipt-1',
     VisibilityTimeout: 30,
+  });
+  await sqsAdapter.deleteMessageBatch({
+    QueueUrl: 'https://queue.test/dispatch',
+    Entries: [{ Id: 'entry-0', ReceiptHandle: 'receipt-1' }],
+  });
+  await sqsAdapter.changeMessageVisibilityBatch({
+    QueueUrl: 'https://queue.test/dispatch',
+    Entries: [{ Id: 'entry-0', ReceiptHandle: 'receipt-1', VisibilityTimeout: 30 }],
   });
   await sqsAdapter.getQueueUrl({ QueueName: 'dispatch-queue' });
   await sqsAdapter.getQueueAttributes({
@@ -425,7 +640,11 @@ test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport o
   });
   await snsAdapter.listTopics({ NextToken: undefined });
   await snsAdapter.publish({ TopicArn: 'arn:aws:sns:us-east-1:123456789012:topic', Message: '{}' });
+  await snsAdapter.publishBatch({
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:topic',
+    PublishBatchRequestEntries: [{ Id: 'entry-0', Message: '{}' }],
+  });
 
-  assert.equal(sentSqsCommands.length, 11);
-  assert.equal(sentSnsCommands.length, 2);
+  assert.equal(sentSqsCommands.length, 13);
+  assert.equal(sentSnsCommands.length, 3);
 });

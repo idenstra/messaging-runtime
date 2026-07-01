@@ -180,10 +180,13 @@ Use the queue-ops helpers for operational inspection and native SQS redrive:
 - `SqsDlqRedriveManager.listRedriveTasks(...)`
 - `SqsDlqRedriveManager.startRedrive(...)`
 - `SqsDlqRedriveManager.cancelRedrive(...)`
+- `SqsMessageBatchOperator.deleteMessages(...)`
+- `SqsMessageBatchOperator.changeMessageVisibility(...)`
 
 These helpers intentionally stop at the queue-operation boundary:
 - queue inspection is package-owned;
 - native SQS DLQ redrive is package-owned;
+- transport-level SQS batch message operations are package-owned;
 - manual message-level replay remains consumer-owned.
 
 This boundary is deliberate. Manual replay needs consumer-domain rules for:

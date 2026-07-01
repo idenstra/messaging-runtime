@@ -1,6 +1,6 @@
 # Getting started
 
-This guide shows the smallest useful setup for a plain Node.js worker that consumes SQS messages, plus the common SNS-over-SQS and publish paths.
+This guide shows the smallest useful setup for a plain Node.js worker that consumes SQS messages, plus the common SNS-over-SQS, publish, and transport-batch helper paths.
 
 ## Prerequisites
 
@@ -153,6 +153,42 @@ await publisher.sendJsonBatch({
 
 The result reports successes and failures keyed by the caller-provided entry IDs.
 
+## Batch delete or extend visibility in SQS
+
+Use `SqsMessageBatchOperator` when a consumer or operator flow needs transport-level batch delete or batch visibility updates outside the worker core.
+
+```ts
+import { SQSClient } from '@aws-sdk/client-sqs';
+import { AwsSqsAdapter, SqsMessageBatchOperator, SqsQueueUrlResolver } from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter, {
+  preload: {
+    jobs: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+  },
+});
+const batchOperator = new SqsMessageBatchOperator(sqsAdapter, queueResolver);
+
+await batchOperator.deleteMessages({
+  queue: 'jobs',
+  entries: [
+    { id: 'message-1', receiptHandle: 'receipt-handle-1' },
+    { id: 'message-2', receiptHandle: 'receipt-handle-2' },
+  ],
+});
+
+await batchOperator.changeMessageVisibility({
+  queue: 'jobs',
+  entries: [
+    { id: 'message-1', receiptHandle: 'receipt-handle-1', visibilityTimeoutSeconds: 60 },
+    { id: 'message-2', receiptHandle: 'receipt-handle-2', visibilityTimeoutSeconds: 120 },
+  ],
+});
+```
+
+These helpers chunk automatically to the AWS 10-entry limit and normalize partial successes and failures by the caller-provided entry IDs.
+
 ## Publish to SNS
 
 ```ts
@@ -174,6 +210,23 @@ await publisher.publishJson({
   payload: { eventType: 'USER_CREATED', userId: 'user-1' },
 });
 ```
+
+## Publish a batch to SNS
+
+`publishJsonBatch` keeps the same ergonomics as the SQS batch publisher: arbitrary caller entry counts in, 10-entry AWS chunking and normalized results out.
+
+```ts
+await publisher.publishJsonBatch({
+  topic: 'events',
+  entries: Array.from({ length: 25 }, (_, index) => ({
+    id: `event-${index}`,
+    payload: { eventId: `event-${index}`, eventType: 'USER_CREATED' },
+    subject: `User created ${index}`,
+  })),
+});
+```
+
+FIFO-specific fields such as `messageGroupId` and `messageDeduplicationId` are forwarded per entry and validated against the resolved topic type.
 
 ## Inspect or redrive a DLQ
 

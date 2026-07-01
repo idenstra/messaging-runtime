@@ -2,7 +2,7 @@
 
 Performance is a product requirement for this package. It should be lightweight, predictable, and cheap to run.
 
-The repository must not claim benchmark superiority until it has a benchmark suite and published baseline numbers. Until then, the correct public posture is: performance is a design goal and an unclosed release-readiness item.
+The repository now owns a deterministic benchmark suite and checked-in baseline artifacts. That closes the "no benchmark evidence at all" gap, but it does not justify strong comparative marketing claims yet. The correct posture remains: performance is a design goal, benchmark methodology exists, and worker-core throughput changes should be benchmark-backed before they land.
 
 ## Performance principles
 
@@ -16,50 +16,62 @@ The repository must not claim benchmark superiority until it has a benchmark sui
 
 ## Current hot paths
 
-The hot paths that need benchmark coverage are:
+The current benchmark suite covers:
 
-1. SQS receive loop scheduling under empty, partial, and full batches.
+1. SQS batch publish chunking and result aggregation.
+2. SNS batch publish chunking and result aggregation.
+3. single-message delete finalization.
+4. single-message heartbeat/visibility finalization.
+5. current single-route full-batch receive and dispatch behavior.
+
+The broader hot paths that still deserve additional benchmark coverage are:
+
+1. SQS receive loop scheduling under empty, partial, and mixed batches.
 2. message conversion from AWS SDK shape to runtime message shape.
 3. JSON body decoding for plain SQS messages.
 4. SNS envelope decoding and nested payload decoding.
 5. handler dispatch and ack action resolution.
-6. delete and keep finalization.
-7. heartbeat scheduling and `ChangeMessageVisibility` calls.
-8. SQS batch publishing and result aggregation.
-9. resolver cache hit and miss paths.
-10. snapshot generation with many routes and high counter volume.
+6. failure-keep finalization and timeout paths.
+7. resolver cache hit and miss paths.
+8. snapshot generation with many routes and high counter volume.
 
-## Required benchmark suite
+## Benchmark command surface
 
-Add a benchmark suite before public release. It should run locally without live AWS.
+The benchmark suite runs locally without live AWS:
 
-Recommended scenarios:
+```bash
+npm run benchmark
+npm run benchmark:ci
+npm run benchmark:baseline
+```
+
+- `benchmark` prints the current human-readable report.
+- `benchmark:ci` emits stable machine-readable JSON and is safe for the mandatory harness.
+- `benchmark:baseline` refreshes the tracked baseline artifacts after an intentional benchmark change.
+
+## Current benchmark scenarios
+
+The current suite includes:
+
+| Benchmark | Measures |
+| --- | --- |
+| `publisher:sqs-batch` | SQS batch publish chunking and result aggregation overhead. |
+| `publisher:sns-batch` | SNS batch publish chunking and result aggregation overhead. |
+| `worker:ack-delete` | Delete-message finalization overhead with fake client. |
+| `worker:visibility-heartbeat` | Manual heartbeat plus keep finalization overhead with fake client. |
+| `worker:single-route-full-batch` | Current full-batch receive and dispatch overhead. |
+
+Future scenarios still worth adding:
 
 | Benchmark | Measures |
 | --- | --- |
 | `decode:sqs-json` | Plain SQS JSON body decode throughput and allocation. |
 | `decode:sns-over-sqs-json` | SNS envelope and nested JSON payload decode throughput. |
-| `worker:single-route-full-batch` | Receive and dispatch overhead with full batches. |
 | `worker:many-routes-empty-poll` | Scheduling overhead with many routes and empty receives. |
-| `worker:ack-delete` | Delete-message finalization overhead with fake client. |
 | `worker:failure-keep` | Failure hook plus keep finalization overhead. |
 | `worker:timeout-cooperative` | Timeout handling overhead and slot retention behavior. |
-| `publisher:sqs-batch` | Batch chunking and result aggregation overhead. |
 | `resolver:cache-hit` | Queue/topic resolver cache-hit cost. |
 | `snapshot:many-routes` | Snapshot generation cost with route/counter aggregation. |
-
-## Suggested tooling
-
-Use Node's built-in `node:perf_hooks` or a small benchmark dependency only if it proves useful. The benchmark suite should avoid large transitive dependencies.
-
-Suggested commands:
-
-```bash
-npm run benchmark
-npm run benchmark:ci
-```
-
-`benchmark:ci` should produce stable machine-readable output and tolerate normal CI variance. It should detect major regressions but avoid flaky microbenchmark gating.
 
 ## Baseline reporting
 
@@ -75,12 +87,14 @@ A public benchmark report should include:
 - memory/allocation observations where relevant;
 - comparison against the previous baseline.
 
-Store the current baseline under a tracked path such as:
+The current tracked baseline lives at:
 
 ```text
 docs/benchmarks/baseline.md
 docs/benchmarks/baseline.json
 ```
+
+`benchmark:ci` intentionally checks that the suite runs and emits stable output. It does not gate on fragile numeric thresholds in this slice.
 
 ## Performance review checklist
 
@@ -97,11 +111,11 @@ Every runtime change should answer these questions:
 
 ## Public claim rule
 
-Acceptable wording before benchmarks:
+Acceptable wording now:
 
-> Designed to be lightweight and SNS/SQS-specific; benchmark publication is pending.
+> Designed to be lightweight and SNS/SQS-specific, with a deterministic local benchmark suite and tracked baseline.
 
-Unacceptable wording before benchmarks:
+Still unacceptable without broader evidence:
 
 > Blazingly fast.
 

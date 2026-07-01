@@ -13,6 +13,9 @@ Format rules:
 
 - added queue inspection helpers and native SQS DLQ redrive task management through `SqsQueueInspector`, `SqsDlqRedriveManager`, and the combined `AwsSqsAdapter`
 - added a consumer-owned queue-ops example script and explicit docs that keep manual message replay outside the shared package
+- added transport-level batch helpers for SQS delete / visibility changes through `SqsMessageBatchOperator`
+- added SNS batch JSON publish support through `SnsPublisher.publishJsonBatch(...)`
+- added deterministic benchmark commands and tracked baseline artifacts for transport and worker hot-path review
 
 ### Changed
 

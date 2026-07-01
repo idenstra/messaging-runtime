@@ -6,7 +6,11 @@
 
 import { CancelMessageMoveTaskCommandInput } from '@aws-sdk/client-sqs';
 import { CancelMessageMoveTaskCommandOutput } from '@aws-sdk/client-sqs';
+import { ChangeMessageVisibilityBatchCommandInput } from '@aws-sdk/client-sqs';
+import { ChangeMessageVisibilityBatchCommandOutput } from '@aws-sdk/client-sqs';
 import { ChangeMessageVisibilityCommandInput } from '@aws-sdk/client-sqs';
+import { DeleteMessageBatchCommandInput } from '@aws-sdk/client-sqs';
+import { DeleteMessageBatchCommandOutput } from '@aws-sdk/client-sqs';
 import { DeleteMessageCommandInput } from '@aws-sdk/client-sqs';
 import { GetQueueAttributesCommandInput } from '@aws-sdk/client-sqs';
 import { GetQueueAttributesCommandOutput } from '@aws-sdk/client-sqs';
@@ -21,6 +25,8 @@ import { ListTopicsCommandOutput } from '@aws-sdk/client-sns';
 import { Message } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue as MessageAttributeValue_2 } from '@aws-sdk/client-sns';
+import { PublishBatchCommandInput } from '@aws-sdk/client-sns';
+import { PublishBatchCommandOutput } from '@aws-sdk/client-sns';
 import { PublishCommandInput } from '@aws-sdk/client-sns';
 import { PublishCommandOutput } from '@aws-sdk/client-sns';
 import type { QueueAttributeName } from '@aws-sdk/client-sqs';
@@ -42,6 +48,8 @@ export class AwsSnsAdapter implements SnsTransportClient {
     listTopics(input: Pick<ListTopicsCommandInput, 'NextToken'>): Promise<Pick<ListTopicsCommandOutput, 'NextToken' | 'Topics'>>;
     // (undocumented)
     publish(input: PublishCommandInput): Promise<PublishCommandOutput>;
+    // (undocumented)
+    publishBatch(input: PublishBatchCommandInput): Promise<PublishBatchCommandOutput>;
 }
 
 // @public (undocumented)
@@ -52,7 +60,11 @@ export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQ
     // (undocumented)
     changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
     // (undocumented)
+    changeMessageVisibilityBatch(input: ChangeMessageVisibilityBatchCommandInput): Promise<ChangeMessageVisibilityBatchCommandOutput>;
+    // (undocumented)
     deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
+    // (undocumented)
+    deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput>;
     // (undocumented)
     getQueueAttributes(input: Pick<GetQueueAttributesCommandInput, 'QueueUrl' | 'AttributeNames'>): Promise<Pick<GetQueueAttributesCommandOutput, 'Attributes'>>;
     // (undocumented)
@@ -177,6 +189,8 @@ export interface SnsNotificationEnvelope extends SnsEnvelopeBase {
 export interface SnsPublishClient {
     // (undocumented)
     publish(input: PublishCommandInput): Promise<PublishCommandOutput>;
+    // (undocumented)
+    publishBatch(input: PublishBatchCommandInput): Promise<PublishBatchCommandOutput>;
 }
 
 // @public (undocumented)
@@ -184,6 +198,62 @@ export class SnsPublisher {
     constructor(client: SnsTransportClient, resolver?: SnsTopicArnResolver);
     // (undocumented)
     publishJson<TPayload>(input: SnsPublishJsonInput<TPayload>): Promise<SnsPublishJsonResult>;
+    // (undocumented)
+    publishJsonBatch<TId extends string, TPayload>(input: SnsPublishJsonBatchInput<TId, TPayload>): Promise<SnsPublishJsonBatchResult<TId>>;
+}
+
+// @public (undocumented)
+export interface SnsPublishJsonBatchEntry<TId extends string = string, TPayload = unknown> extends SnsPublishJsonOptions {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    payload: TPayload;
+}
+
+// @public (undocumented)
+export interface SnsPublishJsonBatchFailure<TId extends string = string> {
+    // (undocumented)
+    code?: string;
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    message?: string;
+    // (undocumented)
+    senderFault?: boolean;
+}
+
+// @public (undocumented)
+export interface SnsPublishJsonBatchInput<TId extends string = string, TPayload = unknown> {
+    // (undocumented)
+    entries: Array<SnsPublishJsonBatchEntry<TId, TPayload>>;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishJsonBatchResult<TId extends string = string> {
+    // (undocumented)
+    failedById: Record<string, SnsPublishJsonBatchFailure<TId>>;
+    // (undocumented)
+    failedCount: number;
+    // (undocumented)
+    requestedCount: number;
+    // (undocumented)
+    successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>>;
+    // (undocumented)
+    successfulCount: number;
+    // (undocumented)
+    topicArn: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishJsonBatchSuccess<TId extends string = string> {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    messageId?: string;
+    // (undocumented)
+    sequenceNumber?: string;
 }
 
 // @public (undocumented)
@@ -261,6 +331,66 @@ export interface SnsUnsubscribeConfirmationEnvelope extends SnsEnvelopeBase {
 }
 
 // @public (undocumented)
+export interface SqsBatchOperationClient {
+    // (undocumented)
+    changeMessageVisibilityBatch(input: ChangeMessageVisibilityBatchCommandInput): Promise<ChangeMessageVisibilityBatchCommandOutput>;
+    // (undocumented)
+    deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput>;
+}
+
+// @public (undocumented)
+export interface SqsBatchOperationFailure<TId extends string = string> {
+    // (undocumented)
+    code?: string;
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    message?: string;
+    // (undocumented)
+    senderFault?: boolean;
+}
+
+// @public (undocumented)
+export interface SqsBatchOperationSuccess<TId extends string = string> {
+    // (undocumented)
+    id: TId;
+}
+
+// @public (undocumented)
+export interface SqsChangeMessageVisibilityBatchEntry<TId extends string = string> {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    receiptHandle: string;
+    // (undocumented)
+    visibilityTimeoutSeconds: number;
+}
+
+// @public (undocumented)
+export interface SqsChangeMessageVisibilityInput<TId extends string = string> {
+    // (undocumented)
+    entries: Array<SqsChangeMessageVisibilityBatchEntry<TId>>;
+    // (undocumented)
+    queue: string;
+}
+
+// @public (undocumented)
+export interface SqsChangeMessageVisibilityResult<TId extends string = string> {
+    // (undocumented)
+    failedById: Record<string, SqsBatchOperationFailure<TId>>;
+    // (undocumented)
+    failedCount: number;
+    // (undocumented)
+    queueUrl: string;
+    // (undocumented)
+    requestedCount: number;
+    // (undocumented)
+    successfulById: Record<string, SqsBatchOperationSuccess<TId>>;
+    // (undocumented)
+    successfulCount: number;
+}
+
+// @public (undocumented)
 export interface SqsDeadLetterSourceQueuesResult {
     // (undocumented)
     queueArn?: string;
@@ -270,6 +400,38 @@ export interface SqsDeadLetterSourceQueuesResult {
     queueUrl: string;
     // (undocumented)
     sourceQueueUrls: string[];
+}
+
+// @public (undocumented)
+export interface SqsDeleteMessagesBatchEntry<TId extends string = string> {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    receiptHandle: string;
+}
+
+// @public (undocumented)
+export interface SqsDeleteMessagesInput<TId extends string = string> {
+    // (undocumented)
+    entries: Array<SqsDeleteMessagesBatchEntry<TId>>;
+    // (undocumented)
+    queue: string;
+}
+
+// @public (undocumented)
+export interface SqsDeleteMessagesResult<TId extends string = string> {
+    // (undocumented)
+    failedById: Record<string, SqsBatchOperationFailure<TId>>;
+    // (undocumented)
+    failedCount: number;
+    // (undocumented)
+    queueUrl: string;
+    // (undocumented)
+    requestedCount: number;
+    // (undocumented)
+    successfulById: Record<string, SqsBatchOperationSuccess<TId>>;
+    // (undocumented)
+    successfulCount: number;
 }
 
 // @public (undocumented)
@@ -293,6 +455,15 @@ export interface SqsDlqRedriveManagerOptions {
 
 // @public (undocumented)
 export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
+
+// @public (undocumented)
+export class SqsMessageBatchOperator {
+    constructor(client: SqsTransportClient, resolver?: SqsQueueUrlResolver);
+    // (undocumented)
+    changeMessageVisibility<TId extends string>(input: SqsChangeMessageVisibilityInput<TId>): Promise<SqsChangeMessageVisibilityResult<TId>>;
+    // (undocumented)
+    deleteMessages<TId extends string>(input: SqsDeleteMessagesInput<TId>): Promise<SqsDeleteMessagesResult<TId>>;
+}
 
 // @public (undocumented)
 export type SqsMessageMoveTaskStatus = 'RUNNING' | 'COMPLETED' | 'CANCELLING' | 'CANCELLED' | 'FAILED' | (string & {});
@@ -558,7 +729,7 @@ export interface SqsSendJsonResult {
 }
 
 // @public (undocumented)
-export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient;
+export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
 
 // @public (undocumented)
 export type SqsWorkerAckAction = 'delete' | 'keep';

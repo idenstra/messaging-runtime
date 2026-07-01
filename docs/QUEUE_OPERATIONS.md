@@ -11,12 +11,16 @@ The package owns:
   - `StartMessageMoveTask`
   - `ListMessageMoveTasks`
   - `CancelMessageMoveTask`
+- transport-level SQS batch message operations through `SqsMessageBatchOperator`
 
 The package does not own:
 - manual receive-send-delete replay loops
 - consumer idempotency storage
 - domain payload validation rules
 - business-specific replay guardrails
+- worker-core batched ack or heartbeat behavior
+
+`SqsMessageBatchOperator` is a transport helper, not a worker-core throughput policy. It is the building block for consumer-side batch delete or visibility changes today and a future worker-core throughput input only after benchmark-backed review.
 
 ## Queue inspection
 

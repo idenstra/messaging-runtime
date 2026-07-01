@@ -22,7 +22,8 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - manifest-driven worker host bootstrap for app-owned worker processes
 - SNS-over-SQS and plain SQS JSON decoding helpers
 - cached SQS queue URL and SNS topic ARN resolvers
-- JSON SQS/SNS publishers, including SQS batch publishing
+- JSON SQS/SNS publishers, including SQS and SNS batch publishing
+- SQS batch message operations for delete and visibility changes
 - queue inspection helpers and native SQS DLQ redrive task management
 - optional Nest lifecycle and logger adapter through `@idenstra/messaging-runtime/nest`
 
@@ -153,12 +154,15 @@ const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-
 
 Manual message-level replay remains consumer-owned because idempotency and safety rules depend on the consuming system. See [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md).
 
+For transport-level batch message operations outside the worker core, use `SqsMessageBatchOperator` and `SnsPublisher.publishJsonBatch(...)`. These helpers chunk automatically to AWS's 10-entry batch limit while keeping caller entry IDs stable in the result maps.
+
 ## Development
 
 ```bash
 npm ci
 npm test
 npm run build
+npm run benchmark
 make audit
 make verify-fast
 make verify
