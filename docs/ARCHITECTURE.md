@@ -43,6 +43,7 @@ Current state:
   - cached SQS queue URL resolution from name, URL, or ARN
   - cached SNS topic ARN resolution from name or ARN
   - JSON-oriented SQS/SNS publisher helpers
+  - explicit SNS structured topic publishing helpers
   - queue inspection and normalized queue attribute snapshots
   - native SQS DLQ redrive task management
   - observability helpers exported from `@idenstra/messaging-runtime/observability`
@@ -106,6 +107,9 @@ This separation is deliberate:
 - consumer apps remain responsible for business handlers and configuration sourcing
 - consumer apps remain responsible for manual replay, idempotency storage, and domain-safe recovery rules
 - the package remains responsible for reusable SNS/SQS runtime mechanics
+- the package treats SNS string-mode JSON publishing and SNS structured topic publishing as distinct semantics:
+  - JSON convenience publishing stays string-mode
+  - `MessageStructure: 'json'` is an explicit opt-in helper path
 - the package treats buffered state as process-local runtime state:
   - per-route `buffered`
   - manager `totalBuffered`

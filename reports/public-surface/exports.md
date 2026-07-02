@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (130):
+- exported symbols (135):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -39,6 +39,11 @@ Package: `@idenstra/messaging-runtime`
   - `SnsPublishJsonInput`
   - `SnsPublishJsonOptions`
   - `SnsPublishJsonResult`
+  - `SnsPublishStructuredJsonBatchEntry`
+  - `SnsPublishStructuredJsonBatchInput`
+  - `SnsPublishStructuredJsonInput`
+  - `SnsPublishStructuredJsonOptions`
+  - `SnsStructuredJsonMessage`
   - `SnsSubscriptionConfirmationEnvelope`
   - `SnsTopicArnResolver`
   - `SnsTopicArnResolverClient`

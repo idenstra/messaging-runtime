@@ -614,7 +614,7 @@ test('SqsMessageBatchOperator rejects duplicate caller IDs before any AWS call',
   assert.equal(client.deleteMessageBatchInputs.length, 0);
 });
 
-test('SnsPublisher publishJson resolves topic identifiers and forwards publish options', async () => {
+test('SnsPublisher publishJson resolves topic identifiers and validates standard-topic semantics', async () => {
   const client = new FakeSnsTransportClient().withListTopicsResponse({
     Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' }],
   });
@@ -626,7 +626,6 @@ test('SnsPublisher publishJson resolves topic identifiers and forwards publish o
     subject: 'SES Delivery',
     messageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
     messageGroupId: 'group-1',
-    messageDeduplicationId: 'dedupe-1',
   });
 
   assert.equal(result.topicArn, 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events');
@@ -636,8 +635,55 @@ test('SnsPublisher publishJson resolves topic identifiers and forwards publish o
     Subject: 'SES Delivery',
     MessageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
     MessageGroupId: 'group-1',
-    MessageDeduplicationId: 'dedupe-1',
+    MessageDeduplicationId: undefined,
   });
+
+  await assert.rejects(
+    () =>
+      publisher.publishJson({
+        topic: 'idenstra-email-events',
+        payload: { kind: 'delivery' },
+        messageDeduplicationId: 'dedupe-1',
+      }),
+    /SNS publish request must not declare messageDeduplicationId for a standard SNS topic/i,
+  );
+});
+
+test('SnsPublisher publishJson enforces FIFO group semantics and allows omitted dedupe IDs', async () => {
+  const client = new FakeSnsTransportClient();
+  const publisher = new SnsPublisher(client);
+
+  await publisher.publishJson({
+    topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+    payload: { kind: 'delivery' },
+    messageGroupId: 'group-1',
+  });
+
+  assert.deepEqual(client.publishInputs[0], {
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+    Message: JSON.stringify({ kind: 'delivery' }),
+    Subject: undefined,
+    MessageAttributes: undefined,
+    MessageGroupId: 'group-1',
+    MessageDeduplicationId: undefined,
+  });
+
+  await assert.rejects(
+    () =>
+      publisher.publishJson({ topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo', payload: { kind: 'delivery' } }),
+    /messageGroupId for SNS publish request/i,
+  );
+
+  await assert.rejects(
+    () =>
+      publisher.publishJson({
+        topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+        payload: { kind: 'delivery' },
+        messageGroupId: 'group-1',
+        messageDeduplicationId: '',
+      }),
+    /messageDeduplicationId for SNS publish request/i,
+  );
 });
 
 test('SnsPublisher publishJsonBatch chunks entries and returns keyed aggregate results', async () => {
@@ -670,7 +716,7 @@ test('SnsPublisher publishJsonBatch chunks entries and returns keyed aggregate r
   assert.equal(result.failedById['event-11']?.code, 'InternalError');
 });
 
-test('SnsPublisher publishJsonBatch forwards FIFO fields and rejects FIFO violations', async () => {
+test('SnsPublisher publishJsonBatch applies standard and FIFO topic semantics', async () => {
   const client = new FakeSnsTransportClient().withPublishBatchResponse({
     Successful: [{ Id: 'entry-0', MessageId: 'message-0', SequenceNumber: '1' }],
   });
@@ -703,7 +749,7 @@ test('SnsPublisher publishJsonBatch forwards FIFO fields and rejects FIFO violat
         topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
         entries: [{ id: 'event-1', payload: { kind: 'delivery' } }],
       }),
-    /messageGroupId for SNS FIFO batch entry event-1/i,
+    /messageGroupId for SNS batch publish entry event-1/i,
   );
 
   await assert.rejects(
@@ -714,16 +760,133 @@ test('SnsPublisher publishJsonBatch forwards FIFO fields and rejects FIFO violat
           { id: 'event-1b', payload: { kind: 'delivery' }, messageGroupId: 'group-1', messageDeduplicationId: '' },
         ],
       }),
-    /messageDeduplicationId for SNS FIFO batch entry event-1b/i,
+    /messageDeduplicationId for SNS batch publish entry event-1b/i,
+  );
+
+  const standardClient = new FakeSnsTransportClient().withPublishBatchResponse({
+    Successful: [{ Id: 'entry-0', MessageId: 'message-0' }],
+  });
+  const standardPublisher = new SnsPublisher(standardClient);
+
+  await standardPublisher.publishJsonBatch({
+    topic: 'arn:aws:sns:us-east-1:123456789012:events',
+    entries: [{ id: 'event-2', payload: { kind: 'delivery' }, messageGroupId: 'group-2' }],
+  });
+
+  assert.deepEqual(standardClient.publishBatchInputs[0], {
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:events',
+    PublishBatchRequestEntries: [
+      {
+        Id: 'entry-0',
+        Message: JSON.stringify({ kind: 'delivery' }),
+        Subject: undefined,
+        MessageAttributes: undefined,
+        MessageGroupId: 'group-2',
+        MessageDeduplicationId: undefined,
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () =>
+      standardPublisher.publishJsonBatch({
+        topic: 'arn:aws:sns:us-east-1:123456789012:events',
+        entries: [{ id: 'event-3', payload: { kind: 'delivery' }, messageDeduplicationId: 'dedupe-3' }],
+      }),
+    /SNS batch publish entry event-3 must not declare messageDeduplicationId for a standard SNS topic/i,
+  );
+});
+
+test('SnsPublisher publishStructuredJson sets MessageStructure and rejects messageAttributes', async () => {
+  const client = new FakeSnsTransportClient().withListTopicsResponse({
+    Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:events' }],
+  });
+  const publisher = new SnsPublisher(client);
+
+  await publisher.publishStructuredJson({
+    topic: 'events',
+    payload: { default: 'User created', email: 'User created email body', sqs: '{"eventType":"USER_CREATED"}' },
+    messageGroupId: 'group-1',
+  });
+
+  assert.deepEqual(client.publishInputs[0], {
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:events',
+    Message: JSON.stringify({
+      default: 'User created',
+      email: 'User created email body',
+      sqs: '{"eventType":"USER_CREATED"}',
+    }),
+    MessageStructure: 'json',
+    Subject: undefined,
+    MessageGroupId: 'group-1',
+    MessageDeduplicationId: undefined,
+  });
+
+  await assert.rejects(
+    () => publisher.publishStructuredJson({ topic: 'events', payload: { email: 'missing default' } as never }),
+    /must define a "default" protocol value/i,
   );
 
   await assert.rejects(
     () =>
-      publisher.publishJsonBatch({
+      publisher.publishStructuredJson({
+        topic: 'events',
+        payload: { default: 'ok' },
+        messageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
+      } as never),
+    /must not declare messageAttributes when MessageStructure is json/i,
+  );
+
+  await assert.rejects(
+    () => publisher.publishStructuredJson({ topic: 'events', payload: { default: 'ok', email: 1 } as never }),
+    /protocol value "email" must be a string/i,
+  );
+});
+
+test('SnsPublisher publishStructuredJsonBatch chunks entries and enforces structured semantics', async () => {
+  const client = new FakeSnsTransportClient()
+    .withPublishBatchResponse({
+      Successful: Array.from({ length: 10 }, (_, index) => ({ Id: `entry-${index}`, MessageId: `message-${index}` })),
+    })
+    .withPublishBatchResponse({ Successful: [{ Id: 'entry-10', MessageId: 'message-10', SequenceNumber: '10' }] });
+  const publisher = new SnsPublisher(client);
+
+  const result = await publisher.publishStructuredJsonBatch({
+    topic: 'arn:aws:sns:us-east-1:123456789012:events.fifo',
+    entries: Array.from({ length: 11 }, (_, index) => ({
+      id: `event-${index}`,
+      payload: { default: `event ${index}`, sqs: JSON.stringify({ eventId: `event-${index}` }) },
+      messageGroupId: 'group-1',
+    })),
+  });
+
+  assert.equal(client.publishBatchInputs.length, 2);
+  assert.equal(client.publishBatchInputs[0]?.PublishBatchRequestEntries?.length, 10);
+  assert.deepEqual(client.publishBatchInputs[0]?.PublishBatchRequestEntries?.[0], {
+    Id: 'entry-0',
+    Message: JSON.stringify({ default: 'event 0', sqs: JSON.stringify({ eventId: 'event-0' }) }),
+    MessageStructure: 'json',
+    Subject: undefined,
+    MessageGroupId: 'group-1',
+    MessageDeduplicationId: undefined,
+  });
+  assert.equal(result.requestedCount, 11);
+  assert.equal(result.successfulCount, 11);
+  assert.equal(result.failedCount, 0);
+
+  await assert.rejects(
+    () =>
+      publisher.publishStructuredJsonBatch({
         topic: 'arn:aws:sns:us-east-1:123456789012:events',
-        entries: [{ id: 'event-2', payload: { kind: 'delivery' }, messageGroupId: 'group-2' }],
+        entries: [
+          {
+            id: 'event-12',
+            payload: { default: 'event 12' },
+            messageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
+          } as never,
+        ],
       }),
-    /SNS standard topic batch entry event-2 must not declare messageGroupId/i,
+    /must not declare messageAttributes when MessageStructure is json/i,
   );
 });
 
