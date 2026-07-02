@@ -176,6 +176,11 @@ function createSnapshot(): SqsWorkerManagerSnapshot {
       messageKeepCount: 0,
       heartbeatSuccessCount: 0,
       heartbeatFailureCount: 0,
+      pollErrorCount: 0,
+      deleteBatchFailureCount: 0,
+      messageDeleteFailureCount: 0,
+      preDispatchVisibilityFailureCount: 0,
+      bufferedMessageDropCount: 0,
     },
     routes: [
       {
@@ -197,6 +202,11 @@ function createSnapshot(): SqsWorkerManagerSnapshot {
           messageKeepCount: 0,
           heartbeatSuccessCount: 0,
           heartbeatFailureCount: 0,
+          pollErrorCount: 0,
+          deleteBatchFailureCount: 0,
+          messageDeleteFailureCount: 0,
+          preDispatchVisibilityFailureCount: 0,
+          bufferedMessageDropCount: 0,
         },
       },
     ],
@@ -213,11 +223,62 @@ test('metrics adapter maps runtime events into counters, histograms, and optiona
 
   const events: SqsWorkerRuntimeEvent[] = [
     {
+      type: 'poll-error',
+      at: new Date(),
+      routeName: 'dispatch-email',
+      queueUrl: 'https://queue.test/dispatch-email',
+      error: new Error('poll down'),
+      errorDetail: 'poll down',
+      backoffMs: 250,
+    },
+    {
       type: 'messages-received',
       at: new Date(),
       routeName: 'dispatch-email',
       queueUrl: 'https://queue.test/dispatch-email',
       messageCount: 3,
+    },
+    {
+      type: 'delete-batch-failure',
+      at: new Date(),
+      routeName: 'dispatch-email',
+      queueUrl: 'https://queue.test/dispatch-email',
+      batchSize: 2,
+      failedCount: 1,
+      messageIds: ['message-2'],
+      failureMode: 'response-failure',
+      errorDetail: 'delete-1 code=InternalError message=boom',
+    },
+    {
+      type: 'message-delete-failure',
+      at: new Date(),
+      routeName: 'dispatch-email',
+      queueUrl: 'https://queue.test/dispatch-email',
+      messageId: 'message-2',
+      reason: 'success',
+      error: new Error('still broken'),
+      errorDetail: 'still broken',
+    },
+    {
+      type: 'pre-dispatch-visibility-failure',
+      at: new Date(),
+      routeName: 'dispatch-email',
+      queueUrl: 'https://queue.test/dispatch-email',
+      messageId: 'message-3',
+      bufferedAgeMs: 900,
+      error: new Error('visibility down'),
+      errorDetail: 'visibility down',
+    },
+    {
+      type: 'buffered-message-drop',
+      at: new Date(),
+      routeName: 'dispatch-email',
+      queueUrl: 'https://queue.test/dispatch-email',
+      messageId: 'message-3',
+      dropReason: 'pre-dispatch-visibility-failure',
+      bufferedAgeMs: 900,
+      error: new Error('visibility down'),
+      errorDetail: 'visibility down',
     },
     {
       type: 'handler-timeout',
@@ -244,7 +305,21 @@ test('metrics adapter maps runtime events into counters, histograms, and optiona
     adapter.onEvent(event);
   }
 
+  assert.equal(meter.counters.get('messaging_runtime.poll_error_total')?.calls[0]?.value, 1);
   assert.equal(meter.counters.get('messaging_runtime.messages_received_total')?.calls[0]?.value, 3);
+  assert.equal(
+    meter.counters.get('messaging_runtime.delete_batch_failure_total')?.calls[0]?.attributes?.failure_mode,
+    'response-failure',
+  );
+  assert.equal(
+    meter.counters.get('messaging_runtime.message_delete_failure_total')?.calls[0]?.attributes?.reason,
+    'success',
+  );
+  assert.equal(meter.counters.get('messaging_runtime.pre_dispatch_visibility_failure_total')?.calls[0]?.value, 1);
+  assert.equal(
+    meter.counters.get('messaging_runtime.buffered_message_drop_total')?.calls[0]?.attributes?.drop_reason,
+    'pre-dispatch-visibility-failure',
+  );
   assert.equal(
     meter.counters.get('messaging_runtime.handler_timeout_total')?.calls[0]?.attributes?.timeout_strategy,
     'cooperative',

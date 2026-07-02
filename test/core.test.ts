@@ -266,6 +266,200 @@ test('fails clearly when worker message timestamp system attributes are only par
   assert.equal(client.deleteInputs.length, 0);
 });
 
+test('polling failures emit infrastructure events, preserve backoff, and update rich snapshot fields', async () => {
+  const errorBackoffMs = 25;
+  let pollFailedAt = 0;
+  let secondReceiveAt = 0;
+  const client = new FakeSqsClient([
+    async () => {
+      pollFailedAt = Date.now();
+      throw new Error('poll down');
+    },
+    async () => {
+      secondReceiveAt = Date.now();
+      return { Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ kind: 'alpha' }) }] };
+    },
+  ]);
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, errorBackoffMs },
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  manager.register({ name: 'poll-error', queueUrl: 'https://queue.test/poll-error', handle: async () => undefined });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 1);
+  await manager.stop();
+
+  const pollEvents = events.filter((event) => event.type === 'poll-error');
+  assert.equal(pollEvents.length, 1);
+  assert.equal(pollEvents[0]?.type, 'poll-error');
+  assert.equal(pollEvents[0]?.backoffMs, errorBackoffMs);
+  assert.match(pollEvents[0]?.errorDetail ?? '', /poll down/);
+  assert.ok(secondReceiveAt - pollFailedAt >= errorBackoffMs);
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.pollErrorCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.pollErrorCount, 1);
+  assert.match(snapshot.routes[0]?.lastPollErrorMessage ?? '', /poll down/);
+  assert.match(snapshot.routes[0]?.lastErrorMessage ?? '', /poll down/);
+});
+
+test('delete batch request failures emit infrastructure events and still retry messages individually once', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ jobId: 'job-1' }) },
+        { MessageId: 'm2', ReceiptHandle: 'r2', Body: JSON.stringify({ jobId: 'job-2' }) },
+      ],
+    },
+  ]);
+  client.deleteBatchImpl = async () => {
+    throw new Error('batch down');
+  };
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 2 },
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  manager.register({
+    name: 'delete-batch-request-failure',
+    queueUrl: 'https://queue.test/delete-batch-request-failure',
+    handle: async () => undefined,
+    config: { concurrency: 2 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 2);
+  await manager.stop();
+
+  const batchEvents = events.filter((event) => event.type === 'delete-batch-failure');
+  assert.equal(batchEvents.length, 1);
+  assert.equal(batchEvents[0]?.type, 'delete-batch-failure');
+  assert.equal(batchEvents[0]?.failureMode, 'request-error');
+  assert.equal(batchEvents[0]?.batchSize, 2);
+  assert.equal(batchEvents[0]?.failedCount, 2);
+  assert.deepEqual(batchEvents[0]?.messageIds, ['m1', 'm2']);
+  assert.equal(client.deleteInputs.length, 2);
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.deleteBatchFailureCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.deleteBatchFailureCount, 1);
+  assert.match(snapshot.routes[0]?.lastDeleteBatchFailureMessage ?? '', /batch down/);
+  assert.match(snapshot.routes[0]?.lastErrorMessage ?? '', /batch down/);
+});
+
+test('delete batch response failures emit infrastructure events and retry only failed entries individually once', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ jobId: 'job-1' }) },
+        { MessageId: 'm2', ReceiptHandle: 'r2', Body: JSON.stringify({ jobId: 'job-2' }) },
+      ],
+    },
+  ]);
+  client.deleteBatchImpl = async () => ({
+    Successful: [{ Id: 'delete-0' }],
+    Failed: [{ Id: 'delete-1', Code: 'InternalError', Message: 'boom', SenderFault: false }],
+  });
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 2 },
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  manager.register({
+    name: 'delete-batch-response-failure',
+    queueUrl: 'https://queue.test/delete-batch-response-failure',
+    handle: async () => undefined,
+    config: { concurrency: 2 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 2);
+  await manager.stop();
+
+  const batchEvents = events.filter((event) => event.type === 'delete-batch-failure');
+  assert.equal(batchEvents.length, 1);
+  assert.equal(batchEvents[0]?.type, 'delete-batch-failure');
+  assert.equal(batchEvents[0]?.failureMode, 'response-failure');
+  assert.equal(batchEvents[0]?.batchSize, 2);
+  assert.equal(batchEvents[0]?.failedCount, 1);
+  assert.deepEqual(batchEvents[0]?.messageIds, ['m2']);
+  assert.equal(client.deleteBatchInputs.length, 1);
+  assert.equal(client.deleteInputs.length, 1);
+  assert.equal(client.deleteInputs[0]?.ReceiptHandle, 'r2');
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.deleteBatchFailureCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.deleteBatchFailureCount, 1);
+  assert.match(snapshot.routes[0]?.lastDeleteBatchFailureMessage ?? '', /delete-1/);
+});
+
+test('individual delete retry failures emit infrastructure events without changing duplicate-risk semantics', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ jobId: 'job-1' }) },
+        { MessageId: 'm2', ReceiptHandle: 'r2', Body: JSON.stringify({ jobId: 'job-2' }) },
+      ],
+    },
+  ]);
+  client.deleteBatchImpl = async () => ({
+    Successful: [{ Id: 'delete-0' }],
+    Failed: [{ Id: 'delete-1', Code: 'InternalError', Message: 'boom', SenderFault: false }],
+  });
+  client.deleteImpl = async (input) => {
+    if (input.ReceiptHandle === 'r2') {
+      throw new Error('still broken');
+    }
+  };
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 2 },
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  manager.register({
+    name: 'delete-retry-failure',
+    queueUrl: 'https://queue.test/delete-retry-failure',
+    handle: async () => undefined,
+    config: { concurrency: 2 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteFailureCount === 1);
+  await manager.stop();
+
+  const deleteFailureEvents = events.filter((event) => event.type === 'message-delete-failure');
+  assert.equal(deleteFailureEvents.length, 1);
+  assert.equal(deleteFailureEvents[0]?.type, 'message-delete-failure');
+  assert.equal(deleteFailureEvents[0]?.messageId, 'm2');
+  assert.equal(deleteFailureEvents[0]?.reason, 'success');
+  assert.match(deleteFailureEvents[0]?.errorDetail ?? '', /still broken/);
+  assert.equal(
+    events.some((event) => event.type === 'message-delete' && event.messageId === 'm2'),
+    false,
+  );
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.messageDeleteCount, 1);
+  assert.equal(snapshot.counters.messageDeleteFailureCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.messageDeleteFailureCount, 1);
+  assert.match(snapshot.routes[0]?.lastMessageDeleteFailureMessage ?? '', /still broken/);
+  assert.match(snapshot.routes[0]?.lastErrorMessage ?? '', /still broken/);
+});
+
 test('decode failures use the route default failure action', async () => {
   const client = new FakeSqsClient([{ Messages: [{ MessageId: 'm1', ReceiptHandle: 'r1' }] }]);
   const events: string[] = [];
@@ -441,6 +635,114 @@ test('prefetched messages extend visibility once before dispatch after crossing 
     client.visibilityInputs.some((input) => input.ReceiptHandle === 'r2'),
     true,
   );
+});
+
+test('pre-dispatch visibility extension failures emit infrastructure events and drop the buffered message locally', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ jobId: 'job-1' }) },
+        { MessageId: 'm2', ReceiptHandle: 'r2', Body: JSON.stringify({ jobId: 'job-2' }) },
+      ],
+    },
+  ]);
+  client.visibilityImpl = async (input) => {
+    if (input.ReceiptHandle === 'r2') {
+      throw new Error('visibility down');
+    }
+  };
+  const handledMessageIds: string[] = [];
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  manager.register({
+    name: 'buffer-visibility-failure',
+    queueUrl: 'https://queue.test/buffer-visibility-failure',
+    handle: async ({ message }) => {
+      handledMessageIds.push(message.messageId);
+      if (message.messageId === 'm1') {
+        await sleep(650);
+      }
+    },
+    config: { concurrency: 1, maxMessagesPerPoll: 2, visibilityTimeoutSeconds: 1 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.bufferedMessageDropCount === 1, { timeoutMs: 3_000 });
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 1);
+  await manager.stop();
+
+  assert.deepEqual(handledMessageIds, ['m1']);
+  const visibilityEvents = events.filter((event) => event.type === 'pre-dispatch-visibility-failure');
+  const dropEvents = events.filter((event) => event.type === 'buffered-message-drop');
+  assert.equal(visibilityEvents.length, 1);
+  assert.equal(dropEvents.length, 1);
+  assert.equal(dropEvents[0]?.type, 'buffered-message-drop');
+  assert.equal(dropEvents[0]?.dropReason, 'pre-dispatch-visibility-failure');
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.preDispatchVisibilityFailureCount, 1);
+  assert.equal(snapshot.counters.bufferedMessageDropCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.preDispatchVisibilityFailureCount, 1);
+  assert.equal(snapshot.routes[0]?.lastBufferedMessageDropReason, 'pre-dispatch-visibility-failure');
+  assert.match(snapshot.routes[0]?.lastPreDispatchVisibilityFailureMessage ?? '', /visibility down/);
+});
+
+test('buffered messages missing a receipt handle emit only the buffered-drop event and are not dispatched locally', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ jobId: 'job-1' }) },
+        { MessageId: 'm2', Body: JSON.stringify({ jobId: 'job-2' }) },
+      ],
+    },
+  ]);
+  const handledMessageIds: string[] = [];
+  const events: SqsWorkerRuntimeEvent[] = [];
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+    onEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  manager.register({
+    name: 'buffer-missing-receipt-handle',
+    queueUrl: 'https://queue.test/buffer-missing-receipt-handle',
+    handle: async ({ message }) => {
+      handledMessageIds.push(message.messageId);
+      if (message.messageId === 'm1') {
+        await sleep(650);
+      }
+    },
+    config: { concurrency: 1, maxMessagesPerPoll: 2, visibilityTimeoutSeconds: 1 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getSnapshot().counters.bufferedMessageDropCount === 1, { timeoutMs: 3_000 });
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 1);
+  await manager.stop();
+
+  assert.deepEqual(handledMessageIds, ['m1']);
+  assert.equal(
+    events.some((event) => event.type === 'pre-dispatch-visibility-failure'),
+    false,
+  );
+  const dropEvents = events.filter((event) => event.type === 'buffered-message-drop');
+  assert.equal(dropEvents.length, 1);
+  assert.equal(dropEvents[0]?.type, 'buffered-message-drop');
+  assert.equal(dropEvents[0]?.dropReason, 'missing-receipt-handle');
+
+  const snapshot = manager.getSnapshot();
+  assert.equal(snapshot.counters.bufferedMessageDropCount, 1);
+  assert.equal(snapshot.routes[0]?.counters.bufferedMessageDropCount, 1);
+  assert.equal(snapshot.routes[0]?.lastBufferedMessageDropReason, 'missing-receipt-handle');
+  assert.match(snapshot.routes[0]?.lastErrorMessage ?? '', /ReceiptHandle/);
 });
 
 test('buffered messages drain on stop instead of being abandoned locally', async () => {

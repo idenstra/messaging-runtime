@@ -419,6 +419,11 @@ function createEmptyCounters(): SqsWorkerManagerSnapshot['counters'] {
     messageKeepCount: 0,
     heartbeatSuccessCount: 0,
     heartbeatFailureCount: 0,
+    pollErrorCount: 0,
+    deleteBatchFailureCount: 0,
+    messageDeleteFailureCount: 0,
+    preDispatchVisibilityFailureCount: 0,
+    bufferedMessageDropCount: 0,
   };
 }
 

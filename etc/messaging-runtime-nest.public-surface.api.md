@@ -75,6 +75,10 @@ export interface SqsWorkerManagerSnapshot {
 // @public (undocumented)
 export interface SqsWorkerRouteCounters {
     // (undocumented)
+    bufferedMessageDropCount: number;
+    // (undocumented)
+    deleteBatchFailureCount: number;
+    // (undocumented)
     handlerFailureCount: number;
     // (undocumented)
     handlerStartedCount: number;
@@ -91,9 +95,15 @@ export interface SqsWorkerRouteCounters {
     // (undocumented)
     messageDeleteCount: number;
     // (undocumented)
+    messageDeleteFailureCount: number;
+    // (undocumented)
     messageKeepCount: number;
     // (undocumented)
     messagesReceivedCount: number;
+    // (undocumented)
+    pollErrorCount: number;
+    // (undocumented)
+    preDispatchVisibilityFailureCount: number;
     // (undocumented)
     receiveEmptyCount: number;
 }
@@ -107,7 +117,17 @@ export interface SqsWorkerRouteStatus {
     // (undocumented)
     inFlight: number;
     // (undocumented)
+    lastBufferedMessageDropAt?: Date;
+    // Warning: (ae-forgotten-export) The symbol "SqsWorkerBufferedMessageDropReason" needs to be exported by the entry point nest.d.ts
+    //
+    // (undocumented)
+    lastBufferedMessageDropReason?: SqsWorkerBufferedMessageDropReason;
+    // (undocumented)
     lastDeleteAt?: Date;
+    // (undocumented)
+    lastDeleteBatchFailureAt?: Date;
+    // (undocumented)
+    lastDeleteBatchFailureMessage?: string;
     // (undocumented)
     lastErrorAt?: Date;
     // (undocumented)
@@ -126,6 +146,18 @@ export interface SqsWorkerRouteStatus {
     lastLateSettlementAt?: Date;
     // (undocumented)
     lastLateSettlementOutcome?: SqsWorkerLateSettlementOutcome;
+    // (undocumented)
+    lastMessageDeleteFailureAt?: Date;
+    // (undocumented)
+    lastMessageDeleteFailureMessage?: string;
+    // (undocumented)
+    lastPollErrorAt?: Date;
+    // (undocumented)
+    lastPollErrorMessage?: string;
+    // (undocumented)
+    lastPreDispatchVisibilityFailureAt?: Date;
+    // (undocumented)
+    lastPreDispatchVisibilityFailureMessage?: string;
     // (undocumented)
     lastReceiveAt?: Date;
     // (undocumented)

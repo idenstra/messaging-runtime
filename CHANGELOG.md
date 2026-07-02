@@ -23,6 +23,7 @@ Format rules:
 - added benchmark-backed worker-core prefetch scenarios covering hot queues, stop/drain behavior, and buffered-backlog timeout handling
 - added `benchmark:compare` plus same-machine benchmark comparison guidance for performance-sensitive pull requests
 - added typed `message.systemAttributes` on `SqsWorkerMessage` for parsed SQS receive-count and timestamp system attributes
+- added explicit runtime infrastructure failure events, rich snapshot fields, and OTEL counters for polling, delete-finalization, and buffered pre-dispatch visibility failure paths
 
 ### Changed
 

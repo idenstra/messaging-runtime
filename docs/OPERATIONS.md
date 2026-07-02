@@ -134,15 +134,24 @@ Recommended counters:
 - messages received;
 - handler starts, successes, failures, and timeouts;
 - deletes and keeps;
+- polling failures;
+- batched delete failures;
+- individual delete retry failures;
+- pre-dispatch visibility failures;
+- buffered-message drops;
 - heartbeat successes and failures;
 - late settlements;
 - buffered depth from snapshots or OTEL observable gauges;
-- polling failures from logs.
 
 Recommended alerting:
 
+- repeated polling failures;
 - sustained handler failures;
 - sustained timeout count;
+- repeated delete-batch failures;
+- repeated individual delete failures;
+- repeated pre-dispatch visibility failures;
+- repeated buffered-message drops;
 - heartbeat failures;
 - late settlements after abandon timeout;
 - rising in-flight count with low success count;

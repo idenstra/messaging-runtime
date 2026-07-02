@@ -24,6 +24,10 @@ import type { SnsMessageAttributes, SqsMessageAttributes } from './transport';
 
 export type {
   SqsWorkerAckAction,
+  SqsWorkerBufferedMessageDropEvent,
+  SqsWorkerBufferedMessageDropReason,
+  SqsWorkerDeleteBatchFailureEvent,
+  SqsWorkerDeleteBatchFailureMode,
   SqsWorkerFailureKind,
   SqsWorkerHandler,
   SqsWorkerHandlerContext,
@@ -41,9 +45,13 @@ export type {
   SqsWorkerMessage,
   SqsWorkerMessageAttributeValue,
   SqsWorkerMessageDeleteEvent,
+  SqsWorkerMessageDeleteFailureEvent,
+  SqsWorkerMessageFinalizationReason,
   SqsWorkerMessageKeepEvent,
   SqsWorkerMessageSystemAttributes,
   SqsWorkerMessagesReceivedEvent,
+  SqsWorkerPollErrorEvent,
+  SqsWorkerPreDispatchVisibilityFailureEvent,
   SqsWorkerReceiveEmptyEvent,
   SqsWorkerRouteCounters,
   SqsWorkerRouteStatus,
@@ -126,6 +134,22 @@ export function createOpenTelemetrySqsWorkerMetricsAdapter(
   const heartbeatFailureCounter = meter.createCounter(`${metricPrefix}.heartbeat_failure_total`, {
     description: 'Number of failed visibility heartbeat extensions.',
   });
+  const pollErrorCounter = meter.createCounter(`${metricPrefix}.poll_error_total`, {
+    description: 'Number of SQS polling failures observed by the worker runtime.',
+  });
+  const deleteBatchFailureCounter = meter.createCounter(`${metricPrefix}.delete_batch_failure_total`, {
+    description: 'Number of batched delete failures observed before individual retry fallback.',
+  });
+  const messageDeleteFailureCounter = meter.createCounter(`${metricPrefix}.message_delete_failure_total`, {
+    description: 'Number of individual delete failures observed after batch-delete fallback.',
+  });
+  const preDispatchVisibilityFailureCounter = meter.createCounter(
+    `${metricPrefix}.pre_dispatch_visibility_failure_total`,
+    { description: 'Number of pre-dispatch visibility extension failures for buffered messages.' },
+  );
+  const bufferedMessageDropCounter = meter.createCounter(`${metricPrefix}.buffered_message_drop_total`, {
+    description: 'Number of buffered messages dropped locally before handler dispatch.',
+  });
   const handlerDurationHistogram = meter.createHistogram(`${metricPrefix}.handler_duration_ms`, {
     description: 'Handler execution duration recorded by the worker runtime.',
     unit: 'ms',
@@ -189,6 +213,9 @@ export function createOpenTelemetrySqsWorkerMetricsAdapter(
           case 'receive-empty':
             receiveEmptyCounter.add(1, attributes);
             return;
+          case 'poll-error':
+            pollErrorCounter.add(1, attributes);
+            return;
           case 'messages-received':
             messagesReceivedCounter.add(event.messageCount, attributes);
             return;
@@ -213,6 +240,18 @@ export function createOpenTelemetrySqsWorkerMetricsAdapter(
             return;
           case 'message-delete':
             messageDeleteCounter.add(1, attributes);
+            return;
+          case 'delete-batch-failure':
+            deleteBatchFailureCounter.add(1, attributes);
+            return;
+          case 'message-delete-failure':
+            messageDeleteFailureCounter.add(1, attributes);
+            return;
+          case 'pre-dispatch-visibility-failure':
+            preDispatchVisibilityFailureCounter.add(1, attributes);
+            return;
+          case 'buffered-message-drop':
+            bufferedMessageDropCounter.add(1, attributes);
             return;
           case 'message-keep':
             messageKeepCounter.add(1, attributes);
@@ -348,6 +387,12 @@ function getEventSpecificAttributes(event: SqsWorkerRuntimeEvent): Attributes {
     case 'message-delete':
     case 'message-keep':
       return { ...shared, reason: event.reason };
+    case 'delete-batch-failure':
+      return { ...shared, failure_mode: event.failureMode };
+    case 'message-delete-failure':
+      return { ...shared, reason: event.reason };
+    case 'buffered-message-drop':
+      return { ...shared, drop_reason: event.dropReason };
     case 'heartbeat-success':
     case 'heartbeat-failure':
       return { ...shared, heartbeat_source: event.source };
