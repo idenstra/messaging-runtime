@@ -42,6 +42,9 @@ import {
   ListMessageMoveTasksCommand,
   type ListMessageMoveTasksCommandInput,
   type ListMessageMoveTasksCommandOutput,
+  ListQueuesCommand,
+  type ListQueuesCommandInput,
+  type ListQueuesCommandOutput,
   ReceiveMessageCommand,
   type ReceiveMessageCommandInput,
   type ReceiveMessageCommandOutput,
@@ -66,6 +69,8 @@ const SNS_ARN_SERVICE = 'sns';
 const DEFAULT_SQS_JSON_LABEL = 'SQS message body';
 const DEFAULT_SNS_ENVELOPE_LABEL = 'SNS envelope body';
 const DEFAULT_SNS_NOTIFICATION_LABEL = 'SNS notification message';
+const DEFAULT_SQS_QUEUE_DISCOVERY_PAGE_SIZE = 1_000;
+const MAX_SQS_QUEUE_DISCOVERY_PAGE_SIZE = 1_000;
 
 export type SnsEnvelopeType = 'Notification' | 'SubscriptionConfirmation' | 'UnsubscribeConfirmation';
 
@@ -111,14 +116,33 @@ export interface DecodedSnsNotificationJson<TPayload> {
   payload: TPayload;
 }
 
+export interface SqsQueueResolutionInput {
+  queue: string;
+  ownerAccountId?: string;
+}
+
+export interface SqsQueueUrlResolverPreloadEntry {
+  queue: string;
+  queueUrl: string;
+  ownerAccountId?: string;
+}
+
 export interface SqsQueueUrlResolverClient {
-  getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
+  getQueueUrl(
+    input: Pick<GetQueueUrlCommandInput, 'QueueName' | 'QueueOwnerAWSAccountId'>,
+  ): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
 }
 
 export interface SnsTopicArnResolverClient {
   listTopics(
     input: Pick<ListTopicsCommandInput, 'NextToken'>,
   ): Promise<Pick<ListTopicsCommandOutput, 'NextToken' | 'Topics'>>;
+}
+
+export interface SqsQueueDiscoveryClient {
+  listQueues(
+    input: Pick<ListQueuesCommandInput, 'QueueNamePrefix' | 'NextToken' | 'MaxResults'>,
+  ): Promise<Pick<ListQueuesCommandOutput, 'QueueUrls' | 'NextToken'>>;
 }
 
 export interface SqsPublishClient {
@@ -140,6 +164,38 @@ export interface SnsPublishClient {
 
 export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
 export type SnsTransportClient = SnsTopicArnResolverClient & SnsPublishClient;
+
+export interface SqsQueueSummary {
+  queueName: string;
+  queueUrl: string;
+  fifo: boolean;
+}
+
+export interface ListSqsQueuesInput {
+  namePrefix?: string;
+  pageSize?: number;
+  nextToken?: string;
+}
+
+export interface ListSqsQueuesResult {
+  queues: SqsQueueSummary[];
+  nextToken?: string;
+}
+
+export interface SnsTopicSummary {
+  topicName: string;
+  topicArn: string;
+  fifo: boolean;
+}
+
+export interface ListSnsTopicsInput {
+  nextToken?: string;
+}
+
+export interface ListSnsTopicsResult {
+  topics: SnsTopicSummary[];
+  nextToken?: string;
+}
 
 export interface SqsSendJsonOptions {
   delaySeconds?: number;
@@ -300,6 +356,7 @@ export interface SnsPublishJsonBatchResult<TId extends string = string> {
 
 export interface SqsQueueUrlResolverOptions {
   preload?: Record<string, string>;
+  preloadEntries?: SqsQueueUrlResolverPreloadEntry[];
   allowNetworkLookup?: boolean;
 }
 
@@ -383,48 +440,55 @@ export class SqsQueueUrlResolver {
   ) {
     this.allowNetworkLookup = options.allowNetworkLookup ?? true;
     this.seedPreload(options.preload ?? {});
+    this.seedPreloadEntries(options.preloadEntries ?? []);
   }
 
-  async resolve(queue: string): Promise<string> {
-    const queueIdentifier = assertNonEmptyIdentifier(queue, 'SQS queue identifier');
-    const cached = this.identifierCache.get(queueIdentifier);
+  async resolve(queue: string): Promise<string>;
+  async resolve(input: SqsQueueResolutionInput): Promise<string>;
+  async resolve(input: string | SqsQueueResolutionInput): Promise<string> {
+    const resolution = normalizeSqsQueueResolutionInput(input);
+    const cached = this.identifierCache.get(resolution.identifierCacheKey);
     if (cached) {
       return cached;
     }
 
-    if (isHttpUrl(queueIdentifier)) {
-      const queueName = extractNameFromUrl(queueIdentifier, 'SQS queue URL');
-      this.cacheResolution(queueIdentifier, queueName, queueIdentifier);
-      return queueIdentifier;
+    if (resolution.directQueueUrl) {
+      this.cacheResolution(resolution, resolution.directQueueUrl);
+      return resolution.directQueueUrl;
     }
 
-    const queueName = isArnForService(queueIdentifier, SQS_ARN_SERVICE)
-      ? extractNameFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN')
-      : queueIdentifier;
-
-    const namedCacheHit = this.queueNameCache.get(queueName);
+    const namedCacheHit = this.queueNameCache.get(resolution.queueNameCacheKey);
     if (namedCacheHit) {
-      this.cacheResolution(queueIdentifier, queueName, namedCacheHit);
+      this.cacheResolution(resolution, namedCacheHit);
       return namedCacheHit;
     }
 
     if (!this.allowNetworkLookup) {
       throw new Error(
-        `SQS queue "${queueIdentifier}" was not found in preloaded mappings and network lookup is disabled.`,
+        `SQS queue "${resolution.queueIdentifier}" was not found in preloaded mappings and network lookup is disabled.`,
       );
     }
 
-    const response = await this.client.getQueueUrl({ QueueName: queueName });
-    const queueUrl = assertNonEmptyText(response.QueueUrl, `resolved queue URL for ${queueName}`);
-    this.cacheResolution(queueIdentifier, queueName, queueUrl);
+    const response = await this.client.getQueueUrl({
+      QueueName: resolution.queueName,
+      QueueOwnerAWSAccountId: resolution.ownerAccountId,
+    });
+    const queueUrl = assertNonEmptyText(response.QueueUrl, `resolved queue URL for ${resolution.queueName}`);
+    this.cacheResolution(resolution, queueUrl);
     return queueUrl;
   }
 
-  private cacheResolution(identifier: string, queueName: string, queueUrl: string): void {
-    this.identifierCache.set(identifier, queueUrl);
-    this.identifierCache.set(queueName, queueUrl);
+  private cacheResolution(resolution: NormalizedSqsQueueResolutionInput, queueUrl: string): void {
+    this.identifierCache.set(resolution.identifierCacheKey, queueUrl);
     this.identifierCache.set(queueUrl, queueUrl);
-    this.queueNameCache.set(queueName, queueUrl);
+    if (resolution.cacheUnnamedQueueName) {
+      this.queueNameCache.set(createSqsQueueNameCacheKey(resolution.queueName), queueUrl);
+    }
+
+    const derivedOwnerAccountId = resolution.ownerAccountId ?? extractAccountIdFromSqsQueueUrl(queueUrl);
+    if (derivedOwnerAccountId) {
+      this.queueNameCache.set(createSqsQueueNameCacheKey(resolution.queueName, derivedOwnerAccountId), queueUrl);
+    }
   }
 
   private seedPreload(preload: Record<string, string>): void {
@@ -436,7 +500,26 @@ export class SqsQueueUrlResolver {
         : isArnForService(normalizedIdentifier, SQS_ARN_SERVICE)
           ? extractNameFromArn(normalizedIdentifier, SQS_ARN_SERVICE, 'preloaded SQS queue ARN')
           : normalizedIdentifier;
-      this.cacheResolution(normalizedIdentifier, queueName, queueUrl);
+      this.identifierCache.set(normalizedIdentifier, queueUrl);
+      this.identifierCache.set(queueName, queueUrl);
+      this.identifierCache.set(queueUrl, queueUrl);
+      this.queueNameCache.set(createSqsQueueNameCacheKey(queueName), queueUrl);
+
+      const derivedOwnerAccountId = extractAccountIdFromSqsQueueUrl(queueUrl);
+      if (derivedOwnerAccountId) {
+        this.queueNameCache.set(createSqsQueueNameCacheKey(queueName, derivedOwnerAccountId), queueUrl);
+      }
+    }
+  }
+
+  private seedPreloadEntries(preloadEntries: SqsQueueUrlResolverPreloadEntry[]): void {
+    for (const preloadEntry of preloadEntries) {
+      const queueUrl = assertSqsQueueUrl(preloadEntry.queueUrl, 'preloaded SQS queue URL');
+      const resolution = normalizeSqsQueueResolutionInput({
+        queue: preloadEntry.queue,
+        ownerAccountId: preloadEntry.ownerAccountId,
+      });
+      this.cacheResolution(resolution, queueUrl);
     }
   }
 }
@@ -515,6 +598,53 @@ export class SnsTopicArnResolver {
       const topicName = extractNameFromArn(topicArn, SNS_ARN_SERVICE, 'preloaded SNS topic ARN');
       this.cacheResolution(normalizedIdentifier, topicName, topicArn);
     }
+  }
+}
+
+export class SqsQueueDiscovery {
+  constructor(private readonly client: SqsQueueDiscoveryClient) {}
+
+  async listQueues(input: ListSqsQueuesInput = {}): Promise<ListSqsQueuesResult> {
+    const pageSize = normalizeSqsQueueDiscoveryPageSize(input.pageSize);
+    const queueNamePrefix =
+      input.namePrefix === undefined ? undefined : assertNonEmptyIdentifier(input.namePrefix, 'SQS queue name prefix');
+    const nextToken =
+      input.nextToken === undefined ? undefined : assertNonEmptyIdentifier(input.nextToken, 'SQS nextToken');
+    const response = await this.client.listQueues({
+      QueueNamePrefix: queueNamePrefix,
+      MaxResults: pageSize,
+      NextToken: nextToken,
+    });
+
+    return {
+      queues: (response.QueueUrls ?? []).map((queueUrl) => {
+        const normalizedQueueUrl = assertSqsQueueUrl(queueUrl, 'discovered SQS queue URL');
+        const queueName = extractNameFromUrl(normalizedQueueUrl, 'discovered SQS queue URL');
+        return { queueName, queueUrl: normalizedQueueUrl, fifo: queueName.endsWith('.fifo') };
+      }),
+      nextToken: response.NextToken,
+    };
+  }
+}
+
+export class SnsTopicDiscovery {
+  constructor(private readonly client: SnsTopicArnResolverClient) {}
+
+  async listTopics(input: ListSnsTopicsInput = {}): Promise<ListSnsTopicsResult> {
+    const nextToken =
+      input.nextToken === undefined ? undefined : assertNonEmptyIdentifier(input.nextToken, 'SNS nextToken');
+    const response = await this.client.listTopics({ NextToken: nextToken });
+
+    return {
+      topics: (response.Topics ?? [])
+        .filter((topicEntry): topicEntry is { TopicArn: string } => typeof topicEntry.TopicArn === 'string')
+        .map((topicEntry) => {
+          const topicArn = assertSnsTopicArn(topicEntry.TopicArn, 'discovered SNS topic ARN');
+          const topicName = extractNameFromArn(topicArn, SNS_ARN_SERVICE, 'discovered SNS topic ARN');
+          return { topicName, topicArn, fifo: topicName.endsWith('.fifo') };
+        }),
+      nextToken: response.NextToken,
+    };
   }
 }
 
@@ -744,7 +874,9 @@ export class SnsPublisher {
   }
 }
 
-export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient {
+export class AwsSqsAdapter
+  implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient, SqsQueueDiscoveryClient
+{
   constructor(private readonly client: SQSClient) {}
 
   receiveMessage(
@@ -773,10 +905,17 @@ export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQ
   }
 
   async getQueueUrl(
-    input: Pick<GetQueueUrlCommandInput, 'QueueName'>,
+    input: Pick<GetQueueUrlCommandInput, 'QueueName' | 'QueueOwnerAWSAccountId'>,
   ): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>> {
     const response = await this.client.send(new GetQueueUrlCommand(input));
     return { QueueUrl: response.QueueUrl };
+  }
+
+  async listQueues(
+    input: Pick<ListQueuesCommandInput, 'QueueNamePrefix' | 'NextToken' | 'MaxResults'>,
+  ): Promise<Pick<ListQueuesCommandOutput, 'QueueUrls' | 'NextToken'>> {
+    const response = await this.client.send(new ListQueuesCommand(input));
+    return { QueueUrls: response.QueueUrls, NextToken: response.NextToken };
   }
 
   async getQueueAttributes(
@@ -842,6 +981,130 @@ export class AwsSnsAdapter implements SnsTransportClient {
   }
 }
 
+interface NormalizedSqsQueueResolutionInput {
+  queueIdentifier: string;
+  identifierCacheKey: string;
+  queueName: string;
+  queueNameCacheKey: string;
+  ownerAccountId?: string;
+  cacheUnnamedQueueName: boolean;
+  directQueueUrl?: string;
+}
+
+function normalizeSqsQueueResolutionInput(input: string | SqsQueueResolutionInput): NormalizedSqsQueueResolutionInput {
+  if (typeof input === 'string') {
+    const queueIdentifier = assertNonEmptyIdentifier(input, 'SQS queue identifier');
+    if (isHttpUrl(queueIdentifier)) {
+      const queueName = extractNameFromUrl(queueIdentifier, 'SQS queue URL');
+      return {
+        queueIdentifier,
+        identifierCacheKey: queueIdentifier,
+        queueName,
+        queueNameCacheKey: createSqsQueueNameCacheKey(queueName, extractAccountIdFromSqsQueueUrl(queueIdentifier)),
+        cacheUnnamedQueueName: false,
+        directQueueUrl: queueIdentifier,
+      };
+    }
+
+    if (isArnForService(queueIdentifier, SQS_ARN_SERVICE)) {
+      const queueName = extractNameFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN');
+      const ownerAccountId = extractAccountIdFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN');
+      return {
+        queueIdentifier,
+        identifierCacheKey: queueIdentifier,
+        queueName,
+        queueNameCacheKey: createSqsQueueNameCacheKey(queueName, ownerAccountId),
+        ownerAccountId,
+        cacheUnnamedQueueName: false,
+      };
+    }
+
+    return {
+      queueIdentifier,
+      identifierCacheKey: queueIdentifier,
+      queueName: queueIdentifier,
+      queueNameCacheKey: createSqsQueueNameCacheKey(queueIdentifier),
+      cacheUnnamedQueueName: true,
+    };
+  }
+
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('SQS queue resolution input must be a string or object.');
+  }
+
+  const queueIdentifier = assertNonEmptyIdentifier(input.queue, 'SQS queue identifier');
+  const ownerAccountId =
+    input.ownerAccountId === undefined
+      ? undefined
+      : assertAwsAccountId(input.ownerAccountId, 'SQS queue owner account ID');
+
+  if (isHttpUrl(queueIdentifier)) {
+    if (ownerAccountId !== undefined) {
+      throw new Error('SQS queue owner account ID is only supported when resolving a queue by name.');
+    }
+
+    const queueName = extractNameFromUrl(queueIdentifier, 'SQS queue URL');
+    return {
+      queueIdentifier,
+      identifierCacheKey: queueIdentifier,
+      queueName,
+      queueNameCacheKey: createSqsQueueNameCacheKey(queueName, extractAccountIdFromSqsQueueUrl(queueIdentifier)),
+      cacheUnnamedQueueName: false,
+      directQueueUrl: queueIdentifier,
+    };
+  }
+
+  if (isArnForService(queueIdentifier, SQS_ARN_SERVICE)) {
+    if (ownerAccountId !== undefined) {
+      throw new Error('SQS queue owner account ID is only supported when resolving a queue by name.');
+    }
+
+    const queueName = extractNameFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN');
+    const derivedOwnerAccountId = extractAccountIdFromArn(queueIdentifier, SQS_ARN_SERVICE, 'SQS queue ARN');
+    return {
+      queueIdentifier,
+      identifierCacheKey: queueIdentifier,
+      queueName,
+      queueNameCacheKey: createSqsQueueNameCacheKey(queueName, derivedOwnerAccountId),
+      ownerAccountId: derivedOwnerAccountId,
+      cacheUnnamedQueueName: false,
+    };
+  }
+
+  return {
+    queueIdentifier,
+    identifierCacheKey: createSqsQueueResolutionKey(queueIdentifier, ownerAccountId),
+    queueName: queueIdentifier,
+    queueNameCacheKey: createSqsQueueNameCacheKey(queueIdentifier, ownerAccountId),
+    ownerAccountId,
+    cacheUnnamedQueueName: ownerAccountId === undefined,
+  };
+}
+
+function createSqsQueueResolutionKey(queueName: string, ownerAccountId?: string): string {
+  return ownerAccountId ? `${ownerAccountId}:${queueName}` : queueName;
+}
+
+function createSqsQueueNameCacheKey(queueName: string, ownerAccountId?: string): string {
+  return ownerAccountId ? `${ownerAccountId}:${queueName}` : queueName;
+}
+
+function normalizeSqsQueueDiscoveryPageSize(value: number | undefined): number {
+  if (value === undefined) {
+    return DEFAULT_SQS_QUEUE_DISCOVERY_PAGE_SIZE;
+  }
+
+  return assertIntegerInRange(value, 'SQS queue discovery pageSize', 1, MAX_SQS_QUEUE_DISCOVERY_PAGE_SIZE);
+}
+
+function assertAwsAccountId(value: string, label: string): string {
+  const normalized = assertNonEmptyIdentifier(value, label);
+  if (!/^\d{12}$/.test(normalized)) {
+    throw new Error(`${label} must be a 12-digit AWS account ID.`);
+  }
+  return normalized;
+}
+
 function assertNonEmptyIdentifier(value: string, label: string): string {
   const normalized = value.trim();
   if (!normalized) {
@@ -900,6 +1163,15 @@ function extractNameFromArn(arn: string, service: string, label: string): string
   return resourceName;
 }
 
+function extractAccountIdFromArn(arn: string, service: string, label: string): string {
+  if (!isArnForService(arn, service)) {
+    throw new Error(`${label} must be a valid ${service.toUpperCase()} ARN.`);
+  }
+
+  const accountId = arn.split(':')[4];
+  return assertAwsAccountId(accountId ?? '', `${label} account ID`);
+}
+
 function isHttpUrl(value: string): boolean {
   return value.startsWith('https://') || value.startsWith('http://');
 }
@@ -930,6 +1202,21 @@ function extractNameFromUrl(value: string, label: string): string {
     return name;
   } catch (error) {
     throw new Error(`Invalid ${label}.`, { cause: error });
+  }
+}
+
+function extractAccountIdFromSqsQueueUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    const pathSegments = url.pathname.split('/').filter(Boolean);
+    const accountId = pathSegments.at(-2);
+    if (!accountId || !/^\d{12}$/.test(accountId)) {
+      return undefined;
+    }
+
+    return accountId;
+  } catch {
+    return undefined;
   }
 }
 

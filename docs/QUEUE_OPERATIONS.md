@@ -5,6 +5,7 @@
 ## Owned by the package
 
 The package owns:
+- read-only queue discovery through `SqsQueueDiscovery`
 - queue inspection through `SqsQueueInspector`
 - DLQ source-queue discovery through `ListDeadLetterSourceQueues`
 - native SQS redrive task management through:
@@ -21,6 +22,30 @@ The package does not own:
 - worker-core batched ack or heartbeat behavior
 
 `SqsMessageBatchOperator` is a transport helper, not a worker-core throughput policy. It is the building block for consumer-side batch delete or visibility changes today and a future worker-core throughput input only after benchmark-backed review.
+
+## Queue discovery
+
+Use `SqsQueueDiscovery` when operators need a page-first listing of existing queues without owning queue provisioning.
+
+```ts
+import { SQSClient } from '@aws-sdk/client-sqs';
+import { AwsSqsAdapter, SqsQueueDiscovery } from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const discovery = new SqsQueueDiscovery(sqsAdapter);
+
+const queuePage = await discovery.listQueues({
+  namePrefix: 'jobs',
+  pageSize: 25,
+});
+```
+
+Discovery is intentionally read-only:
+- it supports AWS-native prefix filtering
+- it returns normalized queue summaries plus `nextToken`
+- it does not create, delete, purge, tag, or mutate queues
+- it remains same-account and same-region because `ListQueues` does not provide a cross-account surface
 
 ## Queue inspection
 

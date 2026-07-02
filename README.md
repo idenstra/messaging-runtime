@@ -22,10 +22,10 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - manifest-driven worker host bootstrap for app-owned worker processes
 - OpenTelemetry metrics and tracing helpers through `@idenstra/messaging-runtime/observability`
 - SNS-over-SQS and plain SQS JSON decoding helpers
-- cached SQS queue URL and SNS topic ARN resolvers
+- cached SQS queue URL and SNS topic ARN resolvers, including typed cross-account SQS name resolution
 - JSON SQS/SNS publishers, including SQS and SNS batch publishing
 - SQS batch message operations for delete and visibility changes
-- queue inspection helpers and native SQS DLQ redrive task management
+- read-only queue/topic discovery, queue inspection helpers, and native SQS DLQ redrive task management
 - optional Nest lifecycle and logger adapter through `@idenstra/messaging-runtime/nest`
 
 ## What it deliberately does not provide
@@ -144,15 +144,31 @@ For operator queue work, use the queue-ops helpers rather than ad hoc AWS calls:
 
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';
-import { AwsSqsAdapter, SqsDlqRedriveManager, SqsQueueInspector } from '@idenstra/messaging-runtime';
+import {
+  AwsSqsAdapter,
+  SqsDlqRedriveManager,
+  SqsQueueDiscovery,
+  SqsQueueInspector,
+} from '@idenstra/messaging-runtime';
 
 const awsSqs = new SQSClient({ region: 'us-east-1' });
 const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const discovery = new SqsQueueDiscovery(sqsAdapter);
 const inspector = new SqsQueueInspector(sqsAdapter);
 const redriveManager = new SqsDlqRedriveManager(sqsAdapter, { queueInspector: inspector });
 
+const queuePage = await discovery.listQueues({ namePrefix: 'jobs', pageSize: 25 });
 const queueSnapshot = await inspector.inspectQueue('jobs-dlq');
 const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-dlq' });
+```
+
+When a consumer needs an existing queue name from another AWS account, resolve it with the typed overload instead of inventing a second resolver API:
+
+```ts
+const auditQueueUrl = await queueResolver.resolve({
+  queue: 'audit-queue',
+  ownerAccountId: '210987654321',
+});
 ```
 
 Manual message-level replay remains consumer-owned because idempotency and safety rules depend on the consuming system. See [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md).

@@ -35,6 +35,28 @@ const queueResolver = new SqsQueueUrlResolver(transportClient, {
 
 Use network lookup only when that behavior is deliberate and monitored.
 
+When a consumer must resolve an existing queue name in another AWS account, use the typed overload and typed preload entries:
+
+```ts
+const queueResolver = new SqsQueueUrlResolver(transportClient, {
+  preloadEntries: [
+    {
+      queue: 'audit-queue',
+      queueUrl: 'https://sqs.us-east-1.amazonaws.com/210987654321/audit-queue',
+      ownerAccountId: '210987654321',
+    },
+  ],
+  allowNetworkLookup: false,
+});
+
+const auditQueueUrl = await queueResolver.resolve({
+  queue: 'audit-queue',
+  ownerAccountId: '210987654321',
+});
+```
+
+Use the typed owner-account field only with queue names. Queue URLs and ARNs already encode the account and should be passed directly.
+
 ## Worker manifests
 
 A manifest decides which registered routes a worker process activates.
@@ -195,8 +217,10 @@ Default repository verification must not require live AWS. Live AWS or emulator-
 
 ## Queue operations and DLQ recovery
 
-Use the queue-ops helpers for operational inspection and native SQS redrive:
+Use the read-only discovery and queue-ops helpers for operational inspection and native SQS redrive:
 
+- `SqsQueueDiscovery.listQueues(...)`
+- `SnsTopicDiscovery.listTopics(...)`
 - `SqsQueueInspector.inspectQueue(...)`
 - `SqsQueueInspector.listDeadLetterSourceQueues(...)`
 - `SqsDlqRedriveManager.listRedriveTasks(...)`
@@ -206,10 +230,16 @@ Use the queue-ops helpers for operational inspection and native SQS redrive:
 - `SqsMessageBatchOperator.changeMessageVisibility(...)`
 
 These helpers intentionally stop at the queue-operation boundary:
+- read-only queue and topic discovery are package-owned;
 - queue inspection is package-owned;
 - native SQS DLQ redrive is package-owned;
 - transport-level SQS batch message operations are package-owned;
 - manual message-level replay remains consumer-owned.
+
+Discovery boundaries stay explicit:
+- `ListQueues` remains same-account and same-region because that is the native AWS boundary;
+- cross-account queue resolution is supported only for explicit `GetQueueUrl` name lookups;
+- topic discovery remains read-only and does not create, tag, or subscribe topics.
 
 This boundary is deliberate. Manual replay needs consumer-domain rules for:
 - idempotency;

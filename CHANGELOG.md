@@ -11,6 +11,7 @@ Format rules:
 
 ### Added
 
+- added typed cross-account SQS queue-name resolution, typed preload entries, and read-only queue/topic discovery helpers
 - added `@idenstra/messaging-runtime/observability` with OTEL metrics adapters, W3C trace propagation helpers, and worker span wrappers
 - added OTEL/SigNoz observability docs, a compile-checked example worker, and AWS-aware autoscaling guidance for ECS/Fargate and Kubernetes
 - added queue inspection helpers and native SQS DLQ redrive task management through `SqsQueueInspector`, `SqsDlqRedriveManager`, and the combined `AwsSqsAdapter`

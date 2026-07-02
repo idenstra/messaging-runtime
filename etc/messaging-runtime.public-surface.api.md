@@ -20,6 +20,8 @@ import { ListDeadLetterSourceQueuesCommandInput } from '@aws-sdk/client-sqs';
 import { ListDeadLetterSourceQueuesCommandOutput } from '@aws-sdk/client-sqs';
 import { ListMessageMoveTasksCommandInput } from '@aws-sdk/client-sqs';
 import { ListMessageMoveTasksCommandOutput } from '@aws-sdk/client-sqs';
+import { ListQueuesCommandInput } from '@aws-sdk/client-sqs';
+import { ListQueuesCommandOutput } from '@aws-sdk/client-sqs';
 import { ListTopicsCommandInput } from '@aws-sdk/client-sns';
 import { ListTopicsCommandOutput } from '@aws-sdk/client-sns';
 import { Message } from '@aws-sdk/client-sqs';
@@ -53,7 +55,7 @@ export class AwsSnsAdapter implements SnsTransportClient {
 }
 
 // @public (undocumented)
-export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient {
+export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQueueOperationsClient, SqsQueueDiscoveryClient {
     constructor(client: SQSClient);
     // (undocumented)
     cancelMessageMoveTask(input: Pick<CancelMessageMoveTaskCommandInput, 'TaskHandle'>): Promise<Pick<CancelMessageMoveTaskCommandOutput, 'ApproximateNumberOfMessagesMoved'>>;
@@ -68,11 +70,13 @@ export class AwsSqsAdapter implements SqsTransportClient, SqsRuntimeClient, SqsQ
     // (undocumented)
     getQueueAttributes(input: Pick<GetQueueAttributesCommandInput, 'QueueUrl' | 'AttributeNames'>): Promise<Pick<GetQueueAttributesCommandOutput, 'Attributes'>>;
     // (undocumented)
-    getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
+    getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName' | 'QueueOwnerAWSAccountId'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
     // (undocumented)
     listDeadLetterSourceQueues(input: Pick<ListDeadLetterSourceQueuesCommandInput, 'QueueUrl' | 'NextToken' | 'MaxResults'>): Promise<Pick<ListDeadLetterSourceQueuesCommandOutput, 'queueUrls' | 'NextToken'>>;
     // (undocumented)
     listMessageMoveTasks(input: Pick<ListMessageMoveTasksCommandInput, 'SourceArn' | 'MaxResults'>): Promise<Pick<ListMessageMoveTasksCommandOutput, 'Results'>>;
+    // (undocumented)
+    listQueues(input: Pick<ListQueuesCommandInput, 'QueueNamePrefix' | 'NextToken' | 'MaxResults'>): Promise<Pick<ListQueuesCommandOutput, 'QueueUrls' | 'NextToken'>>;
     // (undocumented)
     receiveMessage(input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions): Promise<ReceiveMessageCommandOutput>;
     // (undocumented)
@@ -115,6 +119,20 @@ export function decodeSnsNotificationJson<TPayload>(body: string | undefined, la
 export function decodeSqsJsonBody<TPayload>(body: string | undefined, label?: string): TPayload;
 
 // @public (undocumented)
+export interface ListSnsTopicsInput {
+    // (undocumented)
+    nextToken?: string;
+}
+
+// @public (undocumented)
+export interface ListSnsTopicsResult {
+    // (undocumented)
+    nextToken?: string;
+    // (undocumented)
+    topics: SnsTopicSummary[];
+}
+
+// @public (undocumented)
 export interface ListSqsDlqRedriveTasksInput {
     // (undocumented)
     maxResults?: number;
@@ -132,6 +150,24 @@ export interface ListSqsDlqRedriveTasksResult {
     sourceQueueUrl: string;
     // (undocumented)
     tasks: SqsMessageMoveTaskSummary[];
+}
+
+// @public (undocumented)
+export interface ListSqsQueuesInput {
+    // (undocumented)
+    namePrefix?: string;
+    // (undocumented)
+    nextToken?: string;
+    // (undocumented)
+    pageSize?: number;
+}
+
+// @public (undocumented)
+export interface ListSqsQueuesResult {
+    // (undocumented)
+    nextToken?: string;
+    // (undocumented)
+    queues: SqsQueueSummary[];
 }
 
 // @public (undocumented)
@@ -315,6 +351,23 @@ export interface SnsTopicArnResolverOptions {
     allowNetworkLookup?: boolean;
     // (undocumented)
     preload?: Record<string, string>;
+}
+
+// @public (undocumented)
+export class SnsTopicDiscovery {
+    constructor(client: SnsTopicArnResolverClient);
+    // (undocumented)
+    listTopics(input?: ListSnsTopicsInput): Promise<ListSnsTopicsResult>;
+}
+
+// @public (undocumented)
+export interface SnsTopicSummary {
+    // (undocumented)
+    fifo: boolean;
+    // (undocumented)
+    topicArn: string;
+    // (undocumented)
+    topicName: string;
 }
 
 // @public (undocumented)
@@ -545,6 +598,19 @@ export interface SqsQueueDescription {
 }
 
 // @public (undocumented)
+export class SqsQueueDiscovery {
+    constructor(client: SqsQueueDiscoveryClient);
+    // (undocumented)
+    listQueues(input?: ListSqsQueuesInput): Promise<ListSqsQueuesResult>;
+}
+
+// @public (undocumented)
+export interface SqsQueueDiscoveryClient {
+    // (undocumented)
+    listQueues(input: Pick<ListQueuesCommandInput, 'QueueNamePrefix' | 'NextToken' | 'MaxResults'>): Promise<Pick<ListQueuesCommandOutput, 'QueueUrls' | 'NextToken'>>;
+}
+
+// @public (undocumented)
 export class SqsQueueInspector {
     constructor(client: SqsQueueOperationsClient & SqsQueueUrlResolverClient, options?: SqsQueueInspectorOptions);
     // (undocumented)
@@ -596,16 +662,36 @@ export interface SqsQueueRedrivePolicy {
 }
 
 // @public (undocumented)
+export interface SqsQueueResolutionInput {
+    // (undocumented)
+    ownerAccountId?: string;
+    // (undocumented)
+    queue: string;
+}
+
+// @public (undocumented)
+export interface SqsQueueSummary {
+    // (undocumented)
+    fifo: boolean;
+    // (undocumented)
+    queueName: string;
+    // (undocumented)
+    queueUrl: string;
+}
+
+// @public (undocumented)
 export class SqsQueueUrlResolver {
     constructor(client: SqsQueueUrlResolverClient, options?: SqsQueueUrlResolverOptions);
     // (undocumented)
     resolve(queue: string): Promise<string>;
+    // (undocumented)
+    resolve(input: SqsQueueResolutionInput): Promise<string>;
 }
 
 // @public (undocumented)
 export interface SqsQueueUrlResolverClient {
     // (undocumented)
-    getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
+    getQueueUrl(input: Pick<GetQueueUrlCommandInput, 'QueueName' | 'QueueOwnerAWSAccountId'>): Promise<Pick<GetQueueUrlCommandOutput, 'QueueUrl'>>;
 }
 
 // @public (undocumented)
@@ -614,6 +700,18 @@ export interface SqsQueueUrlResolverOptions {
     allowNetworkLookup?: boolean;
     // (undocumented)
     preload?: Record<string, string>;
+    // (undocumented)
+    preloadEntries?: SqsQueueUrlResolverPreloadEntry[];
+}
+
+// @public (undocumented)
+export interface SqsQueueUrlResolverPreloadEntry {
+    // (undocumented)
+    ownerAccountId?: string;
+    // (undocumented)
+    queue: string;
+    // (undocumented)
+    queueUrl: string;
 }
 
 // @public (undocumented)

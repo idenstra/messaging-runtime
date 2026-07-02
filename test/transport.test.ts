@@ -5,6 +5,7 @@ import type {
   ChangeMessageVisibilityBatchCommandInput,
   DeleteMessageBatchCommandInput,
   GetQueueUrlCommandInput,
+  ListQueuesCommandInput,
   SendMessageBatchCommandInput,
   SendMessageCommandInput,
   SQSClient,
@@ -18,20 +19,24 @@ import {
   decodeSqsJsonBody,
   SnsPublisher,
   SnsTopicArnResolver,
+  SnsTopicDiscovery,
   type SnsTransportClient,
   SqsMessageBatchOperator,
   SqsPublisher,
+  SqsQueueDiscovery,
   SqsQueueUrlResolver,
   type SqsTransportClient,
 } from '../src';
 
 class FakeSqsTransportClient implements SqsTransportClient {
   readonly getQueueUrlInputs: GetQueueUrlCommandInput[] = [];
+  readonly listQueuesInputs: ListQueuesCommandInput[] = [];
   readonly sendMessageInputs: SendMessageCommandInput[] = [];
   readonly sendMessageBatchInputs: SendMessageBatchCommandInput[] = [];
   readonly deleteMessageBatchInputs: DeleteMessageBatchCommandInput[] = [];
   readonly changeMessageVisibilityBatchInputs: ChangeMessageVisibilityBatchCommandInput[] = [];
   private readonly queueUrls = new Map<string, string>();
+  private readonly listQueuesResponses: Array<{ QueueUrls?: string[]; NextToken?: string }> = [];
   private readonly batchResponses: Array<{
     Successful?: Array<{
       Id?: string;
@@ -52,8 +57,13 @@ class FakeSqsTransportClient implements SqsTransportClient {
     Failed?: Array<{ Id?: string; Code?: string; Message?: string; SenderFault?: boolean }>;
   }> = [];
 
-  withQueueUrl(queueName: string, queueUrl: string): this {
-    this.queueUrls.set(queueName, queueUrl);
+  withQueueUrl(queueName: string, queueUrl: string, ownerAccountId?: string): this {
+    this.queueUrls.set(createQueueLookupKey(queueName, ownerAccountId), queueUrl);
+    return this;
+  }
+
+  withListQueuesResponse(response: { QueueUrls?: string[]; NextToken?: string }): this {
+    this.listQueuesResponses.push(response);
     return this;
   }
 
@@ -90,7 +100,17 @@ class FakeSqsTransportClient implements SqsTransportClient {
 
   async getQueueUrl(input: GetQueueUrlCommandInput) {
     this.getQueueUrlInputs.push(input);
-    return { QueueUrl: input.QueueName ? this.queueUrls.get(input.QueueName) : undefined };
+    return {
+      QueueUrl:
+        input.QueueName === undefined
+          ? undefined
+          : this.queueUrls.get(createQueueLookupKey(input.QueueName, input.QueueOwnerAWSAccountId)),
+    };
+  }
+
+  async listQueues(input: ListQueuesCommandInput) {
+    this.listQueuesInputs.push(input);
+    return this.listQueuesResponses.shift() ?? { QueueUrls: [] };
   }
 
   async sendMessage(input: SendMessageCommandInput) {
@@ -112,6 +132,10 @@ class FakeSqsTransportClient implements SqsTransportClient {
     this.changeMessageVisibilityBatchInputs.push(input);
     return this.visibilityBatchResponses.shift() ?? { Successful: [], Failed: [] };
   }
+}
+
+function createQueueLookupKey(queueName: string, ownerAccountId?: string): string {
+  return ownerAccountId ? `${ownerAccountId}:${queueName}` : queueName;
 }
 
 class FakeSnsTransportClient implements SnsTransportClient {
@@ -305,6 +329,59 @@ test('SqsQueueUrlResolver supports preloaded mappings and optional no-network mo
   await assert.rejects(() => resolver.resolve('missing-queue'), /network lookup is disabled/i);
 });
 
+test('SqsQueueUrlResolver supports typed cross-account resolution without cache collisions', async () => {
+  const client = new FakeSqsTransportClient()
+    .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue')
+    .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/210987654321/dispatch-queue', '210987654321');
+  const resolver = new SqsQueueUrlResolver(client);
+
+  const defaultResolvedQueue = await resolver.resolve('dispatch-queue');
+  const crossAccountResolvedQueue = await resolver.resolve({ queue: 'dispatch-queue', ownerAccountId: '210987654321' });
+  const crossAccountResolvedQueueAgain = await resolver.resolve({
+    queue: 'dispatch-queue',
+    ownerAccountId: '210987654321',
+  });
+  const resolvedByArn = await resolver.resolve('arn:aws:sqs:us-east-1:210987654321:dispatch-queue');
+
+  assert.equal(defaultResolvedQueue, 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue');
+  assert.equal(crossAccountResolvedQueue, 'https://sqs.us-east-1.amazonaws.com/210987654321/dispatch-queue');
+  assert.equal(crossAccountResolvedQueueAgain, crossAccountResolvedQueue);
+  assert.equal(resolvedByArn, crossAccountResolvedQueue);
+  assert.deepEqual(client.getQueueUrlInputs, [
+    { QueueName: 'dispatch-queue', QueueOwnerAWSAccountId: undefined },
+    { QueueName: 'dispatch-queue', QueueOwnerAWSAccountId: '210987654321' },
+  ]);
+});
+
+test('SqsQueueUrlResolver supports typed preload entries and validates owner-account usage', async () => {
+  const client = new FakeSqsTransportClient();
+  const resolver = new SqsQueueUrlResolver(client, {
+    preloadEntries: [
+      {
+        queue: 'dispatch-queue',
+        queueUrl: 'https://sqs.us-east-1.amazonaws.com/210987654321/dispatch-queue',
+        ownerAccountId: '210987654321',
+      },
+    ],
+    allowNetworkLookup: false,
+  });
+
+  assert.equal(
+    await resolver.resolve({ queue: 'dispatch-queue', ownerAccountId: '210987654321' }),
+    'https://sqs.us-east-1.amazonaws.com/210987654321/dispatch-queue',
+  );
+  assert.equal(client.getQueueUrlInputs.length, 0);
+  await assert.rejects(
+    () => resolver.resolve({ queue: 'dispatch-queue', ownerAccountId: 'abc' }),
+    /12-digit AWS account ID/i,
+  );
+  await assert.rejects(
+    () =>
+      resolver.resolve({ queue: 'arn:aws:sqs:us-east-1:210987654321:dispatch-queue', ownerAccountId: '210987654321' }),
+    /only supported when resolving a queue by name/i,
+  );
+});
+
 test('SnsTopicArnResolver resolves topic names with pagination, accepts ARNs, and caches results', async () => {
   const client = new FakeSnsTransportClient()
     .withListTopicsResponse({
@@ -353,11 +430,64 @@ test('SnsTopicArnResolver fails cleanly when a topic name cannot be found', asyn
   await assert.rejects(() => resolver.resolve('missing-topic'), /missing-topic.*not found/i);
 });
 
+test('SqsQueueDiscovery lists page-first queue summaries with prefix forwarding', async () => {
+  const client = new FakeSqsTransportClient().withListQueuesResponse({
+    QueueUrls: [
+      'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+      'https://sqs.us-east-1.amazonaws.com/123456789012/jobs-dlq.fifo',
+    ],
+    NextToken: 'page-2',
+  });
+  const discovery = new SqsQueueDiscovery(client);
+
+  const result = await discovery.listQueues({ namePrefix: 'jobs', pageSize: 2, nextToken: 'page-1' });
+
+  assert.deepEqual(client.listQueuesInputs, [{ QueueNamePrefix: 'jobs', MaxResults: 2, NextToken: 'page-1' }]);
+  assert.deepEqual(result, {
+    queues: [
+      { queueName: 'jobs', queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs', fifo: false },
+      {
+        queueName: 'jobs-dlq.fifo',
+        queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs-dlq.fifo',
+        fifo: true,
+      },
+    ],
+    nextToken: 'page-2',
+  });
+});
+
+test('SnsTopicDiscovery lists page-first topic summaries', async () => {
+  const client = new FakeSnsTransportClient().withListTopicsResponse({
+    Topics: [
+      { TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' },
+      { TopicArn: 'arn:aws:sns:us-east-1:123456789012:jobs.fifo' },
+    ],
+    NextToken: 'page-2',
+  });
+  const discovery = new SnsTopicDiscovery(client);
+
+  const result = await discovery.listTopics({ nextToken: 'page-1' });
+
+  assert.deepEqual(client.listTopicsInputs, [{ NextToken: 'page-1' }]);
+  assert.deepEqual(result, {
+    topics: [
+      {
+        topicName: 'idenstra-email-events',
+        topicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+        fifo: false,
+      },
+      { topicName: 'jobs.fifo', topicArn: 'arn:aws:sns:us-east-1:123456789012:jobs.fifo', fifo: true },
+    ],
+    nextToken: 'page-2',
+  });
+});
+
 test('SqsPublisher sendJson resolves queue identifiers and forwards transport-native options', async () => {
   const attribute: SqsMessageAttributeValue = { DataType: 'String', StringValue: 'alpha' };
   const client = new FakeSqsTransportClient().withQueueUrl(
     'dispatch-queue',
     'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+    '123456789012',
   );
   const publisher = new SqsPublisher(client);
 
@@ -629,6 +759,7 @@ test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport o
     Entries: [{ Id: 'entry-0', ReceiptHandle: 'receipt-1', VisibilityTimeout: 30 }],
   });
   await sqsAdapter.getQueueUrl({ QueueName: 'dispatch-queue' });
+  await sqsAdapter.listQueues({ QueueNamePrefix: 'dispatch', MaxResults: 10, NextToken: 'page-1' });
   await sqsAdapter.getQueueAttributes({
     QueueUrl: 'https://queue.test/dispatch',
     AttributeNames: ['QueueArn', 'ApproximateNumberOfMessages'],
@@ -656,6 +787,6 @@ test('AWS adapters delegate to AWS SDK v3 clients across runtime and transport o
     PublishBatchRequestEntries: [{ Id: 'entry-0', Message: '{}' }],
   });
 
-  assert.equal(sentSqsCommands.length, 13);
+  assert.equal(sentSqsCommands.length, 14);
   assert.equal(sentSnsCommands.length, 3);
 });
