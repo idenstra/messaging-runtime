@@ -5,7 +5,12 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
-import type { ReceiveMessageCommandInput, ReceiveMessageCommandOutput } from '@aws-sdk/client-sqs';
+import type {
+  DeleteMessageBatchCommandInput,
+  DeleteMessageBatchCommandOutput,
+  ReceiveMessageCommandInput,
+  ReceiveMessageCommandOutput,
+} from '@aws-sdk/client-sqs';
 import {
   packageMetadata,
   SnsPublisher,
@@ -119,6 +124,7 @@ interface BenchmarkMessage {
 
 class BenchmarkWorkerRuntimeClient implements SqsRuntimeClient {
   private readonly batches: Array<{ Messages?: BenchmarkMessage[] }>;
+  readonly deleteBatchInputs: DeleteMessageBatchCommandInput[] = [];
 
   constructor(batches: Array<{ Messages?: BenchmarkMessage[] }>) {
     this.batches = batches.map((batch) => ({ Messages: batch.Messages?.map((message) => ({ ...message })) }));
@@ -143,6 +149,11 @@ class BenchmarkWorkerRuntimeClient implements SqsRuntimeClient {
   }
 
   async deleteMessage(): Promise<void> {}
+
+  async deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput> {
+    this.deleteBatchInputs.push(input);
+    return { Successful: (input.Entries ?? []).flatMap((entry) => (entry.Id ? [{ Id: entry.Id }] : [])), Failed: [] };
+  }
 
   async changeMessageVisibility(): Promise<void> {}
 }
@@ -295,7 +306,7 @@ function createBenchmarkScenarios(): BenchmarkScenario[] {
     },
     {
       name: 'worker:single-route-full-batch',
-      description: 'Current full-batch receive and dispatch baseline.',
+      description: 'Current single-route full-batch receive and dispatch behavior.',
       iterationsPerSample: 20,
       async runIteration() {
         const manager = new SqsWorkerManager(
@@ -316,6 +327,143 @@ function createBenchmarkScenarios(): BenchmarkScenario[] {
         await manager.start();
         await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 10);
         await manager.stop();
+      },
+    },
+    {
+      name: 'worker:single-route-prefetch-hot-queue',
+      description: 'Hot-queue throughput with bounded per-route prefetch and limited concurrency.',
+      iterationsPerSample: 10,
+      async runIteration() {
+        const manager = new SqsWorkerManager(
+          new BenchmarkWorkerRuntimeClient([{ Messages: createBenchmarkMessages(40) }]),
+          { defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 8 } },
+        );
+
+        manager.register({
+          name: 'jobs',
+          queueUrl: 'https://queue.test/jobs',
+          handle: async () => {
+            await sleep(1);
+          },
+          config: { concurrency: 4 },
+        });
+
+        await manager.start();
+        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 40, { timeoutMs: 5_000 });
+        await manager.stop();
+      },
+    },
+    {
+      name: 'worker:single-route-prefetch-delete-batch',
+      description: 'Hot-queue throughput including route-local delete batch finalization.',
+      iterationsPerSample: 10,
+      async runIteration() {
+        const client = new BenchmarkWorkerRuntimeClient([{ Messages: createBenchmarkMessages(50) }]);
+        const manager = new SqsWorkerManager(client, {
+          defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 10 },
+        });
+
+        manager.register({
+          name: 'jobs',
+          queueUrl: 'https://queue.test/jobs',
+          handle: async () => {
+            await sleep(1);
+          },
+          config: { concurrency: 5 },
+        });
+
+        await manager.start();
+        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 50, { timeoutMs: 5_000 });
+        await manager.stop();
+      },
+    },
+    {
+      name: 'worker:stop-drain-buffered',
+      description: 'Stop/drain latency with a buffered message waiting behind an in-flight slot.',
+      iterationsPerSample: 10,
+      async runIteration() {
+        const releaseFirstMessage = createDeferred<void>();
+        const handledMessageIds: string[] = [];
+        const manager = new SqsWorkerManager(
+          new BenchmarkWorkerRuntimeClient([
+            {
+              Messages: [
+                { MessageId: 'message-1', ReceiptHandle: 'receipt-1', Body: '{"jobId":"job-1"}' },
+                { MessageId: 'message-2', ReceiptHandle: 'receipt-2', Body: '{"jobId":"job-2"}' },
+              ],
+            },
+          ]),
+          { defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 2 } },
+        );
+
+        manager.register({
+          name: 'jobs',
+          queueUrl: 'https://queue.test/jobs',
+          handle: async ({ message }) => {
+            handledMessageIds.push(message.messageId);
+            if (message.messageId === 'message-1') {
+              await releaseFirstMessage.promise;
+            }
+          },
+          config: { concurrency: 1 },
+        });
+
+        await manager.start();
+        await waitFor(() => manager.getStatus()[0]?.inFlight === 1 && manager.getStatus()[0]?.buffered === 1);
+        const stopPromise = manager.stop();
+        releaseFirstMessage.resolve();
+        await stopPromise;
+
+        if (handledMessageIds.length !== 2) {
+          throw new Error(`Expected buffered drain to process both messages, observed ${handledMessageIds.length}.`);
+        }
+      },
+    },
+    {
+      name: 'worker:timeout-buffered-backlog',
+      description: 'Buffered backlog behavior while a cooperative timeout keeps the slot occupied.',
+      iterationsPerSample: 10,
+      async runIteration() {
+        const startedMessageIds: string[] = [];
+        const manager = new SqsWorkerManager(
+          new BenchmarkWorkerRuntimeClient([
+            {
+              Messages: [
+                { MessageId: 'message-1', ReceiptHandle: 'receipt-1', Body: '{"jobId":"job-1"}' },
+                { MessageId: 'message-2', ReceiptHandle: 'receipt-2', Body: '{"jobId":"job-2"}' },
+              ],
+            },
+          ]),
+          { defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, maxMessagesPerPoll: 2 } },
+        );
+
+        manager.register({
+          name: 'jobs',
+          queueUrl: 'https://queue.test/jobs',
+          handle: async ({ abortSignal, message }) => {
+            startedMessageIds.push(message.messageId);
+            if (message.messageId === 'message-1') {
+              await onceAborted(abortSignal);
+              await sleep(20);
+            }
+          },
+          config: {
+            concurrency: 1,
+            heartbeatIntervalMs: 10,
+            visibilityTimeoutSeconds: 30,
+            handlerTimeoutMs: 10,
+            timeoutStrategy: 'cooperative',
+            failureAction: 'delete',
+          },
+        });
+
+        await manager.start();
+        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 2, { timeoutMs: 5_000 });
+        await manager.stop();
+
+        if (startedMessageIds[0] !== 'message-1' || startedMessageIds[1] !== 'message-2') {
+          throw new Error(`Unexpected timeout/backlog processing order: ${startedMessageIds.join(',')}`);
+        }
       },
     },
   ];
@@ -357,13 +505,18 @@ async function runScenarioSample(scenario: BenchmarkScenario): Promise<number> {
   return performance.now() - startedAt;
 }
 
-async function waitFor(predicate: () => boolean, timeoutMs = 2_000): Promise<void> {
+async function waitFor(
+  predicate: () => boolean,
+  options: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? 2_000;
+  const intervalMs = options.intervalMs ?? 0;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (predicate()) {
       return;
     }
-    await sleep(0);
+    await sleep(intervalMs);
   }
 
   throw new Error(`Benchmark waitFor timed out after ${timeoutMs}ms.`);
@@ -414,8 +567,35 @@ function round(value: number): number {
   return Number(value.toFixed(6));
 }
 
+function createBenchmarkMessages(count: number): BenchmarkMessage[] {
+  return Array.from({ length: count }, (_, index) => ({
+    MessageId: `message-${index + 1}`,
+    ReceiptHandle: `receipt-${index + 1}`,
+    Body: JSON.stringify({ jobId: `job-${index + 1}` }),
+  }));
+}
+
+async function onceAborted(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    signal.addEventListener('abort', () => resolve(), { once: true });
+  });
+}
+
 function sleep(timeoutMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, timeoutMs));
+}
+
+function createDeferred<T>(): { promise: Promise<T>; resolve: (value?: T | PromiseLike<T>) => void } {
+  let resolve!: (value?: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve;
+  });
+
+  return { promise, resolve };
 }
 
 void main().catch((error: unknown) => {

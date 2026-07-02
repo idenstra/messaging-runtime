@@ -9,9 +9,10 @@
 | SQS long polling | Yes | Per route through `waitTimeSeconds`. |
 | Bounded concurrency | Yes | Per route through `concurrency`. |
 | SQS max messages per poll | Yes | Capped to SQS maximum of 10. |
+| Bounded per-route prefetch | Yes | Raw-message prefetch is capped to `min(concurrency, maxMessagesPerPoll)` per route. |
 | Plain SQS JSON decoding | Yes | Built-in default route decode parses JSON bodies when a route does not supply `decodePayload`. `decodeSqsJsonBody` is also exported for explicit typed decoders. |
 | SNS-over-SQS JSON decoding | Yes | `decodeSnsEnvelope` and `decodeSnsNotificationJson`. |
-| Message delete on success | Yes | Default success action is delete. |
+| Message delete on success | Yes | Default success action is delete, finalized through route-local delete batching in the worker core. |
 | Keep message for redelivery | Yes | Handler or error policy can return `keep`. |
 | Route-level error hook | Yes | `onError` can override failure action. |
 | Handler timeout | Yes | Optional `handlerTimeoutMs`. |
@@ -19,7 +20,7 @@
 | Visibility heartbeat | Yes | Interval heartbeat and manual `heartbeat()` callback. |
 | Graceful shutdown | Yes | Poll abort plus in-flight task settlement. |
 | Runtime events | Yes | Hook through `onEvent`. |
-| Health snapshot | Yes | `getStatus()` and `getSnapshot()`. |
+| Health snapshot | Yes | `getStatus()` and `getSnapshot()` include in-flight and buffered counts. |
 | OTEL metrics adapter | Yes | `@idenstra/messaging-runtime/observability` maps runtime events and snapshots into an injected `Meter`. |
 | W3C trace propagation helpers | Yes | Inject and extract `traceparent`, `tracestate`, and `baggage` through SNS/SQS message attributes. |
 | Consumer span wrapper | Yes | `withOpenTelemetrySqsWorkerTracing(...)` wraps a route without changing worker-core semantics. |
@@ -37,7 +38,7 @@
 | Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
 | Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
-| Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, and tracked baseline artifacts under `docs/benchmarks/`. |
+| Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, and tracked baseline artifacts under `docs/benchmarks/`, including worker-core prefetch scenarios. |
 
 ## Public API shape
 
@@ -77,7 +78,7 @@ The core feature set is credible, but the public maturity story is not complete 
 3. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
 4. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.
 5. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
-6. Worker-core throughput review: benchmark-backed decisions for any future buffered prefetch or runtime batch-finalization changes.
+6. Worker-core fairness follow-up: if the bounded per-route design is not enough later, evaluate a heavier shared scheduler for many-route mixed workloads.
 
 ## Feature acceptance rule
 

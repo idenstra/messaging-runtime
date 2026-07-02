@@ -4,6 +4,12 @@ Performance is a product requirement for this package. It should be lightweight,
 
 The repository now owns a deterministic benchmark suite and checked-in baseline artifacts. That closes the "no benchmark evidence at all" gap, but it does not justify strong comparative marketing claims yet. The correct posture remains: performance is a design goal, benchmark methodology exists, and worker-core throughput changes should be benchmark-backed before they land.
 
+The current worker-core slice implements bounded per-route prefetch and route-local batched delete finalization. That redesign is intentionally narrow:
+- optimize first for a few hot queues
+- keep complexity bounded
+- keep the rollout transparent with no new public tuning knobs
+- leave a heavier shared-scheduler path for a later issue only if evidence demands it
+
 ## Performance principles
 
 - Keep the hot path SNS/SQS-specific.
@@ -23,6 +29,10 @@ The current benchmark suite covers:
 3. single-message delete finalization.
 4. single-message heartbeat/visibility finalization.
 5. current single-route full-batch receive and dispatch behavior.
+6. single-route hot-queue throughput with bounded prefetch.
+7. single-route hot-queue throughput with bounded prefetch plus delete batching.
+8. stop/drain behavior with buffered backlog.
+9. cooperative-timeout behavior with buffered backlog.
 
 The broader hot paths that still deserve additional benchmark coverage are:
 
@@ -31,9 +41,10 @@ The broader hot paths that still deserve additional benchmark coverage are:
 3. JSON body decoding for plain SQS messages.
 4. SNS envelope decoding and nested payload decoding.
 5. handler dispatch and ack action resolution.
-6. failure-keep finalization and timeout paths.
+6. failure-keep finalization and abandon-timeout paths.
 7. resolver cache hit and miss paths.
 8. snapshot generation with many routes and high counter volume.
+9. many-route fairness tradeoffs versus the current per-route buffer design.
 
 ## Benchmark command surface
 
@@ -60,6 +71,10 @@ The current suite includes:
 | `worker:ack-delete` | Delete-message finalization overhead with fake client. |
 | `worker:visibility-heartbeat` | Manual heartbeat plus keep finalization overhead with fake client. |
 | `worker:single-route-full-batch` | Current full-batch receive and dispatch overhead. |
+| `worker:single-route-prefetch-hot-queue` | Hot-queue throughput with bounded per-route prefetch. |
+| `worker:single-route-prefetch-delete-batch` | Hot-queue throughput with bounded per-route prefetch plus delete batching. |
+| `worker:stop-drain-buffered` | Shutdown/drain behavior with a buffered message waiting behind an in-flight slot. |
+| `worker:timeout-buffered-backlog` | Cooperative-timeout behavior while buffered backlog waits behind the timed-out slot. |
 
 Future scenarios still worth adding:
 
@@ -95,6 +110,33 @@ docs/benchmarks/baseline.json
 ```
 
 `benchmark:ci` intentionally checks that the suite runs and emits stable output. It does not gate on fragile numeric thresholds in this slice.
+
+## Current acceptance posture for worker-core throughput changes
+
+This repository does not hard-fail CI on benchmark thresholds yet. The acceptance rule is procedural:
+
+- refresh the tracked baseline when worker-core throughput behavior changes intentionally;
+- compare the hot-queue scenarios against the previous checked-in baseline;
+- do not land complexity that materially regresses the simple single-message paths without a justified tradeoff record.
+
+For the bounded prefetch slice, the review target is:
+- meaningful hot-queue improvement;
+- no semantic regression in timeout, keep/delete, shutdown, or duplicate-risk handling;
+- no more than modest regression on the single-message delete and heartbeat baselines.
+
+If a future redesign cannot clear that bar, the package should prefer the simpler current behavior or open a new shared-scheduler follow-up with explicit evidence.
+
+## Optional emulator proof
+
+The mandatory harness remains fake-client-first and deterministic.
+
+When a maintainer wants extra confidence, run an optional emulator-backed burst test such as:
+
+1. one hot queue with limited worker concurrency
+2. a burst large enough to fill both in-flight and buffered slots
+3. verification that throughput improves without breaking delete/keep or shutdown behavior
+
+LocalStack-style proof is useful here, but it remains optional until the repository decides to own an emulator lane.
 
 ## Performance review checklist
 

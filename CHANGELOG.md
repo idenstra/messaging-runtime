@@ -18,10 +18,13 @@ Format rules:
 - added transport-level batch helpers for SQS delete / visibility changes through `SqsMessageBatchOperator`
 - added SNS batch JSON publish support through `SnsPublisher.publishJsonBatch(...)`
 - added deterministic benchmark commands and tracked baseline artifacts for transport and worker hot-path review
+- added benchmark-backed worker-core prefetch scenarios covering hot queues, stop/drain behavior, and buffered-backlog timeout handling
 
 ### Changed
 
 - breaking: unified the consumer-facing AWS wrappers into `AwsSqsAdapter` and `AwsSnsAdapter`, removing the earlier `AwsSqsRuntimeClient`, `AwsSqsTransportClient`, and `AwsSnsTransportClient` names before wider package adoption
+- breaking: `SqsRuntimeClient` now includes `deleteMessageBatch(...)`, and worker snapshots now expose `buffered` and `totalBuffered`
+- changed `SqsWorkerManager` to use bounded per-route raw-message prefetch, buffered-message visibility-age protection, and route-local batched delete finalization
 
 ## [0.1.0] - 2026-06-29
 
