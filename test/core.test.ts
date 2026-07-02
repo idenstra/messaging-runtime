@@ -197,7 +197,7 @@ test('fails clearly when worker message system attributes cannot be normalized',
           MessageId: 'm1',
           ReceiptHandle: 'r1',
           Body: JSON.stringify({ kind: 'alpha' }),
-          Attributes: { ApproximateReceiveCount: 'not-a-number' },
+          Attributes: { ApproximateReceiveCount: '3oops' },
         },
       ],
     },
@@ -219,6 +219,45 @@ test('fails clearly when worker message system attributes cannot be normalized',
   await waitFor(
     () =>
       manager.getStatus()[0]?.lastErrorMessage?.includes('ApproximateReceiveCount must be a valid integer') === true,
+  );
+  await manager.stop();
+
+  assert.equal(handlerCalled, false);
+  assert.equal(client.deleteBatchInputs.length, 0);
+  assert.equal(client.deleteInputs.length, 0);
+});
+
+test('fails clearly when worker message timestamp system attributes are only partially numeric', async () => {
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        {
+          MessageId: 'm1',
+          ReceiptHandle: 'r1',
+          Body: JSON.stringify({ kind: 'alpha' }),
+          Attributes: { SentTimestamp: '1717ms' },
+        },
+      ],
+    },
+  ]);
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
+  });
+  let handlerCalled = false;
+
+  manager.register({
+    name: 'invalid-timestamp-system-attributes',
+    queueUrl: 'https://queue.test/email',
+    handle: async () => {
+      handlerCalled = true;
+    },
+  });
+
+  await manager.start();
+  await waitFor(
+    () =>
+      manager.getStatus()[0]?.lastErrorMessage?.includes('SentTimestamp must be a valid epoch-millisecond integer') ===
+      true,
   );
   await manager.stop();
 

@@ -1457,24 +1457,23 @@ function normalizeWorkerMessageSystemAttributes(
 }
 
 function parseWorkerMessageIntegerSystemAttribute(attributeName: string, value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isSafeInteger(parsed)) {
+  if (!isStrictNonNegativeIntegerLiteral(value)) {
     throw new Error(
       `SQS message system attribute ${attributeName} must be a valid integer, got ${JSON.stringify(value)}.`,
     );
   }
 
-  return parsed;
+  return Number(value);
 }
 
 function parseWorkerMessageTimestampSystemAttribute(attributeName: string, value: string): Date {
-  const parsedEpochMs = Number.parseInt(value, 10);
-  if (!Number.isSafeInteger(parsedEpochMs)) {
+  if (!isStrictNonNegativeIntegerLiteral(value)) {
     throw new Error(
       `SQS message system attribute ${attributeName} must be a valid epoch-millisecond integer, got ${JSON.stringify(value)}.`,
     );
   }
 
+  const parsedEpochMs = Number(value);
   const parsedDate = new Date(parsedEpochMs);
   if (Number.isNaN(parsedDate.getTime())) {
     throw new Error(
@@ -1491,6 +1490,10 @@ function parseWorkerMessageNonEmptyStringSystemAttribute(attributeName: string, 
   }
 
   return value;
+}
+
+function isStrictNonNegativeIntegerLiteral(value: string): boolean {
+  return /^(0|[1-9]\d*)$/.test(value);
 }
 
 function defaultDecodePayload<TPayload>(message: SqsWorkerMessage): TPayload {
