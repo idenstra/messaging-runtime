@@ -18,6 +18,7 @@ Format rules:
 - added a consumer-owned queue-ops example script and explicit docs that keep manual message replay outside the shared package
 - added transport-level batch helpers for SQS delete / visibility changes through `SqsMessageBatchOperator`
 - added SNS batch JSON publish support through `SnsPublisher.publishJsonBatch(...)`
+- added explicit SNS structured topic publishing through `publishStructuredJson(...)` and `publishStructuredJsonBatch(...)`
 - added deterministic benchmark commands and tracked baseline artifacts for transport and worker hot-path review
 - added benchmark-backed worker-core prefetch scenarios covering hot queues, stop/drain behavior, and buffered-backlog timeout handling
 - added `benchmark:compare` plus same-machine benchmark comparison guidance for performance-sensitive pull requests
@@ -30,6 +31,7 @@ Format rules:
 - changed `SqsWorkerManager` to use bounded per-route raw-message prefetch, buffered-message visibility-age protection, and route-local batched delete finalization
 - changed the benchmark acceptance posture so checked-in baselines remain historical context while same-machine A/B comparison becomes the preferred throughput-review discipline
 - changed worker polling to request SQS system attributes through `MessageSystemAttributeNames` instead of `AttributeNames`
+- changed SNS publish helpers to allow standard-topic `messageGroupId`, reject standard-topic `messageDeduplicationId`, and align FIFO validation across single and batch publishing
 
 ## [0.1.0] - 2026-06-29
 

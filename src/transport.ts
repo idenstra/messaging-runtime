@@ -310,9 +310,32 @@ export interface SnsPublishJsonOptions {
   messageDeduplicationId?: string;
 }
 
+export interface SnsStructuredJsonMessage {
+  default: string;
+  http?: string;
+  https?: string;
+  email?: string;
+  'email-json'?: string;
+  sms?: string;
+  sqs?: string;
+  lambda?: string;
+  application?: string;
+}
+
+export interface SnsPublishStructuredJsonOptions {
+  subject?: string;
+  messageGroupId?: string;
+  messageDeduplicationId?: string;
+}
+
 export interface SnsPublishJsonInput<TPayload> extends SnsPublishJsonOptions {
   topic: string;
   payload: TPayload;
+}
+
+export interface SnsPublishStructuredJsonInput extends SnsPublishStructuredJsonOptions {
+  topic: string;
+  payload: SnsStructuredJsonMessage;
 }
 
 export interface SnsPublishJsonResult {
@@ -327,9 +350,20 @@ export interface SnsPublishJsonBatchEntry<TId extends string = string, TPayload 
   payload: TPayload;
 }
 
+export interface SnsPublishStructuredJsonBatchEntry<TId extends string = string>
+  extends SnsPublishStructuredJsonOptions {
+  id: TId;
+  payload: SnsStructuredJsonMessage;
+}
+
 export interface SnsPublishJsonBatchInput<TId extends string = string, TPayload = unknown> {
   topic: string;
   entries: Array<SnsPublishJsonBatchEntry<TId, TPayload>>;
+}
+
+export interface SnsPublishStructuredJsonBatchInput<TId extends string = string> {
+  topic: string;
+  entries: Array<SnsPublishStructuredJsonBatchEntry<TId>>;
 }
 
 export interface SnsPublishJsonBatchSuccess<TId extends string = string> {
@@ -817,6 +851,15 @@ export class SnsPublisher {
 
   async publishJson<TPayload>(input: SnsPublishJsonInput<TPayload>): Promise<SnsPublishJsonResult> {
     const topicArn = await this.resolver.resolve(input.topic);
+    validateSnsPublishEntry(
+      {
+        subject: input.subject,
+        messageAttributes: input.messageAttributes,
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      { topicArn, label: 'SNS publish request', structuredJson: false },
+    );
     const response = await this.client.publish({
       TopicArn: topicArn,
       Message: JSON.stringify(input.payload),
@@ -829,12 +872,35 @@ export class SnsPublisher {
     return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
   }
 
+  async publishStructuredJson(input: SnsPublishStructuredJsonInput): Promise<SnsPublishJsonResult> {
+    const topicArn = await this.resolver.resolve(input.topic);
+    validateSnsStructuredJsonMessage(input.payload, 'SNS structured publish payload');
+    validateSnsPublishEntry(
+      {
+        subject: input.subject,
+        messageAttributes: readUnsupportedStructuredMessageAttributes(input),
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      { topicArn, label: 'SNS structured publish request', structuredJson: true },
+    );
+    const response = await this.client.publish({
+      TopicArn: topicArn,
+      Message: JSON.stringify(input.payload),
+      MessageStructure: 'json',
+      Subject: input.subject,
+      MessageGroupId: input.messageGroupId,
+      MessageDeduplicationId: input.messageDeduplicationId,
+    });
+
+    return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
+  }
+
   async publishJsonBatch<TId extends string, TPayload>(
     input: SnsPublishJsonBatchInput<TId, TPayload>,
   ): Promise<SnsPublishJsonBatchResult<TId>> {
     assertUniqueBatchEntryIds(input.entries, 'SNS batch publish entry id');
     const topicArn = await this.resolver.resolve(input.topic);
-    const fifoTopic = topicArn.endsWith('.fifo');
     const successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>> = {};
     const failedById: Record<string, SnsPublishJsonBatchFailure<TId>> = {};
 
@@ -844,7 +910,11 @@ export class SnsPublisher {
       const response = await this.client.publishBatch({
         TopicArn: topicArn,
         PublishBatchRequestEntries: chunk.map((entry, index) => {
-          validateSnsBatchEntry(entry, fifoTopic);
+          validateSnsPublishEntry(entry, {
+            topicArn,
+            label: `SNS batch publish entry ${entry.id}`,
+            structuredJson: false,
+          });
           const internalId = createInternalBatchEntryId(offset, index);
           internalIdMap.set(internalId, entry.id);
 
@@ -853,6 +923,53 @@ export class SnsPublisher {
             Message: JSON.stringify(entry.payload),
             Subject: entry.subject,
             MessageAttributes: entry.messageAttributes,
+            MessageGroupId: entry.messageGroupId,
+            MessageDeduplicationId: entry.messageDeduplicationId,
+          };
+        }),
+      });
+
+      recordSnsPublishSuccessfulBatchEntries(internalIdMap, response.Successful ?? [], successfulById);
+      recordFailedBatchEntries(internalIdMap, response.Failed ?? [], failedById);
+    }
+
+    return {
+      topicArn,
+      requestedCount: input.entries.length,
+      successfulCount: Object.keys(successfulById).length,
+      failedCount: Object.keys(failedById).length,
+      successfulById,
+      failedById,
+    };
+  }
+
+  async publishStructuredJsonBatch<TId extends string>(
+    input: SnsPublishStructuredJsonBatchInput<TId>,
+  ): Promise<SnsPublishJsonBatchResult<TId>> {
+    assertUniqueBatchEntryIds(input.entries, 'SNS structured batch publish entry id');
+    const topicArn = await this.resolver.resolve(input.topic);
+    const successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>> = {};
+    const failedById: Record<string, SnsPublishJsonBatchFailure<TId>> = {};
+
+    for (let offset = 0; offset < input.entries.length; offset += 10) {
+      const chunk = input.entries.slice(offset, offset + 10);
+      const internalIdMap = new Map<string, TId>();
+      const response = await this.client.publishBatch({
+        TopicArn: topicArn,
+        PublishBatchRequestEntries: chunk.map((entry, index) => {
+          validateSnsStructuredJsonMessage(entry.payload, `SNS structured batch publish payload ${entry.id}`);
+          validateSnsPublishEntry(
+            { ...entry, messageAttributes: readUnsupportedStructuredMessageAttributes(entry) },
+            { topicArn, label: `SNS structured batch publish entry ${entry.id}`, structuredJson: true },
+          );
+          const internalId = createInternalBatchEntryId(offset, index);
+          internalIdMap.set(internalId, entry.id);
+
+          return {
+            Id: internalId,
+            Message: JSON.stringify(entry.payload),
+            MessageStructure: 'json',
+            Subject: entry.subject,
             MessageGroupId: entry.messageGroupId,
             MessageDeduplicationId: entry.messageDeduplicationId,
           };
@@ -1341,26 +1458,61 @@ function createSimpleBatchResult<TId extends string>(
   };
 }
 
-function validateSnsBatchEntry(entry: SnsPublishJsonBatchEntry<string, unknown>, fifoTopic: boolean): void {
+function validateSnsPublishEntry(
+  entry: {
+    subject?: string;
+    messageAttributes?: SnsMessageAttributes;
+    messageGroupId?: string;
+    messageDeduplicationId?: string;
+  },
+  context: { topicArn: string; label: string; structuredJson: boolean },
+): void {
   if (entry.subject !== undefined) {
-    assertNonEmptyText(entry.subject, `subject for SNS batch entry ${entry.id}`);
+    assertNonEmptyText(entry.subject, `subject for ${context.label}`);
   }
 
+  if (context.structuredJson && entry.messageAttributes !== undefined) {
+    throw new Error(`${context.label} must not declare messageAttributes when MessageStructure is json.`);
+  }
+
+  const fifoTopic = context.topicArn.endsWith('.fifo');
   if (fifoTopic) {
-    assertNonEmptyText(entry.messageGroupId, `messageGroupId for SNS FIFO batch entry ${entry.id}`);
+    assertNonEmptyText(entry.messageGroupId, `messageGroupId for ${context.label}`);
     if (entry.messageDeduplicationId !== undefined) {
-      assertNonEmptyText(entry.messageDeduplicationId, `messageDeduplicationId for SNS FIFO batch entry ${entry.id}`);
+      assertNonEmptyText(entry.messageDeduplicationId, `messageDeduplicationId for ${context.label}`);
     }
     return;
   }
 
   if (entry.messageGroupId !== undefined) {
-    throw new Error(`SNS standard topic batch entry ${entry.id} must not declare messageGroupId.`);
+    assertNonEmptyText(entry.messageGroupId, `messageGroupId for ${context.label}`);
   }
 
   if (entry.messageDeduplicationId !== undefined) {
-    throw new Error(`SNS standard topic batch entry ${entry.id} must not declare messageDeduplicationId.`);
+    throw new Error(`${context.label} must not declare messageDeduplicationId for a standard SNS topic.`);
   }
+}
+
+function validateSnsStructuredJsonMessage(message: SnsStructuredJsonMessage, label: string): void {
+  const record = assertRecord(message, label);
+  if (!('default' in record)) {
+    throw new Error(`${label} must define a "default" protocol value.`);
+  }
+
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value !== 'string') {
+      throw new Error(`${label} protocol value "${key}" must be a string.`);
+    }
+  }
+}
+
+function readUnsupportedStructuredMessageAttributes(value: unknown): SnsMessageAttributes | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const messageAttributes = (value as { messageAttributes?: SnsMessageAttributes }).messageAttributes;
+  return messageAttributes === undefined ? undefined : messageAttributes;
 }
 
 function assertIntegerInRange(value: number, label: string, min: number, max: number): number {

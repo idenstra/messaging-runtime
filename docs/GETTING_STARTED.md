@@ -274,7 +274,31 @@ await publisher.publishJsonBatch({
 });
 ```
 
-FIFO-specific fields such as `messageGroupId` and `messageDeduplicationId` are forwarded per entry and validated against the resolved topic type.
+SNS topic semantics are validated against the resolved topic type:
+- standard topics may use `messageGroupId` as a fair-queue hint for SQS standard subscriptions
+- standard topics must not use `messageDeduplicationId`
+- FIFO topics require `messageGroupId`
+- FIFO topics may omit `messageDeduplicationId` when topic-level content-based deduplication is intended
+
+## Publish a structured SNS topic message
+
+Use the structured helpers only when you intentionally want SNS `MessageStructure: 'json'` protocol-specific publishing.
+
+```ts
+await publisher.publishStructuredJson({
+  topic: 'events',
+  payload: {
+    default: 'User created',
+    email: 'User created email body',
+    sqs: '{"eventType":"USER_CREATED","userId":"user-1"}',
+  },
+});
+```
+
+`publishStructuredJson(...)` and `publishStructuredJsonBatch(...)` are intentionally separate from the normal JSON helpers:
+- `publishJson(...)` and `publishJsonBatch(...)` send a normal SNS string body whose contents happen to come from `JSON.stringify(...)`
+- the structured helpers set `MessageStructure: 'json'` and expect a protocol map with a required `default` string
+- structured helpers reject `messageAttributes`; attribute-friendly raw/string publishing stays with the later serializer-agnostic publisher work
 
 ## Discover existing queues and topics
 

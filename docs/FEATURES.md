@@ -29,7 +29,8 @@
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
 | SQS JSON publisher | Yes | Single-message and batch publishing. |
 | SQS batch delete / visibility helpers | Yes | `SqsMessageBatchOperator` chunks automatically and normalizes partial success/failure by caller entry ID. |
-| SNS JSON publisher | Yes | Single-message and batch publishing. |
+| SNS string-mode JSON publisher | Yes | `publishJson(...)` and `publishJsonBatch(...)` send normal SNS string bodies built from `JSON.stringify(...)`. |
+| SNS structured topic publisher | Yes | `publishStructuredJson(...)` and `publishStructuredJsonBatch(...)` set `MessageStructure: 'json'` for protocol-specific topic messages. |
 | Read-only SQS queue discovery | Yes | `SqsQueueDiscovery.listQueues(...)` supports page-first listing with AWS-native prefix filtering. |
 | Read-only SNS topic discovery | Yes | `SnsTopicDiscovery.listTopics(...)` exposes the native page-first `ListTopics` surface as normalized topic summaries. |
 | Queue inspection | Yes | `SqsQueueInspector` resolves queue identifiers and normalizes queue attributes. |
@@ -79,8 +80,9 @@ The core feature set is credible, but the public maturity story is not complete 
 2. Optional integration proof: emulator-backed or LocalStack-style tests for receive, delete, visibility, publish, and resolver flows.
 3. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
 4. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.
-5. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
-6. Worker-core fairness follow-up: if the bounded per-route design is not enough later, evaluate a heavier shared scheduler for many-route mixed workloads.
+5. SNS publishing guidance: keep fair-queue `MessageGroupId`, FIFO/content-based deduplication, and structured-message boundaries explicit as the publisher surface expands.
+6. Observability guidance: document event names, counter meanings, health/readiness examples, and metrics mapping.
+7. Worker-core fairness follow-up: if the bounded per-route design is not enough later, evaluate a heavier shared scheduler for many-route mixed workloads.
 
 ## Feature acceptance rule
 

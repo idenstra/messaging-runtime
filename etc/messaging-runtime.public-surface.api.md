@@ -236,6 +236,10 @@ export class SnsPublisher {
     publishJson<TPayload>(input: SnsPublishJsonInput<TPayload>): Promise<SnsPublishJsonResult>;
     // (undocumented)
     publishJsonBatch<TId extends string, TPayload>(input: SnsPublishJsonBatchInput<TId, TPayload>): Promise<SnsPublishJsonBatchResult<TId>>;
+    // (undocumented)
+    publishStructuredJson(input: SnsPublishStructuredJsonInput): Promise<SnsPublishJsonResult>;
+    // (undocumented)
+    publishStructuredJsonBatch<TId extends string>(input: SnsPublishStructuredJsonBatchInput<TId>): Promise<SnsPublishJsonBatchResult<TId>>;
 }
 
 // @public (undocumented)
@@ -320,6 +324,62 @@ export interface SnsPublishJsonResult {
     sequenceNumber?: string;
     // (undocumented)
     topicArn: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishStructuredJsonBatchEntry<TId extends string = string> extends SnsPublishStructuredJsonOptions {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    payload: SnsStructuredJsonMessage;
+}
+
+// @public (undocumented)
+export interface SnsPublishStructuredJsonBatchInput<TId extends string = string> {
+    // (undocumented)
+    entries: Array<SnsPublishStructuredJsonBatchEntry<TId>>;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishStructuredJsonInput extends SnsPublishStructuredJsonOptions {
+    // (undocumented)
+    payload: SnsStructuredJsonMessage;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishStructuredJsonOptions {
+    // (undocumented)
+    messageDeduplicationId?: string;
+    // (undocumented)
+    messageGroupId?: string;
+    // (undocumented)
+    subject?: string;
+}
+
+// @public (undocumented)
+export interface SnsStructuredJsonMessage {
+    // (undocumented)
+    'email-json'?: string;
+    // (undocumented)
+    application?: string;
+    // (undocumented)
+    default: string;
+    // (undocumented)
+    email?: string;
+    // (undocumented)
+    http?: string;
+    // (undocumented)
+    https?: string;
+    // (undocumented)
+    lambda?: string;
+    // (undocumented)
+    sms?: string;
+    // (undocumented)
+    sqs?: string;
 }
 
 // @public (undocumented)

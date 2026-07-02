@@ -36,6 +36,10 @@ This repository is not public-ready until the following readiness criteria are o
   - `AwsSqsAdapter` for SQS runtime and transport operations
   - `AwsSnsAdapter` for SNS publish and topic-resolution operations
   - separate capability interfaces remain internal architecture, not setup burden
+- Keep SNS publish semantics stable and documented:
+  - string-mode JSON helpers remain distinct from structured `MessageStructure: 'json'` helpers
+  - standard-topic `MessageGroupId` fair-queue usage stays supported
+  - FIFO deduplication behavior stays aligned with AWS content-based deduplication rules
 - Keep OTEL posture stable and documented:
   - `@opentelemetry/api` stays the only package-level observability peer dependency
   - SDK/exporter choices remain consumer-owned
@@ -51,6 +55,7 @@ This repository is not public-ready until the following readiness criteria are o
 - Add optional emulator or integration tests for receive, delete, visibility heartbeat, SQS publish, SNS publish, queue resolution, and topic resolution.
 - Document idempotency, duplicate processing, DLQ, native redrive, manual replay boundaries, and poison-message ownership.
 - Document FIFO queue considerations: message group ID, deduplication ID, ordering, concurrency, and batch behavior.
+- Document structured SNS topic publishing separately from string-mode publishing, including the message-attributes limitation for `MessageStructure: 'json'`.
 - Document LocalStack or emulator setup if an emulator lane is added.
 
 ## Performance maturity
