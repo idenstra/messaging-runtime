@@ -37,6 +37,9 @@ export class NestSqsWorkerLoggerAdapter implements SqsWorkerLogger {
 }
 
 // @public (undocumented)
+export type SqsWorkerBufferedMessageDropReason = 'missing-receipt-handle' | 'pre-dispatch-visibility-failure';
+
+// @public (undocumented)
 export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 
 // @public (undocumented)
@@ -118,8 +121,6 @@ export interface SqsWorkerRouteStatus {
     inFlight: number;
     // (undocumented)
     lastBufferedMessageDropAt?: Date;
-    // Warning: (ae-forgotten-export) The symbol "SqsWorkerBufferedMessageDropReason" needs to be exported by the entry point nest.d.ts
-    //
     // (undocumented)
     lastBufferedMessageDropReason?: SqsWorkerBufferedMessageDropReason;
     // (undocumented)

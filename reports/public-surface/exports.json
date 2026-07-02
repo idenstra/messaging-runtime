@@ -211,6 +211,7 @@
       "symbols": [
         "AbstractNestSqsWorkerHost",
         "NestSqsWorkerLoggerAdapter",
+        "SqsWorkerBufferedMessageDropReason",
         "SqsWorkerFailureKind",
         "SqsWorkerLateSettlementOutcome",
         "SqsWorkerLogger",
