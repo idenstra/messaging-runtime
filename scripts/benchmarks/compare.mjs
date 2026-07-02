@@ -101,6 +101,12 @@ export function validateBenchmarkReport(report, label = 'benchmark report') {
     for (const field of ['name', 'description']) {
       assertString(scenario[field], `${scenarioLabel}.${field}`);
     }
+    if (!Array.isArray(scenario.sampleDurationsMs)) {
+      throw new Error(`${scenarioLabel}.sampleDurationsMs must be an array`);
+    }
+    for (const [sampleIndex, sampleDurationMs] of scenario.sampleDurationsMs.entries()) {
+      assertNumber(sampleDurationMs, `${scenarioLabel}.sampleDurationsMs[${sampleIndex}]`);
+    }
     for (const field of [
       'iterationsPerSample',
       'meanMsPerIteration',
@@ -151,7 +157,17 @@ export function compareEnvironmentFingerprints(baseFingerprint, candidateFingerp
 }
 
 function indexScenarios(report) {
-  return new Map(report.scenarios.map((scenario) => [scenario.name, scenario]));
+  const scenariosByName = new Map();
+
+  for (const scenario of report.scenarios) {
+    if (scenariosByName.has(scenario.name)) {
+      throw new Error(`duplicate benchmark scenario name: ${scenario.name}`);
+    }
+
+    scenariosByName.set(scenario.name, scenario);
+  }
+
+  return scenariosByName;
 }
 
 function percentDelta(base, candidate) {

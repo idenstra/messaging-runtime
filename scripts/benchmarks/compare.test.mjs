@@ -58,6 +58,14 @@ test('validateBenchmarkReport accepts a valid benchmark report shape', () => {
   assert.equal(validateBenchmarkReport(report), report);
 });
 
+test('validateBenchmarkReport rejects invalid sampleDurationsMs entries', () => {
+  const report = createReport({
+    scenarios: [{ ...createReport().scenarios[0], sampleDurationsMs: [100, '101', 102] }],
+  });
+
+  assert.throws(() => validateBenchmarkReport(report), /sampleDurationsMs\[1\] must be a number/);
+});
+
 test('loadBenchmarkReport reads and validates a JSON file', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'benchmark-compare-'));
   const reportPath = path.join(tempDir, 'report.json');
@@ -126,6 +134,22 @@ test('buildBenchmarkComparison compares overlapping scenarios and reports added/
   assert.equal(comparison.scenarios[0]?.deltaMedianMsPerIteration, -0.5);
   assert.equal(comparison.addedScenarios[0]?.name, 'worker:prefetch-hot-queue');
   assert.equal(comparison.removedScenarios[0]?.name, 'worker:ack-delete');
+});
+
+test('buildBenchmarkComparison rejects duplicate scenario names', () => {
+  assert.throws(
+    () =>
+      buildBenchmarkComparison(
+        createReport({
+          scenarios: [
+            createReport().scenarios[0],
+            { ...createReport().scenarios[0], description: 'Duplicate scenario name.' },
+          ],
+        }),
+        createReport(),
+      ),
+    /duplicate benchmark scenario name: worker:single-route-full-batch/,
+  );
 });
 
 test('renderMarkdownComparison prints the compared scenario table and mismatch notes', () => {
