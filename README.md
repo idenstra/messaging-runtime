@@ -168,12 +168,14 @@ npm ci
 npm test
 npm run build
 npm run benchmark
+npm run benchmark:compare -- --base /tmp/benchmark-main.json --candidate /tmp/benchmark-branch.json
 make audit
 make verify-fast
 make verify
 ```
 
 The default verification path is deterministic and does not require live AWS.
+For throughput-sensitive changes, prefer same-machine `benchmark:ci` plus `benchmark:compare` proof over comparing against a checked-in baseline from another host.
 
 ## Release and compatibility
 

@@ -27,6 +27,7 @@ Package-level code-shape tooling:
 - `npm run benchmark`
 - `npm run benchmark:ci`
 - `npm run benchmark:baseline`
+- `npm run benchmark:compare -- --base <base.json> --candidate <candidate.json>`
 - `npm run public-surface:report`
 - `npm run public-surface:snapshot`
 - `npm run public-surface:check`

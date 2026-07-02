@@ -76,6 +76,12 @@ This file adds proof tiers and handoff expectations around that sequence.
 - `make plan-sync`: local execution-plan lifecycle sync that moves closed-issue plans from `docs/exec-plans/active/` to `docs/exec-plans/completed/`.
 - `make plan-close ISSUE=<number>`: local closeout helper that moves a numbered active plan into `docs/exec-plans/completed/` before merging the PR that closes the issue.
 
+Performance-sensitive runtime changes add one extra proof expectation beyond the verify tiers:
+
+- capture same-machine base and candidate benchmark JSON reports with `npm run benchmark:ci`
+- compare them with `npm run benchmark:compare -- --base <base.json> --candidate <candidate.json>`
+- use the checked-in baseline as historical context only, not as the acceptance source of truth
+
 ## Exception protocol
 
 - Use allowlists only for deterministic findings that are understood, owned, and time-bounded.

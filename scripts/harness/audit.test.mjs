@@ -78,7 +78,7 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(
     repoRoot,
     'package.json',
-    '{"scripts":{"format":"biome format --write .","lint":"biome check .","lint:fix":"biome check --write .","public-surface:report":"node scripts/public-surface/run-interface-reports.mjs --write","public-surface:snapshot":"node scripts/public-surface/check-export-snapshot.mjs --write","public-surface:check":"node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs"}}\n',
+    '{"scripts":{"format":"biome format --write .","lint":"biome check .","lint:fix":"biome check --write .","benchmark":"tsx scripts/benchmarks/run.ts","benchmark:ci":"tsx scripts/benchmarks/run.ts --json","benchmark:baseline":"tsx scripts/benchmarks/run.ts --write-baseline","benchmark:compare":"node scripts/benchmarks/compare.mjs","public-surface:report":"node scripts/public-surface/run-interface-reports.mjs --write","public-surface:snapshot":"node scripts/public-surface/check-export-snapshot.mjs --write","public-surface:check":"node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs"}}\n',
   );
   writeFile(repoRoot, 'src/core.ts', 'export const marker = true;\n');
   writeFile(repoRoot, 'src/adapters/nest.ts', 'export const marker = true;\n');
@@ -93,7 +93,7 @@ function seedMinimalHarnessRepo(repoRoot) {
     repoRoot,
     'scripts/harness/verify.sh',
     [
-      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs',
+      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs scripts/benchmarks/*.test.mjs',
       'node scripts/ci/validate-no-personal-paths.mjs',
       'node scripts/ci/validate-workflow-security.mjs',
       'node scripts/ci/validate-pr-governance.mjs',
@@ -116,6 +116,8 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(repoRoot, 'scripts/harness/check-execution-plan-lifecycle.mjs', '// ok\n');
   writeFile(repoRoot, 'scripts/harness/check-public-import-surface.mjs', '// ok\n');
   writeFile(repoRoot, 'scripts/harness/check-package-facing-reference-hygiene.mjs', '// ok\n');
+  writeFile(repoRoot, 'scripts/benchmarks/run.ts', '// ok\n');
+  writeFile(repoRoot, 'scripts/benchmarks/compare.mjs', '// ok\n');
   writeFile(repoRoot, 'scripts/public-surface/run-interface-reports.mjs', '// ok\n');
   writeFile(repoRoot, 'scripts/public-surface/check-export-snapshot.mjs', '// ok\n');
   writeFile(repoRoot, 'public-surface-report.root.json', '{}\n');
@@ -131,7 +133,7 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(
     repoRoot,
     '.github/workflows/ci.yml',
-    'harness-validate:\nnode --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs\nmake audit\npackage-checks:\nmake verify-fast\n',
+    'harness-validate:\nnode --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs scripts/benchmarks/*.test.mjs\nmake audit\npackage-checks:\nmake verify-fast\n',
   );
   writeFile(
     repoRoot,

@@ -150,6 +150,19 @@ function createVerificationCategory(repoRoot) {
           'Biome config or package scripts are missing',
           'Add biome.json plus package format/lint scripts.',
         ),
+    exists('scripts/benchmarks/run.ts', repoRoot) &&
+    exists('scripts/benchmarks/compare.mjs', repoRoot) &&
+    packageJson.includes('"benchmark"') &&
+    packageJson.includes('"benchmark:ci"') &&
+    packageJson.includes('"benchmark:baseline"') &&
+    packageJson.includes('"benchmark:compare"')
+      ? createCheck('benchmark-tooling', 'pass', 'Benchmark run and compare tooling are present')
+      : createCheck(
+          'benchmark-tooling',
+          'fail',
+          'Benchmark run or compare tooling is missing',
+          'Add benchmark run/compare scripts and wire the package benchmark:* commands.',
+        ),
     exists('scripts/harness/check-public-import-surface.mjs', repoRoot) &&
     exists('scripts/harness/check-package-facing-reference-hygiene.mjs', repoRoot)
       ? createCheck(
@@ -165,7 +178,7 @@ function createVerificationCategory(repoRoot) {
         ),
     exists('scripts/harness/verify.sh', repoRoot) &&
     verifyScript.includes(
-      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs',
+      'node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs scripts/benchmarks/*.test.mjs',
     ) &&
     verifyScript.includes('validate-no-personal-paths.mjs') &&
     verifyScript.includes('validate-workflow-security.mjs') &&

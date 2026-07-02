@@ -4,6 +4,8 @@ Performance is a product requirement for this package. It should be lightweight,
 
 The repository now owns a deterministic benchmark suite and checked-in baseline artifacts. That closes the "no benchmark evidence at all" gap, but it does not justify strong comparative marketing claims yet. The correct posture remains: performance is a design goal, benchmark methodology exists, and worker-core throughput changes should be benchmark-backed before they land.
 
+The checked-in baseline is historical context, not the acceptance source of truth for throughput-sensitive pull requests. A slower or faster machine can make a true improvement look like a regression or vice versa. The acceptance discipline for performance-sensitive changes is same-machine A/B comparison.
+
 The current worker-core slice implements bounded per-route prefetch and route-local batched delete finalization. That redesign is intentionally narrow:
 - optimize first for a few hot queues
 - keep complexity bounded
@@ -54,11 +56,29 @@ The benchmark suite runs locally without live AWS:
 npm run benchmark
 npm run benchmark:ci
 npm run benchmark:baseline
+npm run benchmark:compare -- --base /tmp/benchmark-main.json --candidate /tmp/benchmark-branch.json
 ```
 
 - `benchmark` prints the current human-readable report.
 - `benchmark:ci` emits stable machine-readable JSON and is safe for the mandatory harness.
-- `benchmark:baseline` refreshes the tracked baseline artifacts after an intentional benchmark change.
+- `benchmark:baseline` refreshes the tracked baseline artifacts after an intentional benchmark change has already been reviewed.
+- `benchmark:compare` compares two machine-readable JSON reports and rejects environment drift by default.
+
+Recommended performance-review workflow:
+
+```bash
+git checkout main
+npm ci
+npm run benchmark:ci > /tmp/benchmark-main.json
+
+git checkout your-branch
+npm ci
+npm run benchmark:ci > /tmp/benchmark-branch.json
+
+npm run benchmark:compare -- --base /tmp/benchmark-main.json --candidate /tmp/benchmark-branch.json
+```
+
+That is the preferred proof path for throughput-sensitive changes because it compares `before` and `after` on the same host, with the same Node version and benchmark settings.
 
 ## Current benchmark scenarios
 
@@ -111,12 +131,19 @@ docs/benchmarks/baseline.json
 
 `benchmark:ci` intentionally checks that the suite runs and emits stable output. It does not gate on fragile numeric thresholds in this slice.
 
+The tracked baseline should be interpreted as:
+
+- historical repository context;
+- a convenient reference point for the most recently accepted benchmark posture;
+- not a substitute for same-machine `before` vs `after` PR proof.
+
 ## Current acceptance posture for worker-core throughput changes
 
 This repository does not hard-fail CI on benchmark thresholds yet. The acceptance rule is procedural:
 
-- refresh the tracked baseline when worker-core throughput behavior changes intentionally;
-- compare the hot-queue scenarios against the previous checked-in baseline;
+- capture base and candidate benchmark JSON reports on the same machine;
+- compare the hot-queue scenarios with `npm run benchmark:compare`;
+- refresh the tracked baseline only after the change is accepted;
 - do not land complexity that materially regresses the simple single-message paths without a justified tradeoff record.
 
 For the bounded prefetch slice, the review target is:
@@ -125,6 +152,18 @@ For the bounded prefetch slice, the review target is:
 - no more than modest regression on the single-message delete and heartbeat baselines.
 
 If a future redesign cannot clear that bar, the package should prefer the simpler current behavior or open a new shared-scheduler follow-up with explicit evidence.
+
+## Performance-proof discipline for pull requests
+
+When a change affects worker-core throughput, polling behavior, batching, timeout handling cost, or other hot-path runtime mechanics, the pull request should include:
+
+- the exact benchmark commands used;
+- a same-machine base report path or artifact;
+- a same-machine candidate report path or artifact;
+- the `benchmark:compare` summary;
+- explicit callouts for any intentionally added or removed scenarios.
+
+Environment mismatch should be treated as a review smell. If a comparison must be made across different hosts for historical context, that should be called out explicitly and should not replace same-machine proof when the change is performance-sensitive.
 
 ## Optional emulator proof
 

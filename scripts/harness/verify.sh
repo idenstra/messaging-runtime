@@ -13,7 +13,7 @@ echo "[messaging-runtime harness] npm ci"
 npm ci --ignore-scripts
 
 echo "[messaging-runtime harness] validator self-tests"
-node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs
+node --test scripts/ci/*.test.mjs scripts/harness/*.test.mjs scripts/release/*.test.mjs scripts/public-surface/*.test.mjs scripts/benchmarks/*.test.mjs
 
 echo "[messaging-runtime harness] validate personal paths"
 HARNESS_STRICT="${STRICT}" node scripts/ci/validate-no-personal-paths.mjs
