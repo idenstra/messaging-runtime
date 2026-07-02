@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (129):
+- exported symbols (130):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -116,6 +116,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerMessageDeleteEvent`
   - `SqsWorkerMessageKeepEvent`
   - `SqsWorkerMessagesReceivedEvent`
+  - `SqsWorkerMessageSystemAttributes`
   - `SqsWorkerQueueResolver`
   - `SqsWorkerReceiveEmptyEvent`
   - `SqsWorkerRoute`
@@ -141,7 +142,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core.d.ts`
-- exported symbols (37):
+- exported symbols (38):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsWorkerAckAction`
@@ -169,6 +170,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerMessageDeleteEvent`
   - `SqsWorkerMessageKeepEvent`
   - `SqsWorkerMessagesReceivedEvent`
+  - `SqsWorkerMessageSystemAttributes`
   - `SqsWorkerReceiveEmptyEvent`
   - `SqsWorkerRoute`
   - `SqsWorkerRouteConfig`
@@ -199,7 +201,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./observability`
 - declarations: `dist/observability.d.ts`
-- exported symbols (39):
+- exported symbols (40):
   - `createOpenTelemetrySqsWorkerMetricsAdapter`
   - `extractTraceContextFromSqsMessage`
   - `ExtractTraceContextFromSqsMessageOptions`
@@ -230,6 +232,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerMessageDeleteEvent`
   - `SqsWorkerMessageKeepEvent`
   - `SqsWorkerMessagesReceivedEvent`
+  - `SqsWorkerMessageSystemAttributes`
   - `SqsWorkerReceiveEmptyEvent`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteStatus`

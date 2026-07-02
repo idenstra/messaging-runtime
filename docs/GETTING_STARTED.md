@@ -89,6 +89,29 @@ async function processJob(jobId: string): Promise<void> {
 }
 ```
 
+## Read typed SQS system attributes in handlers
+
+Use `message.systemAttributes` when handler logic depends on receive count or receive timestamps. The raw AWS `message.attributes` string map still remains available for compatibility.
+
+```ts
+const route = {
+  name: 'jobs',
+  decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
+  handle: async ({ payload, message }) => {
+    const receiveCount = message.systemAttributes.ApproximateReceiveCount ?? 1;
+    const firstReceiveAt = message.systemAttributes.ApproximateFirstReceiveTimestamp;
+
+    if (receiveCount > 3) {
+      throw new Error(`duplicate-risk threshold reached for ${payload.jobId}`);
+    }
+
+    console.log('first seen at', firstReceiveAt?.toISOString());
+  },
+};
+```
+
+Prefer the typed view for handler logic. Use raw `message.attributes` only when you need an unnormalized AWS field or exact raw compatibility.
+
 ## Consume SNS notifications from SQS
 
 Use `decodeSnsNotificationJson` when an SQS queue is subscribed to an SNS topic.

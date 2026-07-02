@@ -23,11 +23,24 @@ export interface SqsWorkerMessageAttributeValue {
   dataType?: string;
 }
 
+export interface SqsWorkerMessageSystemAttributes {
+  ApproximateReceiveCount: number;
+  ApproximateFirstReceiveTimestamp: Date;
+  SentTimestamp: Date;
+  SenderId: string;
+  MessageGroupId: string;
+  MessageDeduplicationId: string;
+  SequenceNumber: string;
+  AWSTraceHeader: string;
+  DeadLetterQueueSourceArn: string;
+}
+
 export interface SqsWorkerMessage {
   messageId: string;
   receiptHandle: string;
   body?: string;
   attributes: Record<string, string>;
+  systemAttributes: Partial<SqsWorkerMessageSystemAttributes>;
   messageAttributes: Record<string, SqsWorkerMessageAttributeValue>;
   raw: SqsSdkMessage;
 }
@@ -346,6 +359,8 @@ const ROUTE_ACTIVITY_WAIT_MS = 25;
 const DELETE_BATCH_SIZE_LIMIT = 10;
 const DELETE_BATCH_FLUSH_DELAY_MS = 5;
 const BUFFERED_VISIBILITY_EXTENSION_THRESHOLD_RATIO = 0.5;
+const WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES = ['All'] as const;
+const WORKER_RECEIVE_MESSAGE_ATTRIBUTE_NAMES = ['All'] as const;
 
 export class SqsWorkerManager {
   private readonly logger: SqsWorkerLogger;
@@ -491,8 +506,8 @@ export class SqsWorkerManager {
             MaxNumberOfMessages: Math.max(1, Math.min(10, demand, route.config.maxMessagesPerPoll)),
             WaitTimeSeconds: route.config.waitTimeSeconds,
             VisibilityTimeout: route.config.visibilityTimeoutSeconds,
-            AttributeNames: ['All'],
-            MessageAttributeNames: ['All'],
+            MessageSystemAttributeNames: [...WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES],
+            MessageAttributeNames: [...WORKER_RECEIVE_MESSAGE_ATTRIBUTE_NAMES],
           },
           { abortSignal: abortController.signal },
         );
@@ -1372,11 +1387,14 @@ function toWorkerMessage(message: SqsSdkMessage): SqsWorkerMessage {
     throw new Error('SQS message is missing MessageId or ReceiptHandle.');
   }
 
+  const attributes = message.Attributes ?? {};
+
   return {
     messageId: message.MessageId,
     receiptHandle: message.ReceiptHandle,
     body: message.Body,
-    attributes: message.Attributes ?? {},
+    attributes,
+    systemAttributes: normalizeWorkerMessageSystemAttributes(attributes),
     messageAttributes: Object.fromEntries(
       Object.entries(message.MessageAttributes ?? {}).map(([key, value]) => [
         key,
@@ -1391,6 +1409,91 @@ function toWorkerMessage(message: SqsSdkMessage): SqsWorkerMessage {
     ),
     raw: message,
   };
+}
+
+function normalizeWorkerMessageSystemAttributes(
+  attributes: Record<string, string>,
+): Partial<SqsWorkerMessageSystemAttributes> {
+  const systemAttributes: Partial<SqsWorkerMessageSystemAttributes> = {};
+
+  if (attributes.ApproximateReceiveCount !== undefined) {
+    systemAttributes.ApproximateReceiveCount = parseWorkerMessageIntegerSystemAttribute(
+      'ApproximateReceiveCount',
+      attributes.ApproximateReceiveCount,
+    );
+  }
+
+  if (attributes.ApproximateFirstReceiveTimestamp !== undefined) {
+    systemAttributes.ApproximateFirstReceiveTimestamp = parseWorkerMessageTimestampSystemAttribute(
+      'ApproximateFirstReceiveTimestamp',
+      attributes.ApproximateFirstReceiveTimestamp,
+    );
+  }
+
+  if (attributes.SentTimestamp !== undefined) {
+    systemAttributes.SentTimestamp = parseWorkerMessageTimestampSystemAttribute(
+      'SentTimestamp',
+      attributes.SentTimestamp,
+    );
+  }
+
+  for (const attributeName of [
+    'SenderId',
+    'MessageGroupId',
+    'MessageDeduplicationId',
+    'SequenceNumber',
+    'AWSTraceHeader',
+    'DeadLetterQueueSourceArn',
+  ] as const) {
+    const attributeValue = attributes[attributeName];
+    if (attributeValue === undefined) {
+      continue;
+    }
+
+    systemAttributes[attributeName] = parseWorkerMessageNonEmptyStringSystemAttribute(attributeName, attributeValue);
+  }
+
+  return systemAttributes;
+}
+
+function parseWorkerMessageIntegerSystemAttribute(attributeName: string, value: string): number {
+  if (!isStrictNonNegativeIntegerLiteral(value)) {
+    throw new Error(
+      `SQS message system attribute ${attributeName} must be a valid integer, got ${JSON.stringify(value)}.`,
+    );
+  }
+
+  return Number(value);
+}
+
+function parseWorkerMessageTimestampSystemAttribute(attributeName: string, value: string): Date {
+  if (!isStrictNonNegativeIntegerLiteral(value)) {
+    throw new Error(
+      `SQS message system attribute ${attributeName} must be a valid epoch-millisecond integer, got ${JSON.stringify(value)}.`,
+    );
+  }
+
+  const parsedEpochMs = Number(value);
+  const parsedDate = new Date(parsedEpochMs);
+  if (Number.isNaN(parsedDate.getTime())) {
+    throw new Error(
+      `SQS message system attribute ${attributeName} must be a valid date, got ${JSON.stringify(value)}.`,
+    );
+  }
+
+  return parsedDate;
+}
+
+function parseWorkerMessageNonEmptyStringSystemAttribute(attributeName: string, value: string): string {
+  if (!value) {
+    throw new Error(`SQS message system attribute ${attributeName} must be a non-empty string when present.`);
+  }
+
+  return value;
+}
+
+function isStrictNonNegativeIntegerLiteral(value: string): boolean {
+  return /^(0|[1-9]\d*)$/.test(value);
 }
 
 function defaultDecodePayload<TPayload>(message: SqsWorkerMessage): TPayload {
