@@ -156,6 +156,18 @@ export function createOpenTelemetrySqsWorkerMetricsAdapter(
       });
     });
 
+    const totalBufferedGauge = meter.createObservableGauge(`${metricPrefix}.buffered`, {
+      description: 'Current buffered message count observed by the current worker process.',
+    });
+    totalBufferedGauge.addCallback((result) => {
+      observeSnapshotMetric(result, getSnapshot, onError, (snapshot) => {
+        result.observe(snapshot.totalBuffered, staticAttributes);
+        for (const route of snapshot.routes) {
+          result.observe(route.buffered, buildMetricAttributes(staticAttributes, route, { scope: 'route' }));
+        }
+      });
+    });
+
     const workerStateGauge = meter.createObservableGauge(`${metricPrefix}.state`, {
       description: 'Process-local worker lifecycle state, emitted as 1 for active flags and 0 for inactive flags.',
     });

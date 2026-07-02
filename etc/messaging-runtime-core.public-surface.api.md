@@ -5,6 +5,8 @@
 ```ts
 
 import { ChangeMessageVisibilityCommandInput } from '@aws-sdk/client-sqs';
+import { DeleteMessageBatchCommandInput } from '@aws-sdk/client-sqs';
+import { DeleteMessageBatchCommandOutput } from '@aws-sdk/client-sqs';
 import { DeleteMessageCommandInput } from '@aws-sdk/client-sqs';
 import { Message } from '@aws-sdk/client-sqs';
 import { ReceiveMessageCommandInput } from '@aws-sdk/client-sqs';
@@ -16,6 +18,8 @@ export interface SqsRuntimeClient {
     changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
     // (undocumented)
     deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
+    // (undocumented)
+    deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput>;
     // (undocumented)
     receiveMessage(input: ReceiveMessageCommandInput, options?: SqsRuntimeRequestOptions): Promise<ReceiveMessageCommandOutput>;
 }
@@ -228,6 +232,8 @@ export interface SqsWorkerManagerSnapshot {
     // (undocumented)
     stopping: boolean;
     // (undocumented)
+    totalBuffered: number;
+    // (undocumented)
     totalInFlight: number;
 }
 
@@ -363,6 +369,8 @@ export interface SqsWorkerRouteCounters {
 
 // @public (undocumented)
 export interface SqsWorkerRouteStatus {
+    // (undocumented)
+    buffered: number;
     // (undocumented)
     counters: SqsWorkerRouteCounters;
     // (undocumented)

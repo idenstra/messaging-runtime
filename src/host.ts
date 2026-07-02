@@ -115,6 +115,7 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
         stopping: false,
         routeCount: 0,
         totalInFlight: 0,
+        totalBuffered: 0,
         counters: createEmptyCounters(),
         routes: [],
       }

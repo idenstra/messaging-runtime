@@ -67,6 +67,8 @@ export interface SqsWorkerManagerSnapshot {
     // (undocumented)
     stopping: boolean;
     // (undocumented)
+    totalBuffered: number;
+    // (undocumented)
     totalInFlight: number;
 }
 
@@ -98,6 +100,8 @@ export interface SqsWorkerRouteCounters {
 
 // @public (undocumented)
 export interface SqsWorkerRouteStatus {
+    // (undocumented)
+    buffered: number;
     // (undocumented)
     counters: SqsWorkerRouteCounters;
     // (undocumented)

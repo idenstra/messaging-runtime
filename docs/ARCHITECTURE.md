@@ -24,6 +24,10 @@ Current state:
 - private-first
 - extracted SQS worker runtime core now lives here
 - the runtime core now owns route error hooks, timeout strategies, and metrics/snapshot hooks
+- the runtime core now also owns:
+  - bounded per-route raw-message prefetch
+  - pre-dispatch visibility-age protection for buffered messages
+  - route-local delete batching for worker-core finalization
 - the root package now owns worker-service lifecycle/bootstrap helpers:
   - manifest-driven route activation
   - queue binding resolution through injected resolver state
@@ -102,3 +106,7 @@ This separation is deliberate:
 - consumer apps remain responsible for business handlers and configuration sourcing
 - consumer apps remain responsible for manual replay, idempotency storage, and domain-safe recovery rules
 - the package remains responsible for reusable SNS/SQS runtime mechanics
+- the package treats buffered state as process-local runtime state:
+  - per-route `buffered`
+  - manager `totalBuffered`
+  - no distributed backlog ledger inside the package

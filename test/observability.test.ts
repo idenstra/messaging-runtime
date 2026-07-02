@@ -162,6 +162,7 @@ function createSnapshot(): SqsWorkerManagerSnapshot {
     stopping: false,
     routeCount: 1,
     totalInFlight: 2,
+    totalBuffered: 1,
     counters: {
       receiveEmptyCount: 0,
       messagesReceivedCount: 0,
@@ -182,6 +183,7 @@ function createSnapshot(): SqsWorkerManagerSnapshot {
         running: true,
         stopping: false,
         inFlight: 2,
+        buffered: 1,
         counters: {
           receiveEmptyCount: 0,
           messagesReceivedCount: 0,
@@ -251,19 +253,25 @@ test('metrics adapter maps runtime events into counters, histograms, and optiona
 
   const routeCountGauge = meter.gauges.get('messaging_runtime.route_count');
   const inFlightGauge = meter.gauges.get('messaging_runtime.in_flight');
+  const bufferedGauge = meter.gauges.get('messaging_runtime.buffered');
   const workerStateGauge = meter.gauges.get('messaging_runtime.state');
   const routeCountResult = new FakeObservableResult();
   const inFlightResult = new FakeObservableResult();
+  const bufferedResult = new FakeObservableResult();
   const stateResult = new FakeObservableResult();
 
   routeCountGauge?.run(routeCountResult as unknown as ObservableResult);
   inFlightGauge?.run(inFlightResult as unknown as ObservableResult);
+  bufferedGauge?.run(bufferedResult as unknown as ObservableResult);
   workerStateGauge?.run(stateResult as unknown as ObservableResult);
 
   assert.deepEqual(routeCountResult.observations[0], { value: 1, attributes: { service_name: 'worker-a' } });
   assert.equal(inFlightResult.observations[0]?.value, 2);
   assert.equal(inFlightResult.observations[1]?.attributes?.scope, 'route');
   assert.equal(inFlightResult.observations[1]?.attributes?.route_name, 'dispatch-email');
+  assert.equal(bufferedResult.observations[0]?.value, 1);
+  assert.equal(bufferedResult.observations[1]?.attributes?.scope, 'route');
+  assert.equal(bufferedResult.observations[1]?.attributes?.route_name, 'dispatch-email');
   assert.deepEqual(
     stateResult.observations.map((observation) => observation.attributes?.state),
     ['started', 'stopping'],

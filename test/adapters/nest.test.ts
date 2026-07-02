@@ -16,6 +16,10 @@ class FakeSqsClient implements SqsRuntimeClient {
 
   async deleteMessage(): Promise<void> {}
 
+  async deleteMessageBatch() {
+    return { Successful: [], Failed: [] };
+  }
+
   async changeMessageVisibility(): Promise<void> {}
 }
 

@@ -1,5 +1,7 @@
 import {
   type ChangeMessageVisibilityCommandInput,
+  type DeleteMessageBatchCommandInput,
+  type DeleteMessageBatchCommandOutput,
   type DeleteMessageCommandInput,
   type ReceiveMessageCommandInput,
   type ReceiveMessageCommandOutput,
@@ -127,6 +129,7 @@ export interface SqsWorkerRouteStatus {
   running: boolean;
   stopping: boolean;
   inFlight: number;
+  buffered: number;
   counters: SqsWorkerRouteCounters;
   lastReceiveAt?: Date;
   lastReceiveEmptyAt?: Date;
@@ -150,6 +153,7 @@ export interface SqsWorkerManagerSnapshot {
   stopping: boolean;
   routeCount: number;
   totalInFlight: number;
+  totalBuffered: number;
   counters: SqsWorkerRouteCounters;
   routes: SqsWorkerRouteStatus[];
 }
@@ -253,6 +257,7 @@ export interface SqsRuntimeClient {
     options?: SqsRuntimeRequestOptions,
   ): Promise<ReceiveMessageCommandOutput>;
   deleteMessage(input: DeleteMessageCommandInput): Promise<void>;
+  deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput>;
   changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void>;
 }
 
@@ -309,12 +314,38 @@ interface RouteRuntime<TPayload> {
   status: SqsWorkerRouteStatus;
   loop?: Promise<void>;
   tasks: Set<Promise<void>>;
+  buffer: BufferedRouteMessage[];
+  deleteBatch: RouteDeleteBatchState;
   pollAbortController?: AbortController;
+  activityVersion: number;
+  activityWaiter?: () => void;
 }
 
 type SettledHandlerResult =
   | { outcome: 'resolved'; result: SqsWorkerHandlerOutcome }
   | { outcome: 'rejected'; error: unknown };
+
+interface BufferedRouteMessage {
+  rawMessage: SqsSdkMessage;
+  receivedAtMs: number;
+}
+
+interface PendingDeleteEntry {
+  message: SqsWorkerMessage;
+  reason: 'success' | 'failure' | 'timeout';
+  resolve: () => void;
+}
+
+interface RouteDeleteBatchState {
+  entries: PendingDeleteEntry[];
+  flushTimer?: NodeJS.Timeout;
+  flushPromise?: Promise<void>;
+}
+
+const ROUTE_ACTIVITY_WAIT_MS = 25;
+const DELETE_BATCH_SIZE_LIMIT = 10;
+const DELETE_BATCH_FLUSH_DELAY_MS = 5;
+const BUFFERED_VISIBILITY_EXTENSION_THRESHOLD_RATIO = 0.5;
 
 export class SqsWorkerManager {
   private readonly logger: SqsWorkerLogger;
@@ -359,9 +390,13 @@ export class SqsWorkerManager {
         running: false,
         stopping: false,
         inFlight: 0,
+        buffered: 0,
         counters: createCounters(),
       },
+      buffer: [],
+      deleteBatch: { entries: [] },
       tasks: new Set(),
+      activityVersion: 0,
     });
   }
 
@@ -374,8 +409,13 @@ export class SqsWorkerManager {
     this.stopping = false;
 
     for (const runtime of this.routes.values()) {
+      runtime.buffer = [];
+      runtime.deleteBatch = { entries: [] };
+      runtime.activityVersion = 0;
+      runtime.activityWaiter = undefined;
       runtime.status.running = true;
       runtime.status.stopping = false;
+      runtime.status.buffered = 0;
       runtime.loop = this.runRouteLoop(runtime);
     }
   }
@@ -392,8 +432,11 @@ export class SqsWorkerManager {
         runtime.status.stopping = true;
         runtime.status.running = false;
         runtime.pollAbortController?.abort();
+        this.signalRouteActivity(runtime);
+        await this.flushPendingDeletes(runtime);
         await runtime.loop;
         await Promise.all([...runtime.tasks]);
+        await this.flushPendingDeletes(runtime);
       }),
     );
 
@@ -413,6 +456,7 @@ export class SqsWorkerManager {
       stopping: this.stopping,
       routeCount: routes.length,
       totalInFlight: routes.reduce((total, route) => total + route.inFlight, 0),
+      totalBuffered: routes.reduce((total, route) => total + route.buffered, 0),
       counters: routes.reduce((aggregate, route) => addCounters(aggregate, route.counters), createCounters()),
       routes,
     };
@@ -421,10 +465,20 @@ export class SqsWorkerManager {
   private async runRouteLoop(runtime: RouteRuntime<unknown>): Promise<void> {
     const { route, status } = runtime;
 
-    while (!this.stopping) {
-      const remainingCapacity = route.config.concurrency - status.inFlight;
-      if (remainingCapacity <= 0) {
-        await sleep(25);
+    while (true) {
+      const activityVersion = runtime.activityVersion;
+      await this.dispatchBufferedMessages(runtime);
+      if (this.stopping) {
+        if (runtime.buffer.length === 0 && status.inFlight === 0) {
+          break;
+        }
+        await this.waitForRouteActivity(runtime, ROUTE_ACTIVITY_WAIT_MS, activityVersion);
+        continue;
+      }
+
+      const demand = this.calculateRouteDemand(runtime);
+      if (demand <= 0) {
+        await this.waitForRouteActivity(runtime, ROUTE_ACTIVITY_WAIT_MS, activityVersion);
         continue;
       }
 
@@ -434,7 +488,7 @@ export class SqsWorkerManager {
         const response = await this.client.receiveMessage(
           {
             QueueUrl: route.queueUrl,
-            MaxNumberOfMessages: Math.max(1, Math.min(10, remainingCapacity, route.config.maxMessagesPerPoll)),
+            MaxNumberOfMessages: Math.max(1, Math.min(10, demand, route.config.maxMessagesPerPoll)),
             WaitTimeSeconds: route.config.waitTimeSeconds,
             VisibilityTimeout: route.config.visibilityTimeoutSeconds,
             AttributeNames: ['All'],
@@ -446,7 +500,7 @@ export class SqsWorkerManager {
           runtime.pollAbortController = undefined;
         }
 
-        const messages = (response.Messages ?? []).slice(0, remainingCapacity);
+        const messages = (response.Messages ?? []).slice(0, demand);
         if (messages.length === 0) {
           this.emitRuntimeEvent(status, {
             type: 'receive-empty',
@@ -454,7 +508,7 @@ export class SqsWorkerManager {
             routeName: route.name,
             queueUrl: route.queueUrl,
           });
-          await sleep(route.config.emptyReceiveDelayMs);
+          await this.waitForRouteActivity(runtime, route.config.emptyReceiveDelayMs, runtime.activityVersion);
           continue;
         }
 
@@ -466,27 +520,10 @@ export class SqsWorkerManager {
           messageCount: messages.length,
         });
 
-        for (const rawMessage of messages) {
-          const task = this.processMessage(runtime, rawMessage)
-            .catch((error: unknown) => {
-              const detail = describeUnknownError(error);
-              status.lastErrorAt = new Date();
-              status.lastErrorMessage = detail;
-              this.logger.error('SQS worker message processing failed.', {
-                routeName: route.name,
-                queueUrl: route.queueUrl,
-                messageId: rawMessage.MessageId,
-                error: detail,
-              });
-            })
-            .finally(() => {
-              status.inFlight -= 1;
-              runtime.tasks.delete(task);
-            });
-
-          status.inFlight += 1;
-          runtime.tasks.add(task);
-        }
+        const receivedAtMs = Date.now();
+        runtime.buffer.push(...messages.map((rawMessage) => ({ rawMessage, receivedAtMs })));
+        status.buffered = runtime.buffer.length;
+        this.signalRouteActivity(runtime);
       } catch (error) {
         runtime.pollAbortController = undefined;
         if (this.stopping && isAbortError(error)) {
@@ -503,6 +540,145 @@ export class SqsWorkerManager {
         await sleep(route.config.errorBackoffMs);
       }
     }
+  }
+
+  private calculateRouteDemand(runtime: RouteRuntime<unknown>): number {
+    const prefetchLimit = Math.min(runtime.route.config.concurrency, runtime.route.config.maxMessagesPerPoll);
+    return Math.max(
+      0,
+      runtime.route.config.concurrency + prefetchLimit - (runtime.status.inFlight + runtime.buffer.length),
+    );
+  }
+
+  private async dispatchBufferedMessages(runtime: RouteRuntime<unknown>): Promise<void> {
+    const { route, status } = runtime;
+
+    while (runtime.buffer.length > 0 && status.inFlight < route.config.concurrency) {
+      const bufferedMessage = runtime.buffer.shift();
+      status.buffered = runtime.buffer.length;
+      if (!bufferedMessage) {
+        return;
+      }
+
+      const ready = await this.prepareBufferedMessageForDispatch(runtime, bufferedMessage);
+      if (!ready) {
+        continue;
+      }
+
+      this.startMessageTask(runtime, bufferedMessage.rawMessage);
+    }
+  }
+
+  private async prepareBufferedMessageForDispatch(
+    runtime: RouteRuntime<unknown>,
+    bufferedMessage: BufferedRouteMessage,
+  ): Promise<boolean> {
+    const { route, status } = runtime;
+    const visibilityThresholdMs =
+      route.config.visibilityTimeoutSeconds * 1_000 * BUFFERED_VISIBILITY_EXTENSION_THRESHOLD_RATIO;
+    if (visibilityThresholdMs <= 0) {
+      return true;
+    }
+
+    const bufferedAgeMs = Date.now() - bufferedMessage.receivedAtMs;
+    if (bufferedAgeMs < visibilityThresholdMs) {
+      return true;
+    }
+
+    if (!bufferedMessage.rawMessage.ReceiptHandle) {
+      const error = new Error('Buffered SQS message is missing a ReceiptHandle before dispatch.');
+      this.recordInfrastructureError(status, error);
+      this.logger.warn('Dropping buffered SQS message before dispatch because the receipt handle is missing.', {
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: bufferedMessage.rawMessage.MessageId,
+      });
+      return false;
+    }
+
+    try {
+      await this.client.changeMessageVisibility({
+        QueueUrl: route.queueUrl,
+        ReceiptHandle: bufferedMessage.rawMessage.ReceiptHandle,
+        VisibilityTimeout: route.config.visibilityTimeoutSeconds,
+      });
+      return true;
+    } catch (error: unknown) {
+      this.recordInfrastructureError(status, error);
+      this.logger.warn('Dropping buffered SQS message after a pre-dispatch visibility extension failure.', {
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: bufferedMessage.rawMessage.MessageId,
+        error: describeUnknownError(error),
+      });
+      return false;
+    }
+  }
+
+  private startMessageTask(runtime: RouteRuntime<unknown>, rawMessage: SqsSdkMessage): void {
+    const { route, status } = runtime;
+
+    const task = this.processMessage(runtime, rawMessage)
+      .catch((error: unknown) => {
+        const detail = describeUnknownError(error);
+        this.recordInfrastructureError(status, error);
+        this.logger.error('SQS worker message processing failed.', {
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          messageId: rawMessage.MessageId,
+          error: detail,
+        });
+      })
+      .finally(() => {
+        status.inFlight -= 1;
+        runtime.tasks.delete(task);
+        this.signalRouteActivity(runtime);
+      });
+
+    status.inFlight += 1;
+    runtime.tasks.add(task);
+  }
+
+  private signalRouteActivity(runtime: RouteRuntime<unknown>): void {
+    runtime.activityVersion += 1;
+    const waiter = runtime.activityWaiter;
+    runtime.activityWaiter = undefined;
+    waiter?.();
+  }
+
+  private async waitForRouteActivity(
+    runtime: RouteRuntime<unknown>,
+    timeoutMs: number,
+    observedActivityVersion: number,
+  ): Promise<void> {
+    if (runtime.activityVersion !== observedActivityVersion) {
+      return;
+    }
+
+    if (timeoutMs <= 0) {
+      await sleep(0);
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      let timer: NodeJS.Timeout | undefined;
+
+      const complete = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimer(timer);
+        if (runtime.activityWaiter === complete) {
+          runtime.activityWaiter = undefined;
+        }
+        resolve();
+      };
+
+      runtime.activityWaiter = complete;
+      timer = setTimeout(complete, timeoutMs);
+    });
   }
 
   private async processMessage(runtime: RouteRuntime<unknown>, rawMessage: SqsSdkMessage): Promise<void> {
@@ -923,15 +1099,7 @@ export class SqsWorkerManager {
     reason: 'success' | 'failure' | 'timeout',
   ): Promise<void> {
     if (action === 'delete') {
-      await this.client.deleteMessage({ QueueUrl: route.queueUrl, ReceiptHandle: message.receiptHandle });
-      this.emitRuntimeEvent(status, {
-        type: 'message-delete',
-        at: new Date(),
-        routeName: route.name,
-        queueUrl: route.queueUrl,
-        messageId: message.messageId,
-        reason,
-      });
+      await this.queueDelete(this.getRouteRuntime(route.name), message, reason);
       return;
     }
 
@@ -943,6 +1111,183 @@ export class SqsWorkerManager {
       messageId: message.messageId,
       reason,
     });
+  }
+
+  private getRouteRuntime<TPayload>(routeName: string): RouteRuntime<TPayload> {
+    const runtime = this.routes.get(routeName);
+    if (!runtime) {
+      throw new Error(`SQS worker route runtime ${routeName} is not registered.`);
+    }
+    return runtime as RouteRuntime<TPayload>;
+  }
+
+  private async queueDelete<TPayload>(
+    runtime: RouteRuntime<TPayload>,
+    message: SqsWorkerMessage,
+    reason: 'success' | 'failure' | 'timeout',
+  ): Promise<void> {
+    await new Promise<void>((resolve) => {
+      runtime.deleteBatch.entries.push({ message, reason, resolve });
+      if (
+        this.stopping ||
+        runtime.status.stopping ||
+        (runtime.buffer.length === 0 && runtime.status.inFlight <= 1) ||
+        runtime.deleteBatch.entries.length >= DELETE_BATCH_SIZE_LIMIT
+      ) {
+        void this.flushPendingDeletes(runtime);
+        return;
+      }
+
+      if (runtime.deleteBatch.flushTimer) {
+        return;
+      }
+
+      runtime.deleteBatch.flushTimer = setTimeout(() => {
+        runtime.deleteBatch.flushTimer = undefined;
+        void this.flushPendingDeletes(runtime);
+      }, DELETE_BATCH_FLUSH_DELAY_MS);
+    });
+  }
+
+  private async flushPendingDeletes<TPayload>(runtime: RouteRuntime<TPayload>): Promise<void> {
+    if (runtime.deleteBatch.flushPromise) {
+      await runtime.deleteBatch.flushPromise;
+      return;
+    }
+
+    if (runtime.deleteBatch.entries.length === 0) {
+      clearTimer(runtime.deleteBatch.flushTimer);
+      runtime.deleteBatch.flushTimer = undefined;
+      return;
+    }
+
+    clearTimer(runtime.deleteBatch.flushTimer);
+    runtime.deleteBatch.flushTimer = undefined;
+
+    const flushPromise = this.drainPendingDeletes(runtime).finally(() => {
+      if (runtime.deleteBatch.flushPromise === flushPromise) {
+        runtime.deleteBatch.flushPromise = undefined;
+      }
+      if (runtime.deleteBatch.entries.length > 0) {
+        if (this.stopping || runtime.status.stopping || runtime.deleteBatch.entries.length >= DELETE_BATCH_SIZE_LIMIT) {
+          void this.flushPendingDeletes(runtime);
+          return;
+        }
+        runtime.deleteBatch.flushTimer = setTimeout(() => {
+          runtime.deleteBatch.flushTimer = undefined;
+          void this.flushPendingDeletes(runtime);
+        }, DELETE_BATCH_FLUSH_DELAY_MS);
+      }
+    });
+
+    runtime.deleteBatch.flushPromise = flushPromise;
+    await flushPromise;
+  }
+
+  private async drainPendingDeletes<TPayload>(runtime: RouteRuntime<TPayload>): Promise<void> {
+    while (runtime.deleteBatch.entries.length > 0) {
+      const batch = runtime.deleteBatch.entries.splice(0, DELETE_BATCH_SIZE_LIMIT);
+      await this.flushDeleteBatchChunk(runtime, batch);
+    }
+  }
+
+  private async flushDeleteBatchChunk<TPayload>(
+    runtime: RouteRuntime<TPayload>,
+    entries: PendingDeleteEntry[],
+  ): Promise<void> {
+    const { route, status } = runtime;
+    const entryIdToDelete = new Map<string, PendingDeleteEntry>(
+      entries.map((entry, index) => [`delete-${index}`, entry] as const),
+    );
+    const batchInput: DeleteMessageBatchCommandInput = {
+      QueueUrl: route.queueUrl,
+      Entries: entries.map((entry, index) => ({ Id: `delete-${index}`, ReceiptHandle: entry.message.receiptHandle })),
+    };
+
+    let batchOutput: DeleteMessageBatchCommandOutput | undefined;
+    let batchError: unknown;
+    try {
+      batchOutput = await this.client.deleteMessageBatch(batchInput);
+    } catch (error: unknown) {
+      batchError = error;
+    }
+
+    const failedEntries = new Map<string, PendingDeleteEntry>();
+
+    if (batchError) {
+      this.recordInfrastructureError(status, batchError);
+      this.logger.warn('SQS worker batched delete failed; retrying messages individually once.', {
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        batchSize: entries.length,
+        error: describeUnknownError(batchError),
+      });
+      for (const [entryId, entry] of entryIdToDelete.entries()) {
+        failedEntries.set(entryId, entry);
+      }
+    } else {
+      const successfulIds = new Set((batchOutput?.Successful ?? []).flatMap((entry) => (entry.Id ? [entry.Id] : [])));
+      const failedIds = new Set((batchOutput?.Failed ?? []).flatMap((entry) => (entry.Id ? [entry.Id] : [])));
+      for (const successfulEntry of batchOutput?.Successful ?? []) {
+        const pendingEntry = successfulEntry.Id ? entryIdToDelete.get(successfulEntry.Id) : undefined;
+        if (!pendingEntry) {
+          continue;
+        }
+
+        this.emitRuntimeEvent(status, {
+          type: 'message-delete',
+          at: new Date(),
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          messageId: pendingEntry.message.messageId,
+          reason: pendingEntry.reason,
+        });
+        pendingEntry.resolve();
+      }
+
+      for (const entryId of failedIds) {
+        const pendingEntry = entryIdToDelete.get(entryId);
+        if (pendingEntry) {
+          failedEntries.set(entryId, pendingEntry);
+        }
+      }
+
+      for (const [entryId, pendingEntry] of entryIdToDelete.entries()) {
+        if (!successfulIds.has(entryId)) {
+          failedEntries.set(entryId, pendingEntry);
+        }
+      }
+    }
+
+    if (failedEntries.size === 0) {
+      return;
+    }
+
+    await Promise.all(
+      [...failedEntries.values()].map(async (entry) => {
+        try {
+          await this.client.deleteMessage({ QueueUrl: route.queueUrl, ReceiptHandle: entry.message.receiptHandle });
+          this.emitRuntimeEvent(status, {
+            type: 'message-delete',
+            at: new Date(),
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+            messageId: entry.message.messageId,
+            reason: entry.reason,
+          });
+        } catch (error: unknown) {
+          this.recordInfrastructureError(status, error);
+          this.logger.warn('SQS worker individual delete retry failed after batch delete failure.', {
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+            messageId: entry.message.messageId,
+            error: describeUnknownError(error),
+          });
+        } finally {
+          entry.resolve();
+        }
+      }),
+    );
   }
 
   private async observeLateSettlement<TPayload>(
@@ -1002,6 +1347,11 @@ export class SqsWorkerManager {
         error: describeUnknownError(error),
       });
     }
+  }
+
+  private recordInfrastructureError(status: SqsWorkerRouteStatus, error: unknown): void {
+    status.lastErrorAt = new Date();
+    status.lastErrorMessage = describeUnknownError(error);
   }
 }
 

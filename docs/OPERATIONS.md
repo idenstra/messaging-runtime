@@ -75,6 +75,7 @@ A basic readiness check should consider:
 - expected route count active;
 - no recent persistent polling failures;
 - in-flight count below an application-defined saturation threshold.
+- buffered count below an application-defined backlog threshold for that worker shape.
 
 Do not use snapshots as the only source of business-level delivery assurance. They are runtime process state, not end-to-end message processing state.
 
@@ -113,6 +114,7 @@ Recommended counters:
 - deletes and keeps;
 - heartbeat successes and failures;
 - late settlements;
+- buffered depth from snapshots or OTEL observable gauges;
 - polling failures from logs.
 
 Recommended alerting:
@@ -130,6 +132,7 @@ Recommended scaling signals:
 - backlog per worker/task, not raw queue depth alone;
 - oldest visible message age for latency-sensitive queues;
 - runtime in-flight saturation from `getSnapshot()` or OTEL observable gauges;
+- runtime buffered depth from `getSnapshot()` or OTEL observable gauges when hot queues are expected to stay prefetched;
 - failure and timeout rate as scale-in guardrails, not as the only scale-out trigger.
 
 ## Idempotency and duplicates
@@ -179,6 +182,10 @@ class FakeSqsRuntimeClient {
   }
 
   async deleteMessage() {}
+
+  async deleteMessageBatch() {
+    return { Successful: [], Failed: [] };
+  }
 
   async changeMessageVisibility() {}
 }

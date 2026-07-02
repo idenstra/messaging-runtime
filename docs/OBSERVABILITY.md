@@ -63,6 +63,8 @@ When `getSnapshot()` is injected, the adapter also emits observable gauges for:
 - route count
 - total in-flight work
 - per-route in-flight work
+- total buffered work
+- per-route buffered work
 - started/stopping state flags
 
 Recommended metric attributes include:
@@ -153,6 +155,7 @@ The compile-checked example in [`../examples/observability/otel-signoz-worker.ts
 Recommended dashboard groups:
 - queue pressure
 - worker saturation
+- worker buffer pressure
 - handler reliability
 - timeout and heartbeat health
 - DLQ and native redrive state
@@ -160,6 +163,7 @@ Recommended dashboard groups:
 Recommended alerts:
 - oldest visible message age rising above the route SLO
 - backlog per worker/task rising while throughput stays flat
+- buffered work staying high while handler throughput falls
 - sustained handler failures
 - sustained timeouts
 - repeated heartbeat failures

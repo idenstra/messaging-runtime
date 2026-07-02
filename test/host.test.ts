@@ -2,6 +2,8 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import type {
   ChangeMessageVisibilityCommandInput,
+  DeleteMessageBatchCommandInput,
+  DeleteMessageBatchCommandOutput,
   DeleteMessageCommandInput,
   ReceiveMessageCommandInput,
   ReceiveMessageCommandOutput,
@@ -12,6 +14,7 @@ import { parseSqsWorkerServiceManifest, runSqsWorkerServiceUntilSignal, SqsWorke
 class FakeSqsClient implements SqsRuntimeClient {
   readonly receiveInputs: ReceiveMessageCommandInput[] = [];
   readonly deleteInputs: DeleteMessageCommandInput[] = [];
+  readonly deleteBatchInputs: DeleteMessageBatchCommandInput[] = [];
   readonly visibilityInputs: ChangeMessageVisibilityCommandInput[] = [];
   private readonly messagesByQueue = new Map<
     string,
@@ -41,6 +44,11 @@ class FakeSqsClient implements SqsRuntimeClient {
 
   async deleteMessage(input: DeleteMessageCommandInput): Promise<void> {
     this.deleteInputs.push(input);
+  }
+
+  async deleteMessageBatch(input: DeleteMessageBatchCommandInput): Promise<DeleteMessageBatchCommandOutput> {
+    this.deleteBatchInputs.push(input);
+    return { Successful: (input.Entries ?? []).flatMap((entry) => (entry.Id ? [{ Id: entry.Id }] : [])), Failed: [] };
   }
 
   async changeMessageVisibility(input: ChangeMessageVisibilityCommandInput): Promise<void> {
@@ -158,7 +166,7 @@ test('activates only manifest-enabled routes and merges config with the document
   });
 
   await host.start();
-  await waitFor(() => client.deleteInputs.length === 1);
+  await waitFor(() => client.deleteBatchInputs.length === 1);
   await host.stop();
 
   assert.deepEqual(handledPayloads, ['dispatch']);
