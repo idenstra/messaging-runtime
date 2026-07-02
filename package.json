@@ -23,6 +23,7 @@
     "benchmark": "tsx scripts/benchmarks/run.ts",
     "benchmark:ci": "tsx scripts/benchmarks/run.ts --json",
     "benchmark:baseline": "tsx scripts/benchmarks/run.ts --write-baseline",
+    "benchmark:compare": "node scripts/benchmarks/compare.mjs",
     "public-surface:report": "node scripts/public-surface/run-interface-reports.mjs --write",
     "public-surface:snapshot": "node scripts/public-surface/check-export-snapshot.mjs --write",
     "public-surface:check": "node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs",

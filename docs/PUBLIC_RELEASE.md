@@ -57,7 +57,7 @@ This repository is not public-ready until the following readiness criteria are o
 
 - Keep the benchmark suite in [`PERFORMANCE.md`](PERFORMANCE.md) current as the runtime grows.
 - Refresh and review the tracked benchmark baseline when performance-relevant behavior changes.
-- Add benchmark regression guidance for PR review.
+- Require same-machine benchmark comparison proof for performance-sensitive pull requests.
 - Publish benchmark methodology before making speed claims.
 - Avoid marketing terms such as "blazingly fast" until evidence exists.
 

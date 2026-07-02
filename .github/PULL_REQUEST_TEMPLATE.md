@@ -18,6 +18,11 @@ Plan-free reason: N/A
 - [ ] `make verify-fast`
 - [ ] extra proof needed for this change
 
+## Performance proof
+
+- Same-machine benchmark comparison: N/A
+- Benchmark compare command/artifacts: N/A
+
 ## Package and docs changed
 
 - Package/API changed:

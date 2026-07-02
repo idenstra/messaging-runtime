@@ -38,7 +38,7 @@
 | Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
 | Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
-| Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, and tracked baseline artifacts under `docs/benchmarks/`, including worker-core prefetch scenarios. |
+| Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, `npm run benchmark:compare`, and tracked baseline artifacts under `docs/benchmarks/`, including worker-core prefetch scenarios. |
 
 ## Public API shape
 
