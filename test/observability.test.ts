@@ -151,6 +151,7 @@ function createWorkerMessage(messageAttributes: SqsWorkerMessage['messageAttribu
     receiptHandle: 'receipt-1',
     body: JSON.stringify({ jobId: 'job-1' }),
     attributes: {},
+    systemAttributes: {},
     messageAttributes,
     raw: { MessageId: 'message-1', ReceiptHandle: 'receipt-1', Body: JSON.stringify({ jobId: 'job-1' }) },
   };

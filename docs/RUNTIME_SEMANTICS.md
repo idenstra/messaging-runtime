@@ -17,6 +17,37 @@ For each active route, the runtime loops through this lifecycle:
 
 A message is removed from SQS only when the runtime completes delete finalization. Otherwise, SQS redelivers it after the visibility timeout expires, subject to the queue redrive policy.
 
+## Worker message shape
+
+Handlers receive two views of AWS system attributes:
+
+- `message.attributes`
+  - the raw AWS `Attributes` string map preserved as returned by SQS
+- `message.systemAttributes`
+  - the typed runtime view for the most commonly consumed worker fields
+
+The typed view preserves AWS field names and parses selected values:
+
+- `ApproximateReceiveCount` -> `number`
+- `ApproximateFirstReceiveTimestamp` -> `Date`
+- `SentTimestamp` -> `Date`
+- `SenderId`, `MessageGroupId`, `MessageDeduplicationId`, `SequenceNumber`, `AWSTraceHeader`, and `DeadLetterQueueSourceArn` -> `string`
+
+Use `message.systemAttributes` in handler logic, and fall back to `message.attributes` only when you need raw compatibility or an untyped AWS field that the runtime does not normalize yet.
+
+For example, duplicate-sensitive handlers can gate retries using `ApproximateReceiveCount` without reparsing strings:
+
+```ts
+handle: async ({ message, payload }) => {
+  const receiveCount = message.systemAttributes.ApproximateReceiveCount ?? 1;
+  if (receiveCount > 3) {
+    throw new Error(`stopping retries for ${payload.jobId}`);
+  }
+}
+```
+
+Invalid integer or timestamp system-attribute values fail worker-message normalization clearly. That is intentional: emulator drift or service-contract regressions should surface as runtime errors, not be silently ignored.
+
 ## Default route config
 
 | Field | Default | Meaning |

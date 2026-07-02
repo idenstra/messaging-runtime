@@ -42,6 +42,7 @@ export type {
   SqsWorkerMessageAttributeValue,
   SqsWorkerMessageDeleteEvent,
   SqsWorkerMessageKeepEvent,
+  SqsWorkerMessageSystemAttributes,
   SqsWorkerMessagesReceivedEvent,
   SqsWorkerReceiveEmptyEvent,
   SqsWorkerRouteCounters,

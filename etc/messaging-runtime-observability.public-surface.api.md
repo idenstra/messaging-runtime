@@ -228,6 +228,8 @@ export interface SqsWorkerMessage {
     raw: Message;
     // (undocumented)
     receiptHandle: string;
+    // (undocumented)
+    systemAttributes: Partial<SqsWorkerMessageSystemAttributes>;
 }
 
 // @public (undocumented)
@@ -270,6 +272,28 @@ export interface SqsWorkerMessagesReceivedEvent extends SqsWorkerRuntimeEventBas
     messageCount: number;
     // (undocumented)
     type: 'messages-received';
+}
+
+// @public (undocumented)
+export interface SqsWorkerMessageSystemAttributes {
+    // (undocumented)
+    ApproximateFirstReceiveTimestamp: Date;
+    // (undocumented)
+    ApproximateReceiveCount: number;
+    // (undocumented)
+    AWSTraceHeader: string;
+    // (undocumented)
+    DeadLetterQueueSourceArn: string;
+    // (undocumented)
+    MessageDeduplicationId: string;
+    // (undocumented)
+    MessageGroupId: string;
+    // (undocumented)
+    SenderId: string;
+    // (undocumented)
+    SentTimestamp: Date;
+    // (undocumented)
+    SequenceNumber: string;
 }
 
 // @public (undocumented)
