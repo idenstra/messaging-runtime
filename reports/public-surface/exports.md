@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (118):
+- exported symbols (129):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -15,8 +15,12 @@ Package: `@idenstra/messaging-runtime`
   - `decodeSnsEnvelope`
   - `decodeSnsNotificationJson`
   - `decodeSqsJsonBody`
+  - `ListSnsTopicsInput`
+  - `ListSnsTopicsResult`
   - `ListSqsDlqRedriveTasksInput`
   - `ListSqsDlqRedriveTasksResult`
+  - `ListSqsQueuesInput`
+  - `ListSqsQueuesResult`
   - `packageMetadata`
   - `parseSqsWorkerServiceManifest`
   - `runSqsWorkerServiceUntilSignal`
@@ -39,6 +43,8 @@ Package: `@idenstra/messaging-runtime`
   - `SnsTopicArnResolver`
   - `SnsTopicArnResolverClient`
   - `SnsTopicArnResolverOptions`
+  - `SnsTopicDiscovery`
+  - `SnsTopicSummary`
   - `SnsTransportClient`
   - `SnsUnsubscribeConfirmationEnvelope`
   - `SqsBatchOperationClient`
@@ -61,14 +67,19 @@ Package: `@idenstra/messaging-runtime`
   - `SqsPublisher`
   - `SqsQueueAttributesMap`
   - `SqsQueueDescription`
+  - `SqsQueueDiscovery`
+  - `SqsQueueDiscoveryClient`
   - `SqsQueueInspector`
   - `SqsQueueInspectorOptions`
   - `SqsQueueOperationsClient`
   - `SqsQueueRedriveAllowPolicy`
   - `SqsQueueRedrivePolicy`
+  - `SqsQueueResolutionInput`
+  - `SqsQueueSummary`
   - `SqsQueueUrlResolver`
   - `SqsQueueUrlResolverClient`
   - `SqsQueueUrlResolverOptions`
+  - `SqsQueueUrlResolverPreloadEntry`
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsSendJsonBatchEntry`

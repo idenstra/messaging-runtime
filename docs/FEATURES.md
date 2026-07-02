@@ -25,11 +25,13 @@
 | W3C trace propagation helpers | Yes | Inject and extract `traceparent`, `tracestate`, and `baggage` through SNS/SQS message attributes. |
 | Consumer span wrapper | Yes | `withOpenTelemetrySqsWorkerTracing(...)` wraps a route without changing worker-core semantics. |
 | Manifest-driven route activation | Yes | `parseSqsWorkerServiceManifest` and `SqsWorkerServiceHost`. |
-| Queue URL resolver | Yes | Name, URL, ARN, preload, optional no-network mode. |
+| Queue URL resolver | Yes | Name, URL, ARN, typed cross-account name resolution, legacy preload, typed preload entries, optional no-network mode. |
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
 | SQS JSON publisher | Yes | Single-message and batch publishing. |
 | SQS batch delete / visibility helpers | Yes | `SqsMessageBatchOperator` chunks automatically and normalizes partial success/failure by caller entry ID. |
 | SNS JSON publisher | Yes | Single-message and batch publishing. |
+| Read-only SQS queue discovery | Yes | `SqsQueueDiscovery.listQueues(...)` supports page-first listing with AWS-native prefix filtering. |
+| Read-only SNS topic discovery | Yes | `SnsTopicDiscovery.listTopics(...)` exposes the native page-first `ListTopics` surface as normalized topic summaries. |
 | Queue inspection | Yes | `SqsQueueInspector` resolves queue identifiers and normalizes queue attributes. |
 | DLQ source-queue discovery | Yes | `SqsQueueInspector.listDeadLetterSourceQueues(...)` paginates `ListDeadLetterSourceQueues`. |
 | Native DLQ redrive control | Yes | `SqsDlqRedriveManager` wraps `StartMessageMoveTask`, `ListMessageMoveTasks`, and `CancelMessageMoveTask`. |

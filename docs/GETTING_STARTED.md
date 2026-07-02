@@ -154,6 +154,30 @@ await publisher.sendJsonBatch({
 
 The result reports successes and failures keyed by the caller-provided entry IDs.
 
+## Resolve a cross-account SQS queue by name
+
+Use the typed resolver overload when the queue name lives in another AWS account but the current caller has permission to resolve it through `GetQueueUrl`.
+
+```ts
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter, {
+  preloadEntries: [
+    {
+      queue: 'audit-queue',
+      queueUrl: 'https://sqs.us-east-1.amazonaws.com/210987654321/audit-queue',
+      ownerAccountId: '210987654321',
+    },
+  ],
+  allowNetworkLookup: false,
+});
+
+const auditQueueUrl = await queueResolver.resolve({
+  queue: 'audit-queue',
+  ownerAccountId: '210987654321',
+});
+```
+
+`ownerAccountId` is valid only for queue names. Queue URLs and ARNs already identify the account and should be passed without the extra field.
+
 ## Batch delete or extend visibility in SQS
 
 Use `SqsMessageBatchOperator` when a consumer or operator flow needs transport-level batch delete or batch visibility updates outside the worker core.
@@ -228,6 +252,41 @@ await publisher.publishJsonBatch({
 ```
 
 FIFO-specific fields such as `messageGroupId` and `messageDeduplicationId` are forwarded per entry and validated against the resolved topic type.
+
+## Discover existing queues and topics
+
+Use the read-only discovery helpers when a consumer or operator flow needs to enumerate already-existing resources without owning provisioning.
+
+```ts
+import { SNSClient } from '@aws-sdk/client-sns';
+import { SQSClient } from '@aws-sdk/client-sqs';
+import {
+  AwsSnsAdapter,
+  AwsSqsAdapter,
+  SnsTopicDiscovery,
+  SqsQueueDiscovery,
+} from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const awsSns = new SNSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const snsAdapter = new AwsSnsAdapter(awsSns);
+const queueDiscovery = new SqsQueueDiscovery(sqsAdapter);
+const topicDiscovery = new SnsTopicDiscovery(snsAdapter);
+
+const queuePage = await queueDiscovery.listQueues({
+  namePrefix: 'jobs',
+  pageSize: 25,
+});
+
+const topicPage = await topicDiscovery.listTopics({
+  nextToken: undefined,
+});
+```
+
+Both helpers are page-first:
+- `SqsQueueDiscovery.listQueues(...)` always requests a bounded page and returns `nextToken` when AWS has more queues.
+- `SnsTopicDiscovery.listTopics(...)` passes through the native `ListTopics` paging model.
 
 ## Add OTEL metrics and traces
 
