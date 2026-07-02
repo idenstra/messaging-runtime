@@ -48,6 +48,7 @@ const host = new SqsWorkerServiceHost({
 
 The adapter maps runtime events into OTEL instruments for:
 - empty receives
+- polling failures
 - messages received
 - handler starts
 - handler successes
@@ -55,6 +56,10 @@ The adapter maps runtime events into OTEL instruments for:
 - handler timeouts
 - late settlements after abandon timeout
 - delete and keep outcomes
+- batched delete failures
+- individual delete retry failures
+- pre-dispatch visibility failures for buffered messages
+- buffered-message drops before handler dispatch
 - heartbeat successes and failures
 - handler duration
 - late-settlement duration
@@ -72,6 +77,9 @@ Recommended metric attributes include:
 - `queue_url`
 - `event_type`
 - `failure_kind`
+- `failure_mode`
+- `reason`
+- `drop_reason`
 - `timeout_strategy`
 - `settlement_outcome`
 - `heartbeat_source`
@@ -164,8 +172,13 @@ Recommended alerts:
 - oldest visible message age rising above the route SLO
 - backlog per worker/task rising while throughput stays flat
 - buffered work staying high while handler throughput falls
+- repeated polling failures
 - sustained handler failures
 - sustained timeouts
+- repeated delete-batch failures
+- repeated individual delete failures
+- repeated pre-dispatch visibility failures
+- repeated buffered-message drops
 - repeated heartbeat failures
 - DLQ depth growth
 - native redrive tasks stuck in `RUNNING` longer than expected

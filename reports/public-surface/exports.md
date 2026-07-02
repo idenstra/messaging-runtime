@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (135):
+- exported symbols (143):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -97,6 +97,10 @@ Package: `@idenstra/messaging-runtime`
   - `SqsSendJsonResult`
   - `SqsTransportClient`
   - `SqsWorkerAckAction`
+  - `SqsWorkerBufferedMessageDropEvent`
+  - `SqsWorkerBufferedMessageDropReason`
+  - `SqsWorkerDeleteBatchFailureEvent`
+  - `SqsWorkerDeleteBatchFailureMode`
   - `SqsWorkerErrorContext`
   - `SqsWorkerErrorHook`
   - `SqsWorkerFailureKind`
@@ -119,9 +123,13 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerMessage`
   - `SqsWorkerMessageAttributeValue`
   - `SqsWorkerMessageDeleteEvent`
+  - `SqsWorkerMessageDeleteFailureEvent`
+  - `SqsWorkerMessageFinalizationReason`
   - `SqsWorkerMessageKeepEvent`
   - `SqsWorkerMessagesReceivedEvent`
   - `SqsWorkerMessageSystemAttributes`
+  - `SqsWorkerPollErrorEvent`
+  - `SqsWorkerPreDispatchVisibilityFailureEvent`
   - `SqsWorkerQueueResolver`
   - `SqsWorkerReceiveEmptyEvent`
   - `SqsWorkerRoute`
@@ -147,10 +155,14 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core.d.ts`
-- exported symbols (38):
+- exported symbols (46):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsWorkerAckAction`
+  - `SqsWorkerBufferedMessageDropEvent`
+  - `SqsWorkerBufferedMessageDropReason`
+  - `SqsWorkerDeleteBatchFailureEvent`
+  - `SqsWorkerDeleteBatchFailureMode`
   - `SqsWorkerErrorContext`
   - `SqsWorkerErrorHook`
   - `SqsWorkerFailureKind`
@@ -173,9 +185,13 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerMessage`
   - `SqsWorkerMessageAttributeValue`
   - `SqsWorkerMessageDeleteEvent`
+  - `SqsWorkerMessageDeleteFailureEvent`
+  - `SqsWorkerMessageFinalizationReason`
   - `SqsWorkerMessageKeepEvent`
   - `SqsWorkerMessagesReceivedEvent`
   - `SqsWorkerMessageSystemAttributes`
+  - `SqsWorkerPollErrorEvent`
+  - `SqsWorkerPreDispatchVisibilityFailureEvent`
   - `SqsWorkerReceiveEmptyEvent`
   - `SqsWorkerRoute`
   - `SqsWorkerRouteConfig`
@@ -191,9 +207,10 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./nest`
 - declarations: `dist/adapters/nest.d.ts`
-- exported symbols (9):
+- exported symbols (10):
   - `AbstractNestSqsWorkerHost`
   - `NestSqsWorkerLoggerAdapter`
+  - `SqsWorkerBufferedMessageDropReason`
   - `SqsWorkerFailureKind`
   - `SqsWorkerLateSettlementOutcome`
   - `SqsWorkerLogger`
@@ -206,7 +223,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./observability`
 - declarations: `dist/observability.d.ts`
-- exported symbols (40):
+- exported symbols (48):
   - `createOpenTelemetrySqsWorkerMetricsAdapter`
   - `extractTraceContextFromSqsMessage`
   - `ExtractTraceContextFromSqsMessageOptions`
@@ -218,6 +235,10 @@ Package: `@idenstra/messaging-runtime`
   - `SnsMessageAttributes`
   - `SqsMessageAttributes`
   - `SqsWorkerAckAction`
+  - `SqsWorkerBufferedMessageDropEvent`
+  - `SqsWorkerBufferedMessageDropReason`
+  - `SqsWorkerDeleteBatchFailureEvent`
+  - `SqsWorkerDeleteBatchFailureMode`
   - `SqsWorkerFailureKind`
   - `SqsWorkerHandler`
   - `SqsWorkerHandlerContext`
@@ -235,9 +256,13 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerMessage`
   - `SqsWorkerMessageAttributeValue`
   - `SqsWorkerMessageDeleteEvent`
+  - `SqsWorkerMessageDeleteFailureEvent`
+  - `SqsWorkerMessageFinalizationReason`
   - `SqsWorkerMessageKeepEvent`
   - `SqsWorkerMessagesReceivedEvent`
   - `SqsWorkerMessageSystemAttributes`
+  - `SqsWorkerPollErrorEvent`
+  - `SqsWorkerPreDispatchVisibilityFailureEvent`
   - `SqsWorkerReceiveEmptyEvent`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteStatus`

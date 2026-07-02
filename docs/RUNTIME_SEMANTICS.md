@@ -100,6 +100,11 @@ Because buffered messages start their SQS visibility window when they are receiv
 
 If that pre-dispatch visibility extension fails, the runtime drops the local buffered copy, records the infrastructure error, and lets SQS redeliver the message later through the queue's normal visibility/redrive behavior.
 
+The runtime now emits two explicit infrastructure events on that path:
+
+- `pre-dispatch-visibility-failure`
+- `buffered-message-drop`
+
 ## Ack behavior
 
 Handlers may return either no value or an object with an `action` field.
@@ -125,6 +130,11 @@ Worker-core delete finalization is route-local and batched:
   - stop/drain
 - failed batch-delete entries retry once through individual `DeleteMessage`
 - if the retry still fails, the runtime records the infrastructure error and accepts duplicate-risk redelivery instead of retrying forever
+
+Delete finalization infrastructure failures are now first-class runtime events:
+
+- `delete-batch-failure`
+- `message-delete-failure`
 
 Failure default:
 
@@ -206,6 +216,7 @@ A cooperative timeout can extend shutdown until the timed-out handler settles. A
 The runtime emits events for:
 
 - `receive-empty`
+- `poll-error`
 - `messages-received`
 - `handler-start`
 - `handler-success`
@@ -213,6 +224,10 @@ The runtime emits events for:
 - `handler-timeout`
 - `late-settlement`
 - `message-delete`
+- `delete-batch-failure`
+- `message-delete-failure`
+- `pre-dispatch-visibility-failure`
+- `buffered-message-drop`
 - `message-keep`
 - `heartbeat-success`
 - `heartbeat-failure`
@@ -230,6 +245,12 @@ Use `getSnapshot()` for health and readiness integrations. It includes:
 - aggregate counters;
 - per-route status and counters;
 - per-route buffered count;
-- last receive, success, failure, timeout, delete, keep, heartbeat, and late-settlement timestamps when available.
+- last receive, success, failure, timeout, delete, keep, heartbeat, and late-settlement timestamps when available;
+- explicit last-occurrence fields for:
+  - polling failures
+  - delete-batch failures
+  - individual delete failures
+  - pre-dispatch visibility failures
+  - buffered-message drops
 
 Snapshots are process-local. They are not a distributed metric store.

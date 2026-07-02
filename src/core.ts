@@ -50,6 +50,9 @@ export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 export type SqsWorkerTimeoutStrategy = 'cooperative' | 'abandon';
 export type SqsWorkerHeartbeatSource = 'interval' | 'manual';
 export type SqsWorkerLateSettlementOutcome = 'resolved' | 'rejected';
+export type SqsWorkerMessageFinalizationReason = 'success' | 'failure' | 'timeout';
+export type SqsWorkerDeleteBatchFailureMode = 'request-error' | 'response-failure';
+export type SqsWorkerBufferedMessageDropReason = 'missing-receipt-handle' | 'pre-dispatch-visibility-failure';
 
 export interface SqsWorkerHandlerResult {
   action?: SqsWorkerAckAction;
@@ -134,6 +137,11 @@ export interface SqsWorkerRouteCounters {
   messageKeepCount: number;
   heartbeatSuccessCount: number;
   heartbeatFailureCount: number;
+  pollErrorCount: number;
+  deleteBatchFailureCount: number;
+  messageDeleteFailureCount: number;
+  preDispatchVisibilityFailureCount: number;
+  bufferedMessageDropCount: number;
 }
 
 export interface SqsWorkerRouteStatus {
@@ -159,6 +167,16 @@ export interface SqsWorkerRouteStatus {
   lastHeartbeatFailureMessage?: string;
   lastLateSettlementAt?: Date;
   lastLateSettlementOutcome?: SqsWorkerLateSettlementOutcome;
+  lastPollErrorAt?: Date;
+  lastPollErrorMessage?: string;
+  lastDeleteBatchFailureAt?: Date;
+  lastDeleteBatchFailureMessage?: string;
+  lastMessageDeleteFailureAt?: Date;
+  lastMessageDeleteFailureMessage?: string;
+  lastPreDispatchVisibilityFailureAt?: Date;
+  lastPreDispatchVisibilityFailureMessage?: string;
+  lastBufferedMessageDropAt?: Date;
+  lastBufferedMessageDropReason?: SqsWorkerBufferedMessageDropReason;
 }
 
 export interface SqsWorkerManagerSnapshot {
@@ -180,6 +198,13 @@ export interface SqsWorkerRuntimeEventBase {
 
 export interface SqsWorkerReceiveEmptyEvent extends SqsWorkerRuntimeEventBase {
   type: 'receive-empty';
+}
+
+export interface SqsWorkerPollErrorEvent extends SqsWorkerRuntimeEventBase {
+  type: 'poll-error';
+  error: unknown;
+  errorDetail: string;
+  backoffMs: number;
 }
 
 export interface SqsWorkerMessagesReceivedEvent extends SqsWorkerRuntimeEventBase {
@@ -227,13 +252,48 @@ export interface SqsWorkerLateSettlementEvent extends SqsWorkerRuntimeEventBase 
 export interface SqsWorkerMessageDeleteEvent extends SqsWorkerRuntimeEventBase {
   type: 'message-delete';
   messageId: string;
-  reason: 'success' | 'failure' | 'timeout';
+  reason: SqsWorkerMessageFinalizationReason;
+}
+
+export interface SqsWorkerDeleteBatchFailureEvent extends SqsWorkerRuntimeEventBase {
+  type: 'delete-batch-failure';
+  batchSize: number;
+  failedCount: number;
+  messageIds: string[];
+  failureMode: SqsWorkerDeleteBatchFailureMode;
+  errorDetail: string;
+  error?: unknown;
+}
+
+export interface SqsWorkerMessageDeleteFailureEvent extends SqsWorkerRuntimeEventBase {
+  type: 'message-delete-failure';
+  messageId: string;
+  reason: SqsWorkerMessageFinalizationReason;
+  error: unknown;
+  errorDetail: string;
+}
+
+export interface SqsWorkerPreDispatchVisibilityFailureEvent extends SqsWorkerRuntimeEventBase {
+  type: 'pre-dispatch-visibility-failure';
+  messageId: string;
+  bufferedAgeMs: number;
+  error: unknown;
+  errorDetail: string;
+}
+
+export interface SqsWorkerBufferedMessageDropEvent extends SqsWorkerRuntimeEventBase {
+  type: 'buffered-message-drop';
+  messageId: string;
+  dropReason: SqsWorkerBufferedMessageDropReason;
+  bufferedAgeMs?: number;
+  error?: unknown;
+  errorDetail?: string;
 }
 
 export interface SqsWorkerMessageKeepEvent extends SqsWorkerRuntimeEventBase {
   type: 'message-keep';
   messageId: string;
-  reason: 'success' | 'failure' | 'timeout';
+  reason: SqsWorkerMessageFinalizationReason;
 }
 
 export interface SqsWorkerHeartbeatSuccessEvent extends SqsWorkerRuntimeEventBase {
@@ -251,6 +311,7 @@ export interface SqsWorkerHeartbeatFailureEvent extends SqsWorkerRuntimeEventBas
 
 export type SqsWorkerRuntimeEvent =
   | SqsWorkerReceiveEmptyEvent
+  | SqsWorkerPollErrorEvent
   | SqsWorkerMessagesReceivedEvent
   | SqsWorkerHandlerStartEvent
   | SqsWorkerHandlerSuccessEvent
@@ -258,6 +319,10 @@ export type SqsWorkerRuntimeEvent =
   | SqsWorkerHandlerTimeoutEvent
   | SqsWorkerLateSettlementEvent
   | SqsWorkerMessageDeleteEvent
+  | SqsWorkerDeleteBatchFailureEvent
+  | SqsWorkerMessageDeleteFailureEvent
+  | SqsWorkerPreDispatchVisibilityFailureEvent
+  | SqsWorkerBufferedMessageDropEvent
   | SqsWorkerMessageKeepEvent
   | SqsWorkerHeartbeatSuccessEvent
   | SqsWorkerHeartbeatFailureEvent;
@@ -557,8 +622,15 @@ export class SqsWorkerManager {
           break;
         }
         const detail = describeUnknownError(error);
-        status.lastErrorAt = new Date();
-        status.lastErrorMessage = detail;
+        this.emitInfrastructureRuntimeEvent(status, {
+          type: 'poll-error',
+          at: new Date(),
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          error,
+          errorDetail: detail,
+          backoffMs: route.config.errorBackoffMs,
+        });
         this.logger.error('SQS worker polling failed.', {
           routeName: route.name,
           queueUrl: route.queueUrl,
@@ -614,7 +686,18 @@ export class SqsWorkerManager {
 
     if (!bufferedMessage.rawMessage.ReceiptHandle) {
       const error = new Error('Buffered SQS message is missing a ReceiptHandle before dispatch.');
-      this.recordInfrastructureError(status, error);
+      const errorDetail = describeUnknownError(error);
+      this.emitInfrastructureRuntimeEvent(status, {
+        type: 'buffered-message-drop',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: bufferedMessage.rawMessage.MessageId ?? '__missing-message-id__',
+        dropReason: 'missing-receipt-handle',
+        bufferedAgeMs,
+        error,
+        errorDetail,
+      });
       this.logger.warn('Dropping buffered SQS message before dispatch because the receipt handle is missing.', {
         routeName: route.name,
         queueUrl: route.queueUrl,
@@ -631,12 +714,33 @@ export class SqsWorkerManager {
       });
       return true;
     } catch (error: unknown) {
-      this.recordInfrastructureError(status, error);
+      const errorDetail = describeUnknownError(error);
+      this.emitInfrastructureRuntimeEvent(status, {
+        type: 'pre-dispatch-visibility-failure',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: bufferedMessage.rawMessage.MessageId ?? '__missing-message-id__',
+        bufferedAgeMs,
+        error,
+        errorDetail,
+      });
+      this.emitInfrastructureRuntimeEvent(status, {
+        type: 'buffered-message-drop',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        messageId: bufferedMessage.rawMessage.MessageId ?? '__missing-message-id__',
+        dropReason: 'pre-dispatch-visibility-failure',
+        bufferedAgeMs,
+        error,
+        errorDetail,
+      });
       this.logger.warn('Dropping buffered SQS message after a pre-dispatch visibility extension failure.', {
         routeName: route.name,
         queueUrl: route.queueUrl,
         messageId: bufferedMessage.rawMessage.MessageId,
-        error: describeUnknownError(error),
+        error: errorDetail,
       });
       return false;
     }
@@ -1123,7 +1227,7 @@ export class SqsWorkerManager {
     route: NormalizedRoute<TPayload>,
     message: SqsWorkerMessage,
     action: SqsWorkerAckAction,
-    reason: 'success' | 'failure' | 'timeout',
+    reason: SqsWorkerMessageFinalizationReason,
   ): Promise<void> {
     if (action === 'delete') {
       await this.queueDelete(this.getRouteRuntime(route.name), message, reason);
@@ -1151,7 +1255,7 @@ export class SqsWorkerManager {
   private async queueDelete<TPayload>(
     runtime: RouteRuntime<TPayload>,
     message: SqsWorkerMessage,
-    reason: 'success' | 'failure' | 'timeout',
+    reason: SqsWorkerMessageFinalizationReason,
   ): Promise<void> {
     await new Promise<void>((resolve) => {
       runtime.deleteBatch.entries.push({ message, reason, resolve });
@@ -1242,7 +1346,18 @@ export class SqsWorkerManager {
     const failedEntries = new Map<string, PendingDeleteEntry>();
 
     if (batchError) {
-      this.recordInfrastructureError(status, batchError);
+      this.emitInfrastructureRuntimeEvent(status, {
+        type: 'delete-batch-failure',
+        at: new Date(),
+        routeName: route.name,
+        queueUrl: route.queueUrl,
+        batchSize: entries.length,
+        failedCount: entries.length,
+        messageIds: entries.map((entry) => entry.message.messageId),
+        failureMode: 'request-error',
+        error: batchError,
+        errorDetail: describeUnknownError(batchError),
+      });
       this.logger.warn('SQS worker batched delete failed; retrying messages individually once.', {
         routeName: route.name,
         queueUrl: route.queueUrl,
@@ -1255,6 +1370,7 @@ export class SqsWorkerManager {
     } else {
       const successfulIds = new Set((batchOutput?.Successful ?? []).flatMap((entry) => (entry.Id ? [entry.Id] : [])));
       const failedIds = new Set((batchOutput?.Failed ?? []).flatMap((entry) => (entry.Id ? [entry.Id] : [])));
+      const missingIds: string[] = [];
       for (const successfulEntry of batchOutput?.Successful ?? []) {
         const pendingEntry = successfulEntry.Id ? entryIdToDelete.get(successfulEntry.Id) : undefined;
         if (!pendingEntry) {
@@ -1281,8 +1397,25 @@ export class SqsWorkerManager {
 
       for (const [entryId, pendingEntry] of entryIdToDelete.entries()) {
         if (!successfulIds.has(entryId)) {
+          if (!failedIds.has(entryId)) {
+            missingIds.push(entryId);
+          }
           failedEntries.set(entryId, pendingEntry);
         }
+      }
+
+      if (failedEntries.size > 0) {
+        this.emitInfrastructureRuntimeEvent(status, {
+          type: 'delete-batch-failure',
+          at: new Date(),
+          routeName: route.name,
+          queueUrl: route.queueUrl,
+          batchSize: entries.length,
+          failedCount: failedEntries.size,
+          messageIds: [...failedEntries.values()].map((entry) => entry.message.messageId),
+          failureMode: 'response-failure',
+          errorDetail: describeDeleteBatchResponseFailure(batchOutput, [...failedIds], missingIds),
+        });
       }
     }
 
@@ -1303,7 +1436,16 @@ export class SqsWorkerManager {
             reason: entry.reason,
           });
         } catch (error: unknown) {
-          this.recordInfrastructureError(status, error);
+          this.emitInfrastructureRuntimeEvent(status, {
+            type: 'message-delete-failure',
+            at: new Date(),
+            routeName: route.name,
+            queueUrl: route.queueUrl,
+            messageId: entry.message.messageId,
+            reason: entry.reason,
+            error,
+            errorDetail: describeUnknownError(error),
+          });
           this.logger.warn('SQS worker individual delete retry failed after batch delete failure.', {
             routeName: route.name,
             queueUrl: route.queueUrl,
@@ -1355,6 +1497,11 @@ export class SqsWorkerManager {
       outcome: event.outcome,
       error: event.outcome === 'rejected' && event.error ? describeUnknownError(event.error) : undefined,
     });
+  }
+
+  private emitInfrastructureRuntimeEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
+    recordInfrastructureEvent(status, event);
+    this.emitRuntimeEvent(status, event);
   }
 
   private emitRuntimeEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
@@ -1562,6 +1709,11 @@ function createCounters(): SqsWorkerRouteCounters {
     messageKeepCount: 0,
     heartbeatSuccessCount: 0,
     heartbeatFailureCount: 0,
+    pollErrorCount: 0,
+    deleteBatchFailureCount: 0,
+    messageDeleteFailureCount: 0,
+    preDispatchVisibilityFailureCount: 0,
+    bufferedMessageDropCount: 0,
   };
 }
 
@@ -1578,6 +1730,12 @@ function addCounters(target: SqsWorkerRouteCounters, source: SqsWorkerRouteCount
     messageKeepCount: target.messageKeepCount + source.messageKeepCount,
     heartbeatSuccessCount: target.heartbeatSuccessCount + source.heartbeatSuccessCount,
     heartbeatFailureCount: target.heartbeatFailureCount + source.heartbeatFailureCount,
+    pollErrorCount: target.pollErrorCount + source.pollErrorCount,
+    deleteBatchFailureCount: target.deleteBatchFailureCount + source.deleteBatchFailureCount,
+    messageDeleteFailureCount: target.messageDeleteFailureCount + source.messageDeleteFailureCount,
+    preDispatchVisibilityFailureCount:
+      target.preDispatchVisibilityFailureCount + source.preDispatchVisibilityFailureCount,
+    bufferedMessageDropCount: target.bufferedMessageDropCount + source.bufferedMessageDropCount,
   };
 }
 
@@ -1596,6 +1754,11 @@ function recordEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent)
     case 'receive-empty':
       status.counters.receiveEmptyCount += 1;
       status.lastReceiveEmptyAt = event.at;
+      return;
+    case 'poll-error':
+      status.counters.pollErrorCount += 1;
+      status.lastPollErrorAt = event.at;
+      status.lastPollErrorMessage = event.errorDetail;
       return;
     case 'messages-received':
       status.counters.messagesReceivedCount += event.messageCount;
@@ -1625,6 +1788,26 @@ function recordEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent)
       status.counters.messageDeleteCount += 1;
       status.lastDeleteAt = event.at;
       return;
+    case 'delete-batch-failure':
+      status.counters.deleteBatchFailureCount += 1;
+      status.lastDeleteBatchFailureAt = event.at;
+      status.lastDeleteBatchFailureMessage = event.errorDetail;
+      return;
+    case 'message-delete-failure':
+      status.counters.messageDeleteFailureCount += 1;
+      status.lastMessageDeleteFailureAt = event.at;
+      status.lastMessageDeleteFailureMessage = event.errorDetail;
+      return;
+    case 'pre-dispatch-visibility-failure':
+      status.counters.preDispatchVisibilityFailureCount += 1;
+      status.lastPreDispatchVisibilityFailureAt = event.at;
+      status.lastPreDispatchVisibilityFailureMessage = event.errorDetail;
+      return;
+    case 'buffered-message-drop':
+      status.counters.bufferedMessageDropCount += 1;
+      status.lastBufferedMessageDropAt = event.at;
+      status.lastBufferedMessageDropReason = event.dropReason;
+      return;
     case 'message-keep':
       status.counters.messageKeepCount += 1;
       status.lastKeepAt = event.at;
@@ -1639,6 +1822,56 @@ function recordEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent)
       status.lastHeartbeatFailureMessage = describeUnknownError(event.error);
       return;
   }
+}
+
+function recordInfrastructureEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
+  const errorDetail = getInfrastructureEventErrorDetail(event);
+  if (!errorDetail) {
+    return;
+  }
+
+  status.lastErrorAt = event.at;
+  status.lastErrorMessage = errorDetail;
+}
+
+function getInfrastructureEventErrorDetail(event: SqsWorkerRuntimeEvent): string | undefined {
+  switch (event.type) {
+    case 'poll-error':
+    case 'delete-batch-failure':
+    case 'message-delete-failure':
+    case 'pre-dispatch-visibility-failure':
+      return event.errorDetail;
+    case 'buffered-message-drop':
+      return event.errorDetail;
+    default:
+      return undefined;
+  }
+}
+
+function describeDeleteBatchResponseFailure(
+  batchOutput: DeleteMessageBatchCommandOutput | undefined,
+  failedIds: string[],
+  missingIds: string[],
+): string {
+  const parts: string[] = [];
+
+  if ((batchOutput?.Failed?.length ?? 0) > 0) {
+    const failureDetail = (batchOutput?.Failed ?? []).map((entry) => {
+      const label = entry.Id ?? 'unknown';
+      const code = entry.Code ? ` code=${entry.Code}` : '';
+      const message = entry.Message ? ` message=${entry.Message}` : '';
+      return `${label}${code}${message}`;
+    });
+    parts.push(`AWS reported failed delete batch entries: ${failureDetail.join(', ')}`);
+  } else if (failedIds.length > 0) {
+    parts.push(`AWS reported delete batch failures for entry ids: ${failedIds.join(', ')}`);
+  }
+
+  if (missingIds.length > 0) {
+    parts.push(`AWS returned no delete batch result for entry ids: ${missingIds.join(', ')}`);
+  }
+
+  return parts.join('; ');
 }
 
 async function settleHandler(promise: Promise<SqsWorkerHandlerOutcome>): Promise<SettledHandlerResult> {

@@ -19,8 +19,8 @@
 | Timeout strategies | Yes | `cooperative` waits for handler settlement; `abandon` finalizes immediately and observes late settlement. |
 | Visibility heartbeat | Yes | Interval heartbeat and manual `heartbeat()` callback. |
 | Graceful shutdown | Yes | Poll abort plus in-flight task settlement. |
-| Runtime events | Yes | Hook through `onEvent`. |
-| Health snapshot | Yes | `getStatus()` and `getSnapshot()` include in-flight and buffered counts. |
+| Runtime events | Yes | Hook through `onEvent`, including polling, delete-finalization, and pre-dispatch visibility infrastructure failures. |
+| Health snapshot | Yes | `getStatus()` and `getSnapshot()` include in-flight/buffered counts plus rich last-occurrence fields for infrastructure failures. |
 | OTEL metrics adapter | Yes | `@idenstra/messaging-runtime/observability` maps runtime events and snapshots into an injected `Meter`. |
 | W3C trace propagation helpers | Yes | Inject and extract `traceparent`, `tracestate`, and `baggage` through SNS/SQS message attributes. |
 | Consumer span wrapper | Yes | `withOpenTelemetrySqsWorkerTracing(...)` wraps a route without changing worker-core semantics. |

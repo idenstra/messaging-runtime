@@ -3,6 +3,7 @@ import type { SqsWorkerLogger } from '../core';
 import type { SqsWorkerServiceLifecycle } from '../host';
 
 export type {
+  SqsWorkerBufferedMessageDropReason,
   SqsWorkerFailureKind,
   SqsWorkerLateSettlementOutcome,
   SqsWorkerLogger,

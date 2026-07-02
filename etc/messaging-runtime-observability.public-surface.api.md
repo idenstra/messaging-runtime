@@ -77,6 +77,46 @@ export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
 export type SqsWorkerAckAction = 'delete' | 'keep';
 
 // @public (undocumented)
+export interface SqsWorkerBufferedMessageDropEvent extends SqsWorkerRuntimeEventBase {
+    // (undocumented)
+    bufferedAgeMs?: number;
+    // (undocumented)
+    dropReason: SqsWorkerBufferedMessageDropReason;
+    // (undocumented)
+    error?: unknown;
+    // (undocumented)
+    errorDetail?: string;
+    // (undocumented)
+    messageId: string;
+    // (undocumented)
+    type: 'buffered-message-drop';
+}
+
+// @public (undocumented)
+export type SqsWorkerBufferedMessageDropReason = 'missing-receipt-handle' | 'pre-dispatch-visibility-failure';
+
+// @public (undocumented)
+export interface SqsWorkerDeleteBatchFailureEvent extends SqsWorkerRuntimeEventBase {
+    // (undocumented)
+    batchSize: number;
+    // (undocumented)
+    error?: unknown;
+    // (undocumented)
+    errorDetail: string;
+    // (undocumented)
+    failedCount: number;
+    // (undocumented)
+    failureMode: SqsWorkerDeleteBatchFailureMode;
+    // (undocumented)
+    messageIds: string[];
+    // (undocumented)
+    type: 'delete-batch-failure';
+}
+
+// @public (undocumented)
+export type SqsWorkerDeleteBatchFailureMode = 'request-error' | 'response-failure';
+
+// @public (undocumented)
 export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 
 // @public (undocumented)
@@ -251,17 +291,34 @@ export interface SqsWorkerMessageDeleteEvent extends SqsWorkerRuntimeEventBase {
     // (undocumented)
     messageId: string;
     // (undocumented)
-    reason: 'success' | 'failure' | 'timeout';
+    reason: SqsWorkerMessageFinalizationReason;
     // (undocumented)
     type: 'message-delete';
 }
+
+// @public (undocumented)
+export interface SqsWorkerMessageDeleteFailureEvent extends SqsWorkerRuntimeEventBase {
+    // (undocumented)
+    error: unknown;
+    // (undocumented)
+    errorDetail: string;
+    // (undocumented)
+    messageId: string;
+    // (undocumented)
+    reason: SqsWorkerMessageFinalizationReason;
+    // (undocumented)
+    type: 'message-delete-failure';
+}
+
+// @public (undocumented)
+export type SqsWorkerMessageFinalizationReason = 'success' | 'failure' | 'timeout';
 
 // @public (undocumented)
 export interface SqsWorkerMessageKeepEvent extends SqsWorkerRuntimeEventBase {
     // (undocumented)
     messageId: string;
     // (undocumented)
-    reason: 'success' | 'failure' | 'timeout';
+    reason: SqsWorkerMessageFinalizationReason;
     // (undocumented)
     type: 'message-keep';
 }
@@ -297,6 +354,32 @@ export interface SqsWorkerMessageSystemAttributes {
 }
 
 // @public (undocumented)
+export interface SqsWorkerPollErrorEvent extends SqsWorkerRuntimeEventBase {
+    // (undocumented)
+    backoffMs: number;
+    // (undocumented)
+    error: unknown;
+    // (undocumented)
+    errorDetail: string;
+    // (undocumented)
+    type: 'poll-error';
+}
+
+// @public (undocumented)
+export interface SqsWorkerPreDispatchVisibilityFailureEvent extends SqsWorkerRuntimeEventBase {
+    // (undocumented)
+    bufferedAgeMs: number;
+    // (undocumented)
+    error: unknown;
+    // (undocumented)
+    errorDetail: string;
+    // (undocumented)
+    messageId: string;
+    // (undocumented)
+    type: 'pre-dispatch-visibility-failure';
+}
+
+// @public (undocumented)
 export interface SqsWorkerReceiveEmptyEvent extends SqsWorkerRuntimeEventBase {
     // (undocumented)
     type: 'receive-empty';
@@ -304,6 +387,10 @@ export interface SqsWorkerReceiveEmptyEvent extends SqsWorkerRuntimeEventBase {
 
 // @public (undocumented)
 export interface SqsWorkerRouteCounters {
+    // (undocumented)
+    bufferedMessageDropCount: number;
+    // (undocumented)
+    deleteBatchFailureCount: number;
     // (undocumented)
     handlerFailureCount: number;
     // (undocumented)
@@ -321,9 +408,15 @@ export interface SqsWorkerRouteCounters {
     // (undocumented)
     messageDeleteCount: number;
     // (undocumented)
+    messageDeleteFailureCount: number;
+    // (undocumented)
     messageKeepCount: number;
     // (undocumented)
     messagesReceivedCount: number;
+    // (undocumented)
+    pollErrorCount: number;
+    // (undocumented)
+    preDispatchVisibilityFailureCount: number;
     // (undocumented)
     receiveEmptyCount: number;
 }
@@ -337,7 +430,15 @@ export interface SqsWorkerRouteStatus {
     // (undocumented)
     inFlight: number;
     // (undocumented)
+    lastBufferedMessageDropAt?: Date;
+    // (undocumented)
+    lastBufferedMessageDropReason?: SqsWorkerBufferedMessageDropReason;
+    // (undocumented)
     lastDeleteAt?: Date;
+    // (undocumented)
+    lastDeleteBatchFailureAt?: Date;
+    // (undocumented)
+    lastDeleteBatchFailureMessage?: string;
     // (undocumented)
     lastErrorAt?: Date;
     // (undocumented)
@@ -356,6 +457,18 @@ export interface SqsWorkerRouteStatus {
     lastLateSettlementAt?: Date;
     // (undocumented)
     lastLateSettlementOutcome?: SqsWorkerLateSettlementOutcome;
+    // (undocumented)
+    lastMessageDeleteFailureAt?: Date;
+    // (undocumented)
+    lastMessageDeleteFailureMessage?: string;
+    // (undocumented)
+    lastPollErrorAt?: Date;
+    // (undocumented)
+    lastPollErrorMessage?: string;
+    // (undocumented)
+    lastPreDispatchVisibilityFailureAt?: Date;
+    // (undocumented)
+    lastPreDispatchVisibilityFailureMessage?: string;
     // (undocumented)
     lastReceiveAt?: Date;
     // (undocumented)
@@ -377,7 +490,7 @@ export interface SqsWorkerRouteStatus {
 }
 
 // @public (undocumented)
-export type SqsWorkerRuntimeEvent = SqsWorkerReceiveEmptyEvent | SqsWorkerMessagesReceivedEvent | SqsWorkerHandlerStartEvent | SqsWorkerHandlerSuccessEvent | SqsWorkerHandlerFailureEvent | SqsWorkerHandlerTimeoutEvent | SqsWorkerLateSettlementEvent | SqsWorkerMessageDeleteEvent | SqsWorkerMessageKeepEvent | SqsWorkerHeartbeatSuccessEvent | SqsWorkerHeartbeatFailureEvent;
+export type SqsWorkerRuntimeEvent = SqsWorkerReceiveEmptyEvent | SqsWorkerPollErrorEvent | SqsWorkerMessagesReceivedEvent | SqsWorkerHandlerStartEvent | SqsWorkerHandlerSuccessEvent | SqsWorkerHandlerFailureEvent | SqsWorkerHandlerTimeoutEvent | SqsWorkerLateSettlementEvent | SqsWorkerMessageDeleteEvent | SqsWorkerDeleteBatchFailureEvent | SqsWorkerMessageDeleteFailureEvent | SqsWorkerPreDispatchVisibilityFailureEvent | SqsWorkerBufferedMessageDropEvent | SqsWorkerMessageKeepEvent | SqsWorkerHeartbeatSuccessEvent | SqsWorkerHeartbeatFailureEvent;
 
 // @public (undocumented)
 export interface SqsWorkerRuntimeEventBase {
