@@ -46,6 +46,7 @@ The later value wins.
 The runtime now keeps a bounded raw-message prefetch buffer per route.
 
 - buffer depth is capped at `min(concurrency, maxMessagesPerPoll)`
+- `buffered` counts only prefetched backlog, not newly received messages that can start immediately in free handler slots
 - buffered entries remain raw until dispatch time
 - route demand is calculated from:
   - configured concurrency

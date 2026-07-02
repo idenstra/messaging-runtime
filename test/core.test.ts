@@ -217,6 +217,53 @@ test('prefetch buffer never exceeds min(concurrency, maxMessagesPerPoll)', async
   await manager.stop();
 });
 
+test('buffered status only counts prefetched backlog, not newly received work dispatched into free slots', async () => {
+  const hold = createDeferred<void>();
+  const bufferedObservations: number[] = [];
+  let manager!: SqsWorkerManager;
+  const client = new FakeSqsClient([
+    {
+      Messages: Array.from({ length: 4 }, (_, index) => ({
+        MessageId: `m${index + 1}`,
+        ReceiptHandle: `r${index + 1}`,
+        Body: JSON.stringify({ kind: `job-${index + 1}` }),
+      })),
+    },
+  ]);
+
+  manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+    onEvent: (event) => {
+      if (event.type !== 'messages-received') {
+        return;
+      }
+
+      queueMicrotask(() => {
+        bufferedObservations.push(manager.getStatus()[0]?.buffered ?? -1);
+      });
+    },
+  });
+
+  manager.register({
+    name: 'buffered-backlog-only',
+    queueUrl: 'https://queue.test/buffered-backlog-only',
+    handle: async () => {
+      await hold.promise;
+    },
+    config: { concurrency: 2, maxMessagesPerPoll: 5 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getStatus()[0]?.inFlight === 2 && manager.getStatus()[0]?.buffered === 2);
+  await waitFor(() => bufferedObservations.length > 0);
+
+  assert.deepEqual(bufferedObservations, [2]);
+
+  hold.resolve();
+  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 4);
+  await manager.stop();
+});
+
 test('prefetched messages extend visibility once before dispatch after crossing the age guard', async () => {
   const client = new FakeSqsClient([
     {

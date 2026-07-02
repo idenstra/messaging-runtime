@@ -520,10 +520,22 @@ export class SqsWorkerManager {
           messageCount: messages.length,
         });
 
-        const receivedAtMs = Date.now();
-        runtime.buffer.push(...messages.map((rawMessage) => ({ rawMessage, receivedAtMs })));
+        const immediateDispatchCount = Math.max(
+          0,
+          Math.min(messages.length, route.config.concurrency - status.inFlight),
+        );
+        for (const rawMessage of messages.slice(0, immediateDispatchCount)) {
+          this.startMessageTask(runtime, rawMessage);
+        }
+
+        const bufferedMessages = messages.slice(immediateDispatchCount);
+        if (bufferedMessages.length > 0) {
+          const receivedAtMs = Date.now();
+          runtime.buffer.push(...bufferedMessages.map((rawMessage) => ({ rawMessage, receivedAtMs })));
+          this.signalRouteActivity(runtime);
+        }
+
         status.buffered = runtime.buffer.length;
-        this.signalRouteActivity(runtime);
       } catch (error) {
         runtime.pollAbortController = undefined;
         if (this.stopping && isAbortError(error)) {
