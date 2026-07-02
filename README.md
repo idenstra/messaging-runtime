@@ -165,6 +165,13 @@ const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-
 When a consumer needs an existing queue name from another AWS account, resolve it with the typed overload instead of inventing a second resolver API:
 
 ```ts
+import { SQSClient } from '@aws-sdk/client-sqs';
+import { AwsSqsAdapter, SqsQueueUrlResolver } from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter);
+
 const auditQueueUrl = await queueResolver.resolve({
   queue: 'audit-queue',
   ownerAccountId: '210987654321',

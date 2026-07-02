@@ -258,6 +258,8 @@ FIFO-specific fields such as `messageGroupId` and `messageDeduplicationId` are f
 Use the read-only discovery helpers when a consumer or operator flow needs to enumerate already-existing resources without owning provisioning.
 
 ```ts
+import { SNSClient } from '@aws-sdk/client-sns';
+import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSnsAdapter,
   AwsSqsAdapter,
@@ -265,6 +267,10 @@ import {
   SqsQueueDiscovery,
 } from '@idenstra/messaging-runtime';
 
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const awsSns = new SNSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const snsAdapter = new AwsSnsAdapter(awsSns);
 const queueDiscovery = new SqsQueueDiscovery(sqsAdapter);
 const topicDiscovery = new SnsTopicDiscovery(snsAdapter);
 
