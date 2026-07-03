@@ -20,6 +20,7 @@ import {
   createDeferred,
   createQueueUrl,
   onceAborted,
+  runManagedBenchmarkScenario,
   sleep,
   waitFor,
 } from './support';
@@ -122,9 +123,9 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
 
         manager.register({ name: 'jobs', queueUrl: createQueueUrl('jobs'), handle: async () => undefined });
 
-        await manager.start();
-        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 1);
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 1);
+        });
       },
     },
     {
@@ -146,13 +147,13 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           },
         });
 
-        await manager.start();
-        await waitFor(
-          () =>
-            manager.getSnapshot().counters.heartbeatSuccessCount === 1 &&
-            manager.getSnapshot().counters.messageKeepCount === 1,
-        );
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(
+            () =>
+              manager.getSnapshot().counters.heartbeatSuccessCount === 1 &&
+              manager.getSnapshot().counters.messageKeepCount === 1,
+          );
+        });
       },
     },
     {
@@ -167,9 +168,9 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
 
         manager.register({ name: 'jobs', queueUrl: createQueueUrl('jobs'), handle: async () => undefined });
 
-        await manager.start();
-        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 10);
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 10);
+        });
       },
     },
     {
@@ -188,9 +189,9 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           manager.register({ name: `route-${index + 1}`, queueUrl, handle: async () => undefined });
         }
 
-        await manager.start();
-        await waitFor(() => manager.getSnapshot().counters.receiveEmptyCount >= manyRouteCount, { timeoutMs: 5_000 });
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(() => manager.getSnapshot().counters.receiveEmptyCount >= manyRouteCount, { timeoutMs: 5_000 });
+        });
       },
     },
     {
@@ -212,9 +213,9 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           config: { concurrency: 4 },
         });
 
-        await manager.start();
-        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 40, { timeoutMs: 5_000 });
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 40, { timeoutMs: 5_000 });
+        });
       },
     },
     {
@@ -236,9 +237,9 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           config: { concurrency: 5 },
         });
 
-        await manager.start();
-        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 50, { timeoutMs: 5_000 });
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 50, { timeoutMs: 5_000 });
+        });
       },
     },
     {
@@ -260,14 +261,14 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           config: { concurrency: 2, failureAction: 'keep' },
         });
 
-        await manager.start();
-        await waitFor(
-          () =>
-            manager.getSnapshot().counters.handlerFailureCount === 4 &&
-            manager.getSnapshot().counters.messageKeepCount === 4,
-          { timeoutMs: 5_000 },
-        );
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(
+            () =>
+              manager.getSnapshot().counters.handlerFailureCount === 4 &&
+              manager.getSnapshot().counters.messageKeepCount === 4,
+            { timeoutMs: 5_000 },
+          );
+        });
       },
     },
     {
@@ -294,11 +295,14 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           config: { concurrency: 1 },
         });
 
-        await manager.start();
-        await waitFor(() => manager.getStatus()[0]?.inFlight === 1 && manager.getStatus()[0]?.buffered === 1);
-        const stopPromise = manager.stop();
-        releaseFirstMessage.resolve();
-        await stopPromise;
+        await runManagedBenchmarkScenario(
+          manager,
+          async () => {
+            await waitFor(() => manager.getStatus()[0]?.inFlight === 1 && manager.getStatus()[0]?.buffered === 1);
+            releaseFirstMessage.resolve();
+          },
+          { beforeStop: () => releaseFirstMessage.resolve() },
+        );
 
         if (handledMessageIds.length !== 2) {
           throw new Error(`Expected buffered drain to process both messages, observed ${handledMessageIds.length}.`);
@@ -336,9 +340,9 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           },
         });
 
-        await manager.start();
-        await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 2, { timeoutMs: 5_000 });
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === 2, { timeoutMs: 5_000 });
+        });
 
         if (startedMessageIds[0] !== 'message-1' || startedMessageIds[1] !== 'message-2') {
           throw new Error(`Unexpected timeout/backlog processing order: ${startedMessageIds.join(',')}`);
@@ -376,15 +380,15 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
           },
         });
 
-        await manager.start();
-        await waitFor(
-          () =>
-            manager.getSnapshot().counters.messageKeepCount === 1 &&
-            manager.getSnapshot().counters.messageDeleteCount === 1 &&
-            manager.getSnapshot().counters.lateSettlementCount === 1,
-          { timeoutMs: 5_000 },
-        );
-        await manager.stop();
+        await runManagedBenchmarkScenario(manager, async () => {
+          await waitFor(
+            () =>
+              manager.getSnapshot().counters.messageKeepCount === 1 &&
+              manager.getSnapshot().counters.messageDeleteCount === 1 &&
+              manager.getSnapshot().counters.lateSettlementCount === 1,
+            { timeoutMs: 5_000 },
+          );
+        });
 
         if (startedMessageIds[0] !== 'message-1' || startedMessageIds[1] !== 'message-2') {
           throw new Error(`Unexpected abandon-timeout processing order: ${startedMessageIds.join(',')}`);
@@ -467,9 +471,9 @@ async function prepareSnapshotManager(): Promise<SqsWorkerManager> {
     manager.register({ name: `snapshot-route-${index + 1}`, queueUrl, handle: async () => undefined });
   }
 
-  await manager.start();
-  await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === manyRouteCount, { timeoutMs: 5_000 });
-  await manager.stop();
+  await runManagedBenchmarkScenario(manager, async () => {
+    await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === manyRouteCount, { timeoutMs: 5_000 });
+  });
 
   assertPreparedSnapshotManager(manager.getSnapshot());
   return manager;

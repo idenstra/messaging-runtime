@@ -9,6 +9,7 @@ import type {
   SqsRuntimeClient,
   SqsRuntimeRequestOptions,
   SqsTransportClient,
+  SqsWorkerManager,
 } from '../../src/index';
 
 export interface BenchmarkScenario {
@@ -78,7 +79,7 @@ export class BenchmarkSqsTransportClient implements SqsTransportClient {
 
   withQueueUrl(queueName: string, queueUrl: string, ownerAccountId?: string): this {
     this.queueUrls.set(createQueueOwnerKey(queueName, ownerAccountId), queueUrl);
-    if (ownerAccountId === undefined) {
+    if (ownerAccountId !== undefined) {
       this.queueUrls.set(createQueueOwnerKey(queueName), queueUrl);
     }
     return this;
@@ -265,6 +266,20 @@ export async function waitFor(
   }
 
   throw new Error(`Benchmark waitFor timed out after ${timeoutMs}ms.`);
+}
+
+export async function runManagedBenchmarkScenario(
+  manager: SqsWorkerManager,
+  run: () => Promise<void>,
+  options: { beforeStop?: () => void | Promise<void> } = {},
+): Promise<void> {
+  try {
+    await manager.start();
+    await run();
+  } finally {
+    await options.beforeStop?.();
+    await manager.stop();
+  }
 }
 
 export function createDeferred<T>(): { promise: Promise<T>; resolve: (value?: T | PromiseLike<T>) => void } {
