@@ -4,13 +4,20 @@ import type {
   SqsWorkerHandlerResult,
   SqsWorkerMessage,
   SqsWorkerMessageFinalizationReason,
+  SqsWorkerReceivePolicy,
+  SqsWorkerReceiveStrategy,
   SqsWorkerRoute,
   SqsWorkerRouteConfig,
   SqsWorkerRouteStatus,
 } from './types';
 
-export interface NormalizedRoute<TPayload> extends SqsWorkerRoute<TPayload> {
+export interface NormalizedReceiveStrategy extends SqsWorkerReceiveStrategy {
+  policy: SqsWorkerReceivePolicy;
+}
+
+export interface NormalizedRoute<TPayload> extends Omit<SqsWorkerRoute<TPayload>, 'receive'> {
   config: SqsWorkerRouteConfig;
+  receive: NormalizedReceiveStrategy;
 }
 
 export interface BufferedRouteMessage {
@@ -38,6 +45,7 @@ export interface RouteRuntime<TPayload> {
   buffer: BufferedRouteMessage[];
   deleteBatch: RouteDeleteBatchState;
   pollAbortController?: AbortController;
+  pendingReceiveRequestAttempt?: { value: string; createdAtMs: number };
   activityVersion: number;
   activityWaiter?: () => void;
 }

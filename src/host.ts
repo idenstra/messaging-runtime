@@ -2,11 +2,14 @@ import type {
   SqsRuntimeClient,
   SqsWorkerManagerOptions,
   SqsWorkerManagerSnapshot,
+  SqsWorkerReceivePolicy,
+  SqsWorkerReceiveStrategy,
   SqsWorkerRoute,
   SqsWorkerRouteConfig,
   SqsWorkerRouteStatus,
 } from './core';
 import { SqsWorkerManager } from './core';
+import { normalizeReceivePolicy } from './core/config';
 
 export interface SqsWorkerServiceLifecycle {
   start(): Promise<void>;
@@ -27,10 +30,12 @@ export interface SqsWorkerServiceManifestRoute {
   enabled?: boolean;
   queue?: string;
   config?: Partial<SqsWorkerRouteConfig>;
+  receive?: Partial<SqsWorkerReceivePolicy>;
 }
 
 export interface SqsWorkerServiceManifest {
   defaults?: Partial<SqsWorkerRouteConfig>;
+  receiveDefaults?: Partial<SqsWorkerReceivePolicy>;
   routes: Record<string, SqsWorkerServiceManifestRoute>;
 }
 
@@ -50,6 +55,7 @@ interface NormalizedManifestRoute {
   enabled: boolean;
   queue?: string;
   config?: Partial<SqsWorkerRouteConfig>;
+  receive?: Partial<SqsWorkerReceivePolicy>;
 }
 
 interface ResolvedServiceRoute {
@@ -71,6 +77,7 @@ const ROUTE_CONFIG_KEYS = new Set<keyof SqsWorkerRouteConfig>([
   'timeoutStrategy',
   'failureAction',
 ]);
+const RECEIVE_POLICY_KEYS = new Set<keyof SqsWorkerReceivePolicy>(['requestAttemptIdMode']);
 
 export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
   private readonly manifest: SqsWorkerServiceManifest;
@@ -146,11 +153,13 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
     const manager = new SqsWorkerManager(this.options.client, {
       ...this.options.managerOptions,
       defaults: this.manifest.defaults,
+      receiveDefaults: mergeReceivePolicy(this.options.managerOptions?.receiveDefaults, this.manifest.receiveDefaults),
     });
 
     for (const activeRoute of this.activeRoutes) {
       const queueUrl = await this.options.queueResolver.resolve(activeRoute.queue);
       const routeConfig = mergeRouteConfig(activeRoute.route.config, activeRoute.manifest.config);
+      const receive = mergeReceiveStrategy(activeRoute.route.receive, activeRoute.manifest.receive);
       manager.register({
         name: activeRoute.route.name,
         queueUrl,
@@ -158,6 +167,7 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
         handle: activeRoute.route.handle,
         onError: activeRoute.route.onError,
         config: routeConfig,
+        receive,
       });
     }
 
@@ -220,6 +230,10 @@ export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceM
       : assertRecord(input, 'SQS worker service manifest');
 
   const defaults = readOptionalRouteConfigPatch(rawManifest.defaults, 'SQS worker service manifest defaults');
+  const receiveDefaults = readOptionalReceivePolicyPatch(
+    rawManifest.receiveDefaults,
+    'SQS worker service manifest receiveDefaults',
+  );
   const rawRoutes = assertRecord(rawManifest.routes, 'SQS worker service manifest routes');
   const routes: Record<string, SqsWorkerServiceManifestRoute> = {};
 
@@ -238,11 +252,15 @@ export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceM
       routeEntry.config,
       `SQS worker service manifest route ${normalizedRouteName} config`,
     );
+    const receive = readOptionalReceivePolicyPatch(
+      routeEntry.receive,
+      `SQS worker service manifest route ${normalizedRouteName} receive`,
+    );
 
-    routes[normalizedRouteName] = { enabled, queue, config };
+    routes[normalizedRouteName] = { enabled, queue, config, receive };
   }
 
-  return { defaults, routes };
+  return { defaults, receiveDefaults, routes };
 }
 
 function indexRoutes(routes: readonly SqsWorkerServiceRoute<unknown>[]): Map<string, SqsWorkerServiceRoute<unknown>> {
@@ -279,6 +297,7 @@ function resolveActiveRoutes(
       enabled: routeManifest.enabled ?? true,
       queue: routeManifest.queue,
       config: routeManifest.config,
+      receive: routeManifest.receive,
     };
 
     if (!normalizedManifest.enabled) {
@@ -307,6 +326,34 @@ function mergeRouteConfig(
   }
 
   return { ...routeConfig, ...manifestConfig };
+}
+
+function mergeReceivePolicy(
+  ...patches: Array<Partial<SqsWorkerReceivePolicy> | undefined>
+): Partial<SqsWorkerReceivePolicy> | undefined {
+  const merged: Partial<SqsWorkerReceivePolicy> = {};
+
+  for (const patch of patches) {
+    if (!patch) {
+      continue;
+    }
+
+    Object.assign(merged, patch);
+  }
+
+  return Object.keys(merged).length === 0 ? undefined : merged;
+}
+
+function mergeReceiveStrategy(
+  routeReceive: SqsWorkerReceiveStrategy | undefined,
+  manifestReceive: Partial<SqsWorkerReceivePolicy> | undefined,
+): SqsWorkerReceiveStrategy | undefined {
+  const policy = mergeReceivePolicy(routeReceive?.policy, manifestReceive);
+  if (!policy && !routeReceive?.createRequestAttemptId) {
+    return undefined;
+  }
+
+  return { policy, createRequestAttemptId: routeReceive?.createRequestAttemptId };
 }
 
 function normalizeSignals(signals: readonly NodeJS.Signals[] | undefined): NodeJS.Signals[] {
@@ -370,6 +417,34 @@ function readOptionalRouteConfigPatch(value: unknown, label: string): Partial<Sq
   }
 
   return patch;
+}
+
+function readOptionalReceivePolicyPatch(value: unknown, label: string): Partial<SqsWorkerReceivePolicy> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const policy = assertRecord(value, label);
+  const patch: Partial<SqsWorkerReceivePolicy> = {};
+
+  for (const [key, rawValue] of Object.entries(policy)) {
+    if (!RECEIVE_POLICY_KEYS.has(key as keyof SqsWorkerReceivePolicy)) {
+      throw new Error(`Invalid ${label} field ${key}.`);
+    }
+
+    switch (key) {
+      case 'requestAttemptIdMode':
+        if (rawValue !== 'off' && rawValue !== 'runtime' && rawValue !== 'custom') {
+          throw new Error(`Invalid ${label} requestAttemptIdMode; expected off, runtime, or custom.`);
+        }
+        patch.requestAttemptIdMode = rawValue;
+        break;
+      default:
+        throw new Error(`Unhandled ${label} field ${key}.`);
+    }
+  }
+
+  return normalizeReceivePolicy(patch);
 }
 
 function readOptionalBoolean(value: unknown, label: string): boolean | undefined {

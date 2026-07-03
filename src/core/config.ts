@@ -1,4 +1,4 @@
-import type { SqsWorkerLogger, SqsWorkerRouteConfig } from './types';
+import type { SqsWorkerLogger, SqsWorkerReceivePolicy, SqsWorkerReceiveStrategy, SqsWorkerRouteConfig } from './types';
 
 export const DEFAULT_ROUTE_CONFIG: SqsWorkerRouteConfig = {
   concurrency: 4,
@@ -19,14 +19,22 @@ export const DEFAULT_LOGGER: SqsWorkerLogger = {
   error: () => undefined,
 };
 
+export const DEFAULT_RECEIVE_POLICY: SqsWorkerReceivePolicy = { requestAttemptIdMode: 'off' };
+
 export const ROUTE_ACTIVITY_WAIT_MS = 25;
 export const DELETE_BATCH_SIZE_LIMIT = 10;
 export const DELETE_BATCH_FLUSH_DELAY_MS = 5;
 export const BUFFERED_VISIBILITY_EXTENSION_THRESHOLD_RATIO = 0.5;
 export const WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES = ['All'] as const;
 export const WORKER_RECEIVE_MESSAGE_ATTRIBUTE_NAMES = ['All'] as const;
+export const RECEIVE_REQUEST_ATTEMPT_ID_TTL_MS = 5 * 60 * 1000;
 
-export function validateRoute(routeName: string, queueUrl: string, config: SqsWorkerRouteConfig): void {
+export function validateRoute(
+  routeName: string,
+  queueUrl: string,
+  config: SqsWorkerRouteConfig,
+  receive?: SqsWorkerReceiveStrategy,
+): void {
   if (!routeName.trim()) {
     throw new Error('SQS worker route name must be a non-empty string.');
   }
@@ -56,6 +64,44 @@ export function validateRoute(routeName: string, queueUrl: string, config: SqsWo
   if (config.failureAction !== 'delete' && config.failureAction !== 'keep') {
     throw new Error(`SQS worker route ${routeName} has invalid failureAction; expected delete or keep.`);
   }
+
+  validateReceiveStrategy(routeName, queueUrl, receive);
+}
+
+export function normalizeReceivePolicy(
+  ...patches: Array<Partial<SqsWorkerReceivePolicy> | undefined>
+): SqsWorkerReceivePolicy {
+  const policy: SqsWorkerReceivePolicy = { ...DEFAULT_RECEIVE_POLICY };
+
+  for (const patch of patches) {
+    if (!patch) {
+      continue;
+    }
+
+    Object.assign(policy, patch);
+  }
+
+  return policy;
+}
+
+export function validateReceiveRequestAttemptId(routeName: string, value: string): string {
+  if (!value.trim()) {
+    throw new Error(`SQS worker route ${routeName} produced an empty ReceiveRequestAttemptId.`);
+  }
+
+  if (value.length > 128) {
+    throw new Error(
+      `SQS worker route ${routeName} produced an invalid ReceiveRequestAttemptId; expected length <= 128.`,
+    );
+  }
+
+  if (!/^[A-Za-z0-9!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]+$/.test(value)) {
+    throw new Error(
+      `SQS worker route ${routeName} produced an invalid ReceiveRequestAttemptId; expected AWS-supported characters only.`,
+    );
+  }
+
+  return value;
 }
 
 function validateInteger(
@@ -68,5 +114,22 @@ function validateInteger(
   if (!Number.isInteger(value) || value < min || (max !== undefined && value > max)) {
     const rangeDescription = max === undefined ? `>= ${min}` : `between ${min} and ${max}`;
     throw new Error(`SQS worker route ${routeName} has invalid ${field}; expected an integer ${rangeDescription}.`);
+  }
+}
+
+function validateReceiveStrategy(routeName: string, queueUrl: string, receive?: SqsWorkerReceiveStrategy): void {
+  const policy = normalizeReceivePolicy(receive?.policy);
+  const mode = policy.requestAttemptIdMode ?? 'off';
+
+  if (mode !== 'off' && !queueUrl.endsWith('.fifo')) {
+    throw new Error(
+      `SQS worker route ${routeName} enables ReceiveRequestAttemptId, but queue ${queueUrl} is not a FIFO queue.`,
+    );
+  }
+
+  if (mode === 'custom' && !receive?.createRequestAttemptId) {
+    throw new Error(
+      `SQS worker route ${routeName} uses custom ReceiveRequestAttemptId mode but does not declare createRequestAttemptId.`,
+    );
   }
 }

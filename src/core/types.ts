@@ -53,6 +53,7 @@ export type SqsWorkerLateSettlementOutcome = 'resolved' | 'rejected';
 export type SqsWorkerMessageFinalizationReason = 'success' | 'failure' | 'timeout';
 export type SqsWorkerDeleteBatchFailureMode = 'request-error' | 'response-failure';
 export type SqsWorkerBufferedMessageDropReason = 'missing-receipt-handle' | 'pre-dispatch-visibility-failure';
+export type SqsWorkerReceiveRequestAttemptIdMode = 'off' | 'runtime' | 'custom';
 
 export interface SqsWorkerHandlerResult {
   action?: SqsWorkerAckAction;
@@ -93,6 +94,15 @@ export type SqsWorkerErrorHook<TPayload> = (
   | undefined
   | Promise<SqsWorkerAckAction | ReturnType<() => void> | undefined>;
 
+export interface SqsWorkerReceivePolicy {
+  requestAttemptIdMode?: SqsWorkerReceiveRequestAttemptIdMode;
+}
+
+export interface SqsWorkerReceiveStrategy {
+  policy?: Partial<SqsWorkerReceivePolicy>;
+  createRequestAttemptId?: () => string;
+}
+
 export interface SqsWorkerRouteConfig {
   concurrency: number;
   waitTimeSeconds: number;
@@ -113,11 +123,13 @@ export interface SqsWorkerRoute<TPayload> {
   handle: SqsWorkerHandler<TPayload>;
   onError?: SqsWorkerErrorHook<TPayload>;
   config?: Partial<SqsWorkerRouteConfig>;
+  receive?: SqsWorkerReceiveStrategy;
 }
 
 export interface SqsWorkerManagerOptions {
   logger?: SqsWorkerLogger;
   defaults?: Partial<SqsWorkerRouteConfig>;
+  receiveDefaults?: Partial<SqsWorkerReceivePolicy>;
   onEvent?: SqsWorkerRuntimeEventHook;
 }
 

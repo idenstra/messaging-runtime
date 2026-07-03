@@ -16,6 +16,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 ## What it provides
 
 - SQS worker runtime with long polling, bounded concurrency, graceful shutdown, and visibility heartbeats
+- optional FIFO `ReceiveRequestAttemptId` support with manifest-safe mode selection and route-owned custom token generation
 - route-level decode, handler, timeout, and failure handling
 - explicit ack policy: delete the message or keep it for SQS redelivery
 - runtime events and snapshots for health and observability
@@ -123,6 +124,44 @@ const host = new SqsWorkerServiceHost({
 
 await runSqsWorkerServiceUntilSignal(host);
 ```
+
+FIFO consumers can opt into `ReceiveRequestAttemptId` without pushing callback logic into manifests. Policy stays serializable; custom token generation stays in route code:
+
+```ts
+const manifest = parseSqsWorkerServiceManifest({
+  receiveDefaults: {
+    requestAttemptIdMode: 'runtime',
+  },
+  routes: {
+    jobs: {
+      queue: 'jobs',
+      receive: {
+        requestAttemptIdMode: 'custom',
+      },
+    },
+  },
+});
+
+const host = new SqsWorkerServiceHost({
+  client: sqsAdapter,
+  queueResolver,
+  manifest,
+  routes: [
+    {
+      name: 'jobs',
+      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
+      receive: {
+        createRequestAttemptId: () => crypto.randomUUID(),
+      },
+      handle: async ({ payload }) => {
+        console.log('processing FIFO job', payload.jobId);
+      },
+    },
+  ],
+});
+```
+
+Use this only on FIFO queues. The runtime reuses a pending token only across failed `receiveMessage` retries, clears it after any successful receive (including empty receives), and replaces it after the AWS five-minute window expires.
 
 For SNS notifications delivered through SQS, decode the SNS envelope in the route:
 

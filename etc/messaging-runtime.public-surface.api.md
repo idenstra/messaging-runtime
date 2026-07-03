@@ -1118,6 +1118,8 @@ export interface SqsWorkerManagerOptions {
     logger?: SqsWorkerLogger;
     // (undocumented)
     onEvent?: SqsWorkerRuntimeEventHook;
+    // (undocumented)
+    receiveDefaults?: Partial<SqsWorkerReceivePolicy>;
 }
 
 // @public (undocumented)
@@ -1276,6 +1278,23 @@ export interface SqsWorkerReceiveEmptyEvent extends SqsWorkerRuntimeEventBase {
 }
 
 // @public (undocumented)
+export interface SqsWorkerReceivePolicy {
+    // (undocumented)
+    requestAttemptIdMode?: SqsWorkerReceiveRequestAttemptIdMode;
+}
+
+// @public (undocumented)
+export type SqsWorkerReceiveRequestAttemptIdMode = 'off' | 'runtime' | 'custom';
+
+// @public (undocumented)
+export interface SqsWorkerReceiveStrategy {
+    // (undocumented)
+    createRequestAttemptId?: () => string;
+    // (undocumented)
+    policy?: Partial<SqsWorkerReceivePolicy>;
+}
+
+// @public (undocumented)
 export interface SqsWorkerRoute<TPayload> {
     // (undocumented)
     config?: Partial<SqsWorkerRouteConfig>;
@@ -1289,6 +1308,8 @@ export interface SqsWorkerRoute<TPayload> {
     onError?: SqsWorkerErrorHook<TPayload>;
     // (undocumented)
     queueUrl: string;
+    // (undocumented)
+    receive?: SqsWorkerReceiveStrategy;
 }
 
 // @public (undocumented)
@@ -1481,6 +1502,8 @@ export interface SqsWorkerServiceManifest {
     // (undocumented)
     defaults?: Partial<SqsWorkerRouteConfig>;
     // (undocumented)
+    receiveDefaults?: Partial<SqsWorkerReceivePolicy>;
+    // (undocumented)
     routes: Record<string, SqsWorkerServiceManifestRoute>;
 }
 
@@ -1492,6 +1515,8 @@ export interface SqsWorkerServiceManifestRoute {
     enabled?: boolean;
     // (undocumented)
     queue?: string;
+    // (undocumented)
+    receive?: Partial<SqsWorkerReceivePolicy>;
 }
 
 // @public (undocumented)

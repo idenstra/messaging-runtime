@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (143):
+- exported symbols (146):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -132,6 +132,9 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerPreDispatchVisibilityFailureEvent`
   - `SqsWorkerQueueResolver`
   - `SqsWorkerReceiveEmptyEvent`
+  - `SqsWorkerReceivePolicy`
+  - `SqsWorkerReceiveRequestAttemptIdMode`
+  - `SqsWorkerReceiveStrategy`
   - `SqsWorkerRoute`
   - `SqsWorkerRouteConfig`
   - `SqsWorkerRouteCounters`
@@ -155,7 +158,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core/index.d.ts`
-- exported symbols (46):
+- exported symbols (49):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsWorkerAckAction`
@@ -193,6 +196,9 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerPollErrorEvent`
   - `SqsWorkerPreDispatchVisibilityFailureEvent`
   - `SqsWorkerReceiveEmptyEvent`
+  - `SqsWorkerReceivePolicy`
+  - `SqsWorkerReceiveRequestAttemptIdMode`
+  - `SqsWorkerReceiveStrategy`
   - `SqsWorkerRoute`
   - `SqsWorkerRouteConfig`
   - `SqsWorkerRouteCounters`
