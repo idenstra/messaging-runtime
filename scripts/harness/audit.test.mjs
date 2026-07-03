@@ -179,3 +179,17 @@ test('buildReport fails when verify.sh is missing package checks', () => {
   assert.equal(verification?.status, 'fail');
   assert.equal(verifyCheck?.status, 'fail');
 });
+
+test('buildReport fails when the minimal core test file is missing', () => {
+  const repoRoot = createTempRepo();
+  seedMinimalHarnessRepo(repoRoot);
+  fs.rmSync(path.join(repoRoot, 'test/core/message.test.ts'));
+
+  const report = buildReport(repoRoot);
+  const repoDocs = report.categories.find((category) => category.id === 'repo-docs');
+  const runtimeSurfaceCheck = repoDocs?.checks.find((check) => check.id === 'runtime-and-adapter-surface');
+
+  assert.equal(report.overall_status, 'fail');
+  assert.equal(repoDocs?.status, 'fail');
+  assert.equal(runtimeSurfaceCheck?.status, 'fail');
+});

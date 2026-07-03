@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import type { ReceiveMessageCommandOutput } from '@aws-sdk/client-sqs';
 import { SqsWorkerManager, type SqsWorkerRuntimeEvent } from '../../src';
-import { FakeSqsClient, onceAborted, sleep, waitFor } from './support';
+import { createDeferred, FakeSqsClient, onceAborted, sleep, waitFor } from './support';
 
 test('cooperative timeout keeps buffered backlog waiting until settlement', async () => {
   const client = new FakeSqsClient([
@@ -261,6 +261,62 @@ test('stop aborts an in-flight long poll instead of waiting for the full receive
   await manager.stop();
 
   assert.ok(Date.now() - stopStartedAt < 250);
+});
+
+test('stop still drains buffered messages after aborting an in-flight poll', async () => {
+  const releaseHandlers = createDeferred<void>();
+  const startedMessageIds: string[] = [];
+  const client = new FakeSqsClient([
+    {
+      Messages: [
+        { MessageId: 'm1', ReceiptHandle: 'r1', Body: JSON.stringify({ jobId: 'job-1' }) },
+        { MessageId: 'm2', ReceiptHandle: 'r2', Body: JSON.stringify({ jobId: 'job-2' }) },
+        { MessageId: 'm3', ReceiptHandle: 'r3', Body: JSON.stringify({ jobId: 'job-3' }) },
+      ],
+    },
+    async (_input, options) =>
+      new Promise<ReceiveMessageCommandOutput>((_resolve, reject) => {
+        const abort = () => {
+          const error = new Error('The operation was aborted.');
+          error.name = 'AbortError';
+          reject(error);
+        };
+
+        if (options?.abortSignal?.aborted) {
+          abort();
+          return;
+        }
+
+        options?.abortSignal?.addEventListener('abort', abort, { once: true });
+      }),
+  ]);
+  const manager = new SqsWorkerManager(client, {
+    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+  });
+
+  manager.register({
+    name: 'stop-abort-poll-drains-buffer',
+    queueUrl: 'https://queue.test/stop-abort-poll-drains-buffer',
+    handle: async ({ message }) => {
+      startedMessageIds.push(message.messageId);
+      if (message.messageId === 'm1' || message.messageId === 'm2') {
+        await releaseHandlers.promise;
+      }
+    },
+    config: { concurrency: 2, maxMessagesPerPoll: 3 },
+  });
+
+  await manager.start();
+  await waitFor(() => manager.getStatus()[0]?.inFlight === 2 && manager.getStatus()[0]?.buffered === 1);
+  await waitFor(() => client.receiveInputs.length >= 2, { timeoutMs: 250 });
+
+  const stopPromise = manager.stop();
+  releaseHandlers.resolve();
+  await stopPromise;
+
+  assert.deepEqual(startedMessageIds, ['m1', 'm2', 'm3']);
+  assert.equal(manager.getSnapshot().counters.messageDeleteCount, 3);
+  assert.equal(manager.getSnapshot().totalBuffered, 0);
 });
 
 test('rejects invalid timeout and failure configuration during registration', () => {

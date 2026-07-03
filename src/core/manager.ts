@@ -244,7 +244,7 @@ export class SqsWorkerManager {
       } catch (error) {
         runtime.pollAbortController = undefined;
         if (this.stopping && isAbortError(error)) {
-          break;
+          continue;
         }
         const detail = describeUnknownError(error);
         this.emitInfrastructureRuntimeEvent(status, {
