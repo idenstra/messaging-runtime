@@ -329,7 +329,7 @@ function createRepoDocsCategory(repoRoot) {
           'Release docs are missing or incomplete',
           'Add CHANGELOG.md plus the release and compatibility docs.',
         ),
-    ['src/core.ts', 'src/adapters/nest.ts', 'test/core.test.ts', 'test/adapters/nest.test.ts'].every((relativePath) =>
+    ['src/core/index.ts', 'src/adapters/nest.ts', 'test/core', 'test/adapters/nest.test.ts'].every((relativePath) =>
       exists(relativePath, repoRoot),
     )
       ? createCheck('runtime-and-adapter-surface', 'pass', 'Runtime core and adapter source/tests are present')

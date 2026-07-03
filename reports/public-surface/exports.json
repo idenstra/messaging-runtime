@@ -154,7 +154,7 @@
     {
       "subpath": "./core",
       "importSpecifier": "@idenstra/messaging-runtime/core",
-      "declarationPath": "dist/core.d.ts",
+      "declarationPath": "dist/core/index.d.ts",
       "symbols": [
         "SqsRuntimeClient",
         "SqsRuntimeRequestOptions",

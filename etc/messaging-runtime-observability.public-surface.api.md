@@ -6,7 +6,7 @@
 
 import { Attributes } from '@opentelemetry/api';
 import { Context } from '@opentelemetry/api';
-import { Message } from '@aws-sdk/client-sqs';
+import type { Message } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue as MessageAttributeValue_2 } from '@aws-sdk/client-sns';
 import { Meter } from '@opentelemetry/api';

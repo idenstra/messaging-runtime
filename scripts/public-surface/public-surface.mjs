@@ -13,7 +13,7 @@ export const publicEntrypoints = [
     id: 'core',
     exportKey: './core',
     importSpecifier: '@idenstra/messaging-runtime/core',
-    declarationPath: 'dist/core.d.ts',
+    declarationPath: 'dist/core/index.d.ts',
     reportConfigPath: 'public-surface-report.core.json',
     reportPath: 'etc/messaging-runtime-core.public-surface.api.md',
   },

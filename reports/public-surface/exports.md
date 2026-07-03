@@ -154,7 +154,7 @@ Package: `@idenstra/messaging-runtime`
 ## @idenstra/messaging-runtime/core
 
 - subpath: `./core`
-- declarations: `dist/core.d.ts`
+- declarations: `dist/core/index.d.ts`
 - exported symbols (46):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`

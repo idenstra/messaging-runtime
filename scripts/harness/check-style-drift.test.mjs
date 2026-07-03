@@ -43,16 +43,16 @@ test('findStyleDriftFindings allows AI references in repo-internal AI guidance d
 
 test('findStyleDriftFindings flags TODO-style markers without issue references', () => {
   const repoRoot = createTempRepo();
-  writeFile(repoRoot, 'src/core.ts', '// TODO tighten retry semantics.\n');
+  writeFile(repoRoot, 'src/core/index.ts', '// TODO tighten retry semantics.\n');
 
-  const findings = findStyleDriftFindings(repoRoot, ['src/core.ts']);
+  const findings = findStyleDriftFindings(repoRoot, ['src/core/index.ts']);
 
   assert.deepEqual(findings, [
     {
       code: 'untracked-marker',
       line: 1,
       message: 'link TODO/FIXME/HACK/XXX markers to a tracked issue or remove them',
-      path: 'src/core.ts',
+      path: 'src/core/index.ts',
       text: '// TODO tighten retry semantics.',
     },
   ]);
@@ -60,9 +60,9 @@ test('findStyleDriftFindings flags TODO-style markers without issue references',
 
 test('findStyleDriftFindings allows TODO-style markers when they reference an issue', () => {
   const repoRoot = createTempRepo();
-  writeFile(repoRoot, 'src/core.ts', '// TODO #42 tighten retry semantics.\n');
+  writeFile(repoRoot, 'src/core/index.ts', '// TODO #42 tighten retry semantics.\n');
 
-  const findings = findStyleDriftFindings(repoRoot, ['src/core.ts']);
+  const findings = findStyleDriftFindings(repoRoot, ['src/core/index.ts']);
 
   assert.deepEqual(findings, []);
 });
