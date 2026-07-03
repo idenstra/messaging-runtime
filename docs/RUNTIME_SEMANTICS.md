@@ -72,6 +72,49 @@ Config is merged in this order:
 
 The later value wins.
 
+## FIFO ReceiveRequestAttemptId policy
+
+Advanced FIFO receive support is optional and off by default.
+
+Public policy surface:
+
+- manager defaults use `receiveDefaults`
+- worker-service manifests use:
+  - `receiveDefaults`
+  - `routes[routeName].receive`
+- route code uses `receive`
+  - `policy`
+  - optional `createRequestAttemptId()`
+
+Effective precedence:
+
+1. runtime default: `off`
+2. manager `receiveDefaults`
+3. manifest `receiveDefaults`
+4. route `receive.policy`
+5. manifest route `receive`
+
+Supported modes:
+
+- `off`
+  - omit `ReceiveRequestAttemptId`
+- `runtime`
+  - the runtime generates a token
+- `custom`
+  - the runtime calls `route.receive.createRequestAttemptId()`
+
+Validation and correctness rules:
+
+- the feature is FIFO-only; enabling it on a non-FIFO queue fails locally
+- `custom` mode requires a callback
+- callback output must be non-empty, at most 128 characters, and valid for AWS-supported characters
+- the runtime keeps one pending token per route
+- the runtime reuses that token only across failed `receiveMessage` retries
+- any successful receive response clears the pending token, including empty receives
+- pending tokens expire after the AWS five-minute window and are replaced instead of being reused
+
+This feature improves transport-level retry continuity only. It does not add an idempotency store or exactly-once delivery semantics, and visibility timeout plus duplicate-risk behavior still apply.
+
 ## Prefetch and buffer behavior
 
 The runtime now keeps a bounded raw-message prefetch buffer per route.

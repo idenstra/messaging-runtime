@@ -30,6 +30,8 @@ The package still keeps runtime and transport interfaces separate internally, bu
 The runtime has a built-in JSON body decoder for SQS messages. The example below still provides an explicit `decodePayload` so the handler payload is strongly typed and the snippet is copy-pasteable as written.
 
 ```ts
+import { randomUUID } from 'node:crypto';
+
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
@@ -111,6 +113,76 @@ const route = {
 ```
 
 Prefer the typed view for handler logic. Use raw `message.attributes` only when you need an unnormalized AWS field or exact raw compatibility.
+
+## Opt into FIFO ReceiveRequestAttemptId support
+
+`ReceiveRequestAttemptId` is an advanced FIFO-only receive feature. The package keeps the policy split explicit:
+
+- manager defaults and worker-service manifests choose the serializable mode:
+  - `off`
+  - `runtime`
+  - `custom`
+- route code owns `createRequestAttemptId()` when `custom` mode is selected
+
+```ts
+import { SQSClient } from '@aws-sdk/client-sqs';
+import {
+  AwsSqsAdapter,
+  SqsQueueUrlResolver,
+  SqsWorkerServiceHost,
+  parseSqsWorkerServiceManifest,
+  runSqsWorkerServiceUntilSignal,
+} from '@idenstra/messaging-runtime';
+
+const awsSqs = new SQSClient({ region: 'us-east-1' });
+const sqsAdapter = new AwsSqsAdapter(awsSqs);
+const queueResolver = new SqsQueueUrlResolver(sqsAdapter, {
+  preload: {
+    jobs: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs.fifo',
+  },
+  allowNetworkLookup: false,
+});
+
+const manifest = parseSqsWorkerServiceManifest({
+  receiveDefaults: {
+    requestAttemptIdMode: 'runtime',
+  },
+  routes: {
+    jobs: {
+      queue: 'jobs',
+      receive: {
+        requestAttemptIdMode: 'custom',
+      },
+    },
+  },
+});
+
+const host = new SqsWorkerServiceHost({
+  client: sqsAdapter,
+  queueResolver,
+  manifest,
+  routes: [
+    {
+      name: 'jobs',
+      receive: {
+        createRequestAttemptId: () => randomUUID(),
+      },
+      handle: async () => undefined,
+    },
+  ],
+});
+
+await runSqsWorkerServiceUntilSignal(host);
+```
+
+Key behavior:
+
+- the feature is rejected locally on non-FIFO queues
+- `runtime` mode generates the token inside the package
+- `custom` mode calls the route callback only when a fresh token is needed
+- successful receives clear the pending token, even when the receive is empty
+- failed receive retries reuse the same token until the AWS five-minute window expires
+- this improves transport-level retry continuity only; it does not change visibility timeout, redelivery, or duplicate-risk semantics
 
 ## Consume SNS notifications from SQS
 
