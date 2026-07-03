@@ -30,6 +30,7 @@ Format rules:
 
 - breaking: unified the consumer-facing AWS wrappers into `AwsSqsAdapter` and `AwsSnsAdapter`, removing the earlier `AwsSqsRuntimeClient`, `AwsSqsTransportClient`, and `AwsSnsTransportClient` names before wider package adoption
 - breaking: `SqsRuntimeClient` now includes `deleteMessageBatch(...)`, and worker snapshots now expose `buffered` and `totalBuffered`
+- changed the worker core implementation layout from a monolithic `src/core.ts` file to a folder-backed `src/core/` module set while preserving the public runtime surface and behavior
 - changed `SqsWorkerManager` to use bounded per-route raw-message prefetch, buffered-message visibility-age protection, and route-local batched delete finalization
 - changed the benchmark acceptance posture so checked-in baselines remain historical context while same-machine A/B comparison becomes the preferred throughput-review discipline
 - changed worker polling to request SQS system attributes through `MessageSystemAttributeNames` instead of `AttributeNames`

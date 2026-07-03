@@ -4,13 +4,13 @@
 
 ```ts
 
-import { ChangeMessageVisibilityCommandInput } from '@aws-sdk/client-sqs';
-import { DeleteMessageBatchCommandInput } from '@aws-sdk/client-sqs';
-import { DeleteMessageBatchCommandOutput } from '@aws-sdk/client-sqs';
-import { DeleteMessageCommandInput } from '@aws-sdk/client-sqs';
-import { Message } from '@aws-sdk/client-sqs';
-import { ReceiveMessageCommandInput } from '@aws-sdk/client-sqs';
-import { ReceiveMessageCommandOutput } from '@aws-sdk/client-sqs';
+import type { ChangeMessageVisibilityCommandInput } from '@aws-sdk/client-sqs';
+import type { DeleteMessageBatchCommandInput } from '@aws-sdk/client-sqs';
+import type { DeleteMessageBatchCommandOutput } from '@aws-sdk/client-sqs';
+import type { DeleteMessageCommandInput } from '@aws-sdk/client-sqs';
+import type { Message } from '@aws-sdk/client-sqs';
+import type { ReceiveMessageCommandInput } from '@aws-sdk/client-sqs';
+import type { ReceiveMessageCommandOutput } from '@aws-sdk/client-sqs';
 
 // @public (undocumented)
 export interface SqsRuntimeClient {

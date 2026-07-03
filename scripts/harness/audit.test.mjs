@@ -80,9 +80,9 @@ function seedMinimalHarnessRepo(repoRoot) {
     'package.json',
     '{"scripts":{"format":"biome format --write .","lint":"biome check .","lint:fix":"biome check --write .","benchmark":"tsx scripts/benchmarks/run.ts","benchmark:ci":"tsx scripts/benchmarks/run.ts --json","benchmark:baseline":"tsx scripts/benchmarks/run.ts --write-baseline","benchmark:compare":"node scripts/benchmarks/compare.mjs","public-surface:report":"node scripts/public-surface/run-interface-reports.mjs --write","public-surface:snapshot":"node scripts/public-surface/check-export-snapshot.mjs --write","public-surface:check":"node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs"}}\n',
   );
-  writeFile(repoRoot, 'src/core.ts', 'export const marker = true;\n');
+  writeFile(repoRoot, 'src/core/index.ts', 'export const marker = true;\n');
   writeFile(repoRoot, 'src/adapters/nest.ts', 'export const marker = true;\n');
-  writeFile(repoRoot, 'test/core.test.ts', 'export {};\n');
+  writeFile(repoRoot, 'test/core/message.test.ts', 'export {};\n');
   writeFile(repoRoot, 'test/adapters/nest.test.ts', 'export {};\n');
   writeFile(
     repoRoot,
@@ -178,4 +178,18 @@ test('buildReport fails when verify.sh is missing package checks', () => {
   assert.equal(report.overall_status, 'fail');
   assert.equal(verification?.status, 'fail');
   assert.equal(verifyCheck?.status, 'fail');
+});
+
+test('buildReport fails when the minimal core test file is missing', () => {
+  const repoRoot = createTempRepo();
+  seedMinimalHarnessRepo(repoRoot);
+  fs.rmSync(path.join(repoRoot, 'test/core/message.test.ts'));
+
+  const report = buildReport(repoRoot);
+  const repoDocs = report.categories.find((category) => category.id === 'repo-docs');
+  const runtimeSurfaceCheck = repoDocs?.checks.find((check) => check.id === 'runtime-and-adapter-surface');
+
+  assert.equal(report.overall_status, 'fail');
+  assert.equal(repoDocs?.status, 'fail');
+  assert.equal(runtimeSurfaceCheck?.status, 'fail');
 });

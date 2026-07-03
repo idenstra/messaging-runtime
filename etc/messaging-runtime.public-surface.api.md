@@ -24,7 +24,7 @@ import { ListQueuesCommandInput } from '@aws-sdk/client-sqs';
 import { ListQueuesCommandOutput } from '@aws-sdk/client-sqs';
 import { ListTopicsCommandInput } from '@aws-sdk/client-sns';
 import { ListTopicsCommandOutput } from '@aws-sdk/client-sns';
-import { Message } from '@aws-sdk/client-sqs';
+import type { Message } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue } from '@aws-sdk/client-sqs';
 import { MessageAttributeValue as MessageAttributeValue_2 } from '@aws-sdk/client-sns';
 import { PublishBatchCommandInput } from '@aws-sdk/client-sns';

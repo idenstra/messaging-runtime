@@ -28,7 +28,7 @@ function seedReleaseRepo(repoRoot, overrides = {}) {
     files: ['dist'],
     exports: {
       '.': { types: './dist/index.d.ts', default: './dist/index.js' },
-      './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+      './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
       './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
     },
     engines: { node: '>=24' },

@@ -11,7 +11,7 @@
     "baseUrl": "..",
     "paths": {
       "@idenstra/messaging-runtime": ["src/index.ts"],
-      "@idenstra/messaging-runtime/core": ["src/core.ts"],
+      "@idenstra/messaging-runtime/core": ["src/core/index.ts"],
       "@idenstra/messaging-runtime/nest": ["src/adapters/nest.ts"],
       "@idenstra/messaging-runtime/observability": ["src/observability.ts"]
     }

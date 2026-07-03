@@ -23,7 +23,7 @@ test('findPublicImportSurfaceFindings accepts the supported public imports', () 
   const repoRoot = createTempRepo();
   writePackageJson(repoRoot, {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
-    './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+    './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
     './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
   });
@@ -43,7 +43,7 @@ test('findPublicImportSurfaceFindings rejects unsupported deep imports in code a
   const repoRoot = createTempRepo();
   writePackageJson(repoRoot, {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
-    './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+    './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
     './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
   });
@@ -67,7 +67,7 @@ test('findPackageExportFindings rejects unsupported public subpaths', () => {
   const repoRoot = createTempRepo();
   writePackageJson(repoRoot, {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
-    './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+    './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
     './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
     './transport': { types: './dist/transport.d.ts', default: './dist/transport.js' },
@@ -90,7 +90,7 @@ test('findPublicImportSurfaceFindings ignores the validator self-fixtures', () =
   const repoRoot = createTempRepo();
   writePackageJson(repoRoot, {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
-    './core': { types: './dist/core.d.ts', default: './dist/core.js' },
+    './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
     './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
   });
