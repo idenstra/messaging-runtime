@@ -9,7 +9,6 @@ import type {
   SqsWorkerRouteStatus,
 } from './core';
 import { SqsWorkerManager } from './core';
-import { normalizeReceivePolicy } from './core/config';
 
 export interface SqsWorkerServiceLifecycle {
   start(): Promise<void>;
@@ -444,7 +443,7 @@ function readOptionalReceivePolicyPatch(value: unknown, label: string): Partial<
     }
   }
 
-  return normalizeReceivePolicy(patch);
+  return patch;
 }
 
 function readOptionalBoolean(value: unknown, label: string): boolean | undefined {

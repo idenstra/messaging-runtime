@@ -71,6 +71,8 @@ A minimal framework-agnostic worker uses one AWS SDK `SQSClient` wrapped once by
 The runtime has a built-in JSON body decoder for SQS messages. This example still provides an explicit `decodePayload` so the handler is strongly typed and the snippet stays copy-pasteable.
 
 ```ts
+import { randomUUID } from 'node:crypto';
+
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
@@ -151,7 +153,7 @@ const host = new SqsWorkerServiceHost({
       name: 'jobs',
       decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
       receive: {
-        createRequestAttemptId: () => crypto.randomUUID(),
+        createRequestAttemptId: () => randomUUID(),
       },
       handle: async ({ payload }) => {
         console.log('processing FIFO job', payload.jobId);

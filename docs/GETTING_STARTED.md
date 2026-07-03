@@ -30,6 +30,8 @@ The package still keeps runtime and transport interfaces separate internally, bu
 The runtime has a built-in JSON body decoder for SQS messages. The example below still provides an explicit `decodePayload` so the handler payload is strongly typed and the snippet is copy-pasteable as written.
 
 ```ts
+import { randomUUID } from 'node:crypto';
+
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
@@ -163,7 +165,7 @@ const host = new SqsWorkerServiceHost({
     {
       name: 'jobs',
       receive: {
-        createRequestAttemptId: () => crypto.randomUUID(),
+        createRequestAttemptId: () => randomUUID(),
       },
       handle: async () => undefined,
     },

@@ -298,6 +298,37 @@ test('manifest route receive policy overrides route receive policy with the docu
   assert.equal(client.receiveInputs[0]?.ReceiveRequestAttemptId, undefined);
 });
 
+test('empty manifest receive patches do not override route or manager receive defaults', async () => {
+  const dispatchQueueUrl = 'https://queue.test/dispatch.fifo';
+  const client = new FakeSqsClient().withMessage(dispatchQueueUrl, {
+    MessageId: 'm1',
+    ReceiptHandle: 'r1',
+    Body: JSON.stringify({ type: 'dispatch' }),
+  });
+  const resolver = new FakeQueueResolver({ 'dispatch-queue': dispatchQueueUrl });
+  const host = new SqsWorkerServiceHost({
+    client,
+    queueResolver: resolver,
+    managerOptions: { receiveDefaults: { requestAttemptIdMode: 'runtime' } },
+    routes: [
+      {
+        name: 'dispatch',
+        queue: 'dispatch-queue',
+        handle: async () => undefined,
+        receive: { policy: { requestAttemptIdMode: 'runtime' } },
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
+      },
+    ],
+    manifest: parseSqsWorkerServiceManifest({ receiveDefaults: {}, routes: { dispatch: { receive: {} } } }),
+  });
+
+  await host.start();
+  await waitFor(() => client.deleteBatchInputs.length === 1);
+  await host.stop();
+
+  assert.match(client.receiveInputs[0]?.ReceiveRequestAttemptId ?? '', /^[0-9a-f-]{36}$/i);
+});
+
 test('accepts queue identifiers as name, URL, or ARN and resolves them through the injected resolver', async () => {
   const client = new FakeSqsClient();
   const resolver = new FakeQueueResolver({
