@@ -24,6 +24,7 @@ Format rules:
 - added `benchmark:compare` plus same-machine benchmark comparison guidance for performance-sensitive pull requests
 - added typed `message.systemAttributes` on `SqsWorkerMessage` for parsed SQS receive-count and timestamp system attributes
 - added explicit runtime infrastructure failure events, rich snapshot fields, and OTEL counters for polling, delete-finalization, and buffered pre-dispatch visibility failure paths
+- added benchmark coverage for decode, resolver, many-route scheduling, failure-keep, abandon-timeout, and snapshot hot paths plus runner self-tests for stable scenario ordering and machine-readable output
 
 ### Changed
 

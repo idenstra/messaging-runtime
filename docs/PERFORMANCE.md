@@ -26,27 +26,30 @@ The current worker-core slice implements bounded per-route prefetch and route-lo
 
 The current benchmark suite covers:
 
-1. SQS batch publish chunking and result aggregation.
-2. SNS batch publish chunking and result aggregation.
-3. single-message delete finalization.
-4. single-message heartbeat/visibility finalization.
-5. current single-route full-batch receive and dispatch behavior.
-6. single-route hot-queue throughput with bounded prefetch.
-7. single-route hot-queue throughput with bounded prefetch plus delete batching.
-8. stop/drain behavior with buffered backlog.
-9. cooperative-timeout behavior with buffered backlog.
+1. plain SQS JSON body decode.
+2. SNS-over-SQS envelope plus nested JSON payload decode.
+3. SQS batch publish chunking and result aggregation.
+4. SNS batch publish chunking and result aggregation.
+5. resolver cache-hit and fake-client cache-miss paths.
+6. single-message delete finalization.
+7. single-message heartbeat/visibility finalization.
+8. current single-route full-batch receive and dispatch behavior.
+9. many-route empty-poll scheduling overhead.
+10. single-route hot-queue throughput with bounded prefetch.
+11. single-route hot-queue throughput with bounded prefetch plus delete batching.
+12. failure-keep finalization.
+13. stop/drain behavior with buffered backlog.
+14. cooperative-timeout behavior with buffered backlog.
+15. abandon-timeout handling with late settlement.
+16. snapshot generation with many routes and non-zero counters.
 
 The broader hot paths that still deserve additional benchmark coverage are:
 
 1. SQS receive loop scheduling under empty, partial, and mixed batches.
 2. message conversion from AWS SDK shape to runtime message shape.
-3. JSON body decoding for plain SQS messages.
-4. SNS envelope decoding and nested payload decoding.
-5. handler dispatch and ack action resolution.
-6. failure-keep finalization and abandon-timeout paths.
-7. resolver cache hit and miss paths.
-8. snapshot generation with many routes and high counter volume.
-9. many-route fairness tradeoffs versus the current per-route buffer design.
+3. handler dispatch and ack action resolution beyond the current failure/timeout coverage.
+4. delete-batch partial-failure paths under throughput-oriented workloads.
+5. many-route fairness tradeoffs versus the current per-route buffer design.
 
 ## Benchmark command surface
 
@@ -86,27 +89,32 @@ The current suite includes:
 
 | Benchmark | Measures |
 | --- | --- |
+| `decode:sqs-json` | Plain SQS JSON body decode throughput and allocation. |
+| `decode:sns-over-sqs-json` | SNS envelope and nested JSON payload decode throughput. |
 | `publisher:sqs-batch` | SQS batch publish chunking and result aggregation overhead. |
 | `publisher:sns-batch` | SNS batch publish chunking and result aggregation overhead. |
+| `resolver:cache-hit` | Mixed SQS/SNS hot cache-hit resolution cost. |
+| `resolver:cache-miss-fake-client` | Mixed SQS/SNS fake-client cache-miss resolution cost. |
 | `worker:ack-delete` | Delete-message finalization overhead with fake client. |
 | `worker:visibility-heartbeat` | Manual heartbeat plus keep finalization overhead with fake client. |
 | `worker:single-route-full-batch` | Current full-batch receive and dispatch overhead. |
+| `worker:many-routes-empty-poll` | Many-route empty-poll scheduling overhead with idle workers. |
 | `worker:single-route-prefetch-hot-queue` | Hot-queue throughput with bounded per-route prefetch. |
 | `worker:single-route-prefetch-delete-batch` | Hot-queue throughput with bounded per-route prefetch plus delete batching. |
+| `worker:failure-keep` | Handler-failure plus keep-finalization overhead. |
 | `worker:stop-drain-buffered` | Shutdown/drain behavior with a buffered message waiting behind an in-flight slot. |
 | `worker:timeout-buffered-backlog` | Cooperative-timeout behavior while buffered backlog waits behind the timed-out slot. |
+| `worker:abandon-timeout` | Abandon-timeout handling with late settlement after the worker slot is released. |
+| `snapshot:many-routes` | Snapshot aggregation and cloning cost with many registered routes. |
 
 Future scenarios still worth adding:
 
 | Benchmark | Measures |
 | --- | --- |
-| `decode:sqs-json` | Plain SQS JSON body decode throughput and allocation. |
-| `decode:sns-over-sqs-json` | SNS envelope and nested JSON payload decode throughput. |
-| `worker:many-routes-empty-poll` | Scheduling overhead with many routes and empty receives. |
-| `worker:failure-keep` | Failure hook plus keep finalization overhead. |
-| `worker:timeout-cooperative` | Timeout handling overhead and slot retention behavior. |
-| `resolver:cache-hit` | Queue/topic resolver cache-hit cost. |
-| `snapshot:many-routes` | Snapshot generation cost with route/counter aggregation. |
+| `worker:empty-poll-partial-batch-mix` | Receive-loop behavior across empty, partial, and mixed batch responses. |
+| `worker:delete-batch-partial-failure` | Delete-finalization cost when batch responses require individual retries. |
+| `worker:many-routes-fairness` | Fairness tradeoffs when many queues contend for process time. |
+| `message:normalize-sdk-shape` | AWS SDK message-to-runtime message normalization cost. |
 
 ## Baseline reporting
 
