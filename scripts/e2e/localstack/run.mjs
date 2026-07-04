@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import childProcess from 'node:child_process';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const composeFile = path.join(repoRoot, 'scripts/e2e/localstack/compose.yaml');
 const suiteFiles = {
   runtime: 'test/e2e/localstack/runtime.test.mjs',

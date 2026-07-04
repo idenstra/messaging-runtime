@@ -190,7 +190,8 @@ export async function createQueue(
 }
 
 export async function createTopic(snsClient, { name, fifo = false, contentBasedDeduplication = true } = {}) {
-  const normalizedName = fifo && !name.endsWith('.fifo') ? `${name}.fifo` : name;
+  const topicName = assertNonEmptyText(name, 'LocalStack topic fixture name');
+  const normalizedName = fifo && !topicName.endsWith('.fifo') ? `${topicName}.fifo` : topicName;
   const attributes = fifo
     ? { FifoTopic: 'true', ContentBasedDeduplication: contentBasedDeduplication ? 'true' : 'false' }
     : undefined;
@@ -355,4 +356,12 @@ export function parseSnsEnvelopeMessage(message) {
 
 export function createStandardRuntimeDefaults(overrides = {}) {
   return { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, errorBackoffMs: 0, ...overrides };
+}
+
+function assertNonEmptyText(value, label) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+
+  return value;
 }
