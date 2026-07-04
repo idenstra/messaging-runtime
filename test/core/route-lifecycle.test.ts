@@ -369,9 +369,9 @@ test('signal runner surfaces aggregated stop failures from lifecycle cleanup', a
     },
   };
 
-  const runPromise = runSqsWorkerServiceUntilSignal(host, { signals: ['SIGUSR2'] });
+  const runPromise = runSqsWorkerServiceUntilSignal(host, { signals: ['SIGTERM'] });
   await sleep(10);
-  process.emit('SIGUSR2', 'SIGUSR2');
+  process.emit('SIGTERM', 'SIGTERM');
 
   await assert.rejects(
     async () => runPromise,

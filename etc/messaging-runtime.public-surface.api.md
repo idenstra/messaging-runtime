@@ -226,6 +226,40 @@ export interface SnsEnvelopeBase extends Record<string, unknown> {
 export type SnsEnvelopeType = 'Notification' | 'SubscriptionConfirmation' | 'UnsubscribeConfirmation';
 
 // @public (undocumented)
+export function snsJsonQueueRoute<TPayload>(options: SnsJsonQueueRouteOptions<TPayload, 'payload'> & {
+    queueUrl: string;
+}): SqsWorkerRoute<TPayload>;
+
+// @public (undocumented)
+export function snsJsonQueueRoute<TPayload>(options: SnsJsonQueueRouteOptions<TPayload, 'payload'> & {
+    queue?: string;
+    queueUrl?: never;
+}): SqsWorkerServiceRoute<TPayload>;
+
+// @public (undocumented)
+export function snsJsonQueueRoute<TPayload>(options: SnsJsonQueueRouteOptions<TPayload, 'envelope+payload'> & {
+    queueUrl: string;
+}): SqsWorkerRoute<DecodedSnsNotificationJson<TPayload>>;
+
+// @public (undocumented)
+export function snsJsonQueueRoute<TPayload>(options: SnsJsonQueueRouteOptions<TPayload, 'envelope+payload'> & {
+    queue?: string;
+    queueUrl?: never;
+}): SqsWorkerServiceRoute<DecodedSnsNotificationJson<TPayload>>;
+
+// @public (undocumented)
+export type SnsJsonQueueRouteMessageShape = 'payload' | 'envelope+payload';
+
+// Warning: (ae-forgotten-export) The symbol "BaseRouteFactoryOptions" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "SnsJsonQueueRoutePayload" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "RouteBindingOptions" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type SnsJsonQueueRouteOptions<TPayload, TMessageShape extends SnsJsonQueueRouteMessageShape = 'payload'> = BaseRouteFactoryOptions<SnsJsonQueueRoutePayload<TPayload, TMessageShape>> & RouteBindingOptions & {
+    messageShape?: TMessageShape;
+};
+
+// @public (undocumented)
 export type SnsMessageAttributes = Record<string, MessageAttributeValue_2>;
 
 // @public (undocumented)
@@ -687,6 +721,20 @@ export interface SqsDlqRedriveManagerOptions {
 }
 
 // @public (undocumented)
+export function sqsJsonRoute<TPayload>(options: SqsJsonRouteOptions<TPayload> & {
+    queueUrl: string;
+}): SqsWorkerRoute<TPayload>;
+
+// @public (undocumented)
+export function sqsJsonRoute<TPayload>(options: SqsJsonRouteOptions<TPayload> & {
+    queue?: string;
+    queueUrl?: never;
+}): SqsWorkerServiceRoute<TPayload>;
+
+// @public (undocumented)
+export type SqsJsonRouteOptions<TPayload> = BaseRouteFactoryOptions<TPayload> & RouteBindingOptions;
+
+// @public (undocumented)
 export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
 
 // @public (undocumented)
@@ -1099,6 +1147,20 @@ export interface SqsSendStringOptions extends SqsSendJsonOptions {
 
 // @public (undocumented)
 export function sqsStringAttribute(value: string): MessageAttributeValue;
+
+// @public (undocumented)
+export function sqsStringRoute(options: SqsStringRouteOptions & {
+    queueUrl: string;
+}): SqsWorkerRoute<string>;
+
+// @public (undocumented)
+export function sqsStringRoute(options: SqsStringRouteOptions & {
+    queue?: string;
+    queueUrl?: never;
+}): SqsWorkerServiceRoute<string>;
+
+// @public (undocumented)
+export type SqsStringRouteOptions = BaseRouteFactoryOptions<string> & RouteBindingOptions;
 
 // @public (undocumented)
 export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
@@ -1710,8 +1772,10 @@ export interface SqsWorkerServiceHostOptions {
     manifest: SqsWorkerServiceManifest;
     // (undocumented)
     queueResolver: SqsWorkerQueueResolver;
+    // Warning: (ae-forgotten-export) The symbol "SqsWorkerServiceRegisteredRoute" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
-    routes: readonly SqsWorkerServiceRoute<unknown>[];
+    routes: readonly SqsWorkerServiceRegisteredRoute[];
 }
 
 // @public (undocumented)
