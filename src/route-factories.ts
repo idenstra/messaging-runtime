@@ -32,7 +32,7 @@ type RouteFactoryResult<TPayload, TBindingOptions extends RouteBindingOptions> =
   ? SqsWorkerRoute<TPayload>
   : SqsWorkerServiceRoute<TPayload>;
 
-interface BaseRouteFactoryOptions<TPayload> {
+interface RouteFactorySharedOptions<TPayload> {
   name: string;
   handle: SqsWorkerHandler<TPayload>;
   onError?: SqsWorkerErrorHook<TPayload>;
@@ -43,20 +43,40 @@ interface BaseRouteFactoryOptions<TPayload> {
 
 export type SnsJsonQueueRouteMessageShape = 'payload' | 'envelope+payload';
 
-export type SqsJsonRouteOptions<TPayload> = BaseRouteFactoryOptions<TPayload> & RouteBindingOptions;
+export type SqsJsonRouteOptions<TPayload> = {
+  name: string;
+  handle: SqsWorkerHandler<TPayload>;
+  onError?: SqsWorkerErrorHook<TPayload>;
+  lifecycle?: SqsWorkerRouteLifecycleHooks;
+  config?: Partial<SqsWorkerRouteConfig>;
+  receive?: SqsWorkerReceiveStrategy;
+} & RouteBindingOptions;
 
-export type SqsStringRouteOptions = BaseRouteFactoryOptions<string> & RouteBindingOptions;
+export type SqsStringRouteOptions = {
+  name: string;
+  handle: SqsWorkerHandler<string>;
+  onError?: SqsWorkerErrorHook<string>;
+  lifecycle?: SqsWorkerRouteLifecycleHooks;
+  config?: Partial<SqsWorkerRouteConfig>;
+  receive?: SqsWorkerReceiveStrategy;
+} & RouteBindingOptions;
 
 type SnsJsonQueueRoutePayload<
   TPayload,
   TMessageShape extends SnsJsonQueueRouteMessageShape,
 > = TMessageShape extends 'envelope+payload' ? DecodedSnsNotificationJson<TPayload> : TPayload;
 
-export type SnsJsonQueueRouteOptions<
-  TPayload,
-  TMessageShape extends SnsJsonQueueRouteMessageShape = 'payload',
-> = BaseRouteFactoryOptions<SnsJsonQueueRoutePayload<TPayload, TMessageShape>> &
-  RouteBindingOptions & { messageShape?: TMessageShape };
+export type SnsJsonQueueRouteOptions<TPayload, TMessageShape extends SnsJsonQueueRouteMessageShape = 'payload'> = {
+  name: string;
+  handle: SqsWorkerHandler<TMessageShape extends 'envelope+payload' ? DecodedSnsNotificationJson<TPayload> : TPayload>;
+  onError?: SqsWorkerErrorHook<
+    TMessageShape extends 'envelope+payload' ? DecodedSnsNotificationJson<TPayload> : TPayload
+  >;
+  lifecycle?: SqsWorkerRouteLifecycleHooks;
+  config?: Partial<SqsWorkerRouteConfig>;
+  receive?: SqsWorkerReceiveStrategy;
+  messageShape?: TMessageShape;
+} & RouteBindingOptions;
 
 export function sqsJsonRoute<TPayload>(
   options: SqsJsonRouteOptions<TPayload> & { queueUrl: string },
@@ -120,7 +140,7 @@ export function snsJsonQueueRoute<
 }
 
 function createRouteFactoryResult<TPayload>(
-  options: BaseRouteFactoryOptions<TPayload> & RouteBindingOptions,
+  options: RouteFactorySharedOptions<TPayload> & RouteBindingOptions,
   decodePayload: (message: SqsWorkerMessage) => TPayload,
   helperName: string,
 ): SqsWorkerRoute<TPayload> | SqsWorkerServiceRoute<TPayload> {

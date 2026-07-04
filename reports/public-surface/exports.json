@@ -184,6 +184,7 @@
         "SqsWorkerServiceLifecycle",
         "SqsWorkerServiceManifest",
         "SqsWorkerServiceManifestRoute",
+        "SqsWorkerServiceRegisteredRoute",
         "SqsWorkerServiceRoute",
         "SqsWorkerServiceRunOptions",
         "SqsWorkerTimeoutError",

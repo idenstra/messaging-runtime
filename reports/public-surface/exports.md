@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (184):
+- exported symbols (185):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -185,6 +185,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerServiceLifecycle`
   - `SqsWorkerServiceManifest`
   - `SqsWorkerServiceManifestRoute`
+  - `SqsWorkerServiceRegisteredRoute`
   - `SqsWorkerServiceRoute`
   - `SqsWorkerServiceRunOptions`
   - `SqsWorkerTimeoutError`

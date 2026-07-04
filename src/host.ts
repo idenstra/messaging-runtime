@@ -30,7 +30,10 @@ export interface SqsWorkerServiceRoute<TPayload> extends Omit<SqsWorkerRoute<TPa
   queue?: string;
 }
 
-type SqsWorkerServiceRegisteredRoute = Omit<SqsWorkerServiceRoute<unknown>, 'decodePayload' | 'handle' | 'onError'> & {
+export type SqsWorkerServiceRegisteredRoute = Omit<
+  SqsWorkerServiceRoute<unknown>,
+  'decodePayload' | 'handle' | 'onError'
+> & {
   decodePayload?(message: SqsWorkerMessage): unknown;
   handle(
     context: SqsWorkerHandlerContext<unknown>,

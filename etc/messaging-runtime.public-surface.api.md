@@ -250,14 +250,18 @@ export function snsJsonQueueRoute<TPayload>(options: SnsJsonQueueRouteOptions<TP
 // @public (undocumented)
 export type SnsJsonQueueRouteMessageShape = 'payload' | 'envelope+payload';
 
-// Warning: (ae-forgotten-export) The symbol "BaseRouteFactoryOptions" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "SnsJsonQueueRoutePayload" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "RouteBindingOptions" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export type SnsJsonQueueRouteOptions<TPayload, TMessageShape extends SnsJsonQueueRouteMessageShape = 'payload'> = BaseRouteFactoryOptions<SnsJsonQueueRoutePayload<TPayload, TMessageShape>> & RouteBindingOptions & {
+export type SnsJsonQueueRouteOptions<TPayload, TMessageShape extends SnsJsonQueueRouteMessageShape = 'payload'> = {
+    name: string;
+    handle: SqsWorkerHandler<TMessageShape extends 'envelope+payload' ? DecodedSnsNotificationJson<TPayload> : TPayload>;
+    onError?: SqsWorkerErrorHook<TMessageShape extends 'envelope+payload' ? DecodedSnsNotificationJson<TPayload> : TPayload>;
+    lifecycle?: SqsWorkerRouteLifecycleHooks;
+    config?: Partial<SqsWorkerRouteConfig>;
+    receive?: SqsWorkerReceiveStrategy;
     messageShape?: TMessageShape;
-};
+} & RouteBindingOptions;
 
 // @public (undocumented)
 export type SnsMessageAttributes = Record<string, MessageAttributeValue_2>;
@@ -732,7 +736,14 @@ export function sqsJsonRoute<TPayload>(options: SqsJsonRouteOptions<TPayload> & 
 }): SqsWorkerServiceRoute<TPayload>;
 
 // @public (undocumented)
-export type SqsJsonRouteOptions<TPayload> = BaseRouteFactoryOptions<TPayload> & RouteBindingOptions;
+export type SqsJsonRouteOptions<TPayload> = {
+    name: string;
+    handle: SqsWorkerHandler<TPayload>;
+    onError?: SqsWorkerErrorHook<TPayload>;
+    lifecycle?: SqsWorkerRouteLifecycleHooks;
+    config?: Partial<SqsWorkerRouteConfig>;
+    receive?: SqsWorkerReceiveStrategy;
+} & RouteBindingOptions;
 
 // @public (undocumented)
 export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
@@ -1160,7 +1171,14 @@ export function sqsStringRoute(options: SqsStringRouteOptions & {
 }): SqsWorkerServiceRoute<string>;
 
 // @public (undocumented)
-export type SqsStringRouteOptions = BaseRouteFactoryOptions<string> & RouteBindingOptions;
+export type SqsStringRouteOptions = {
+    name: string;
+    handle: SqsWorkerHandler<string>;
+    onError?: SqsWorkerErrorHook<string>;
+    lifecycle?: SqsWorkerRouteLifecycleHooks;
+    config?: Partial<SqsWorkerRouteConfig>;
+    receive?: SqsWorkerReceiveStrategy;
+} & RouteBindingOptions;
 
 // @public (undocumented)
 export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
@@ -1772,8 +1790,6 @@ export interface SqsWorkerServiceHostOptions {
     manifest: SqsWorkerServiceManifest;
     // (undocumented)
     queueResolver: SqsWorkerQueueResolver;
-    // Warning: (ae-forgotten-export) The symbol "SqsWorkerServiceRegisteredRoute" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     routes: readonly SqsWorkerServiceRegisteredRoute[];
 }
@@ -1811,6 +1827,13 @@ export interface SqsWorkerServiceManifestRoute {
     // (undocumented)
     receive?: Partial<SqsWorkerReceivePolicy>;
 }
+
+// @public (undocumented)
+export type SqsWorkerServiceRegisteredRoute = Omit<SqsWorkerServiceRoute<unknown>, 'decodePayload' | 'handle' | 'onError'> & {
+    decodePayload?(message: SqsWorkerMessage): unknown;
+    handle(context: SqsWorkerHandlerContext<unknown>): Promise<SqsWorkerHandlerResult | ReturnType<() => void> | undefined>;
+    onError?(context: SqsWorkerErrorContext<unknown>): SqsWorkerAckAction | ReturnType<() => void> | undefined | Promise<SqsWorkerAckAction | ReturnType<() => void> | undefined>;
+};
 
 // @public (undocumented)
 export interface SqsWorkerServiceRoute<TPayload> extends Omit<SqsWorkerRoute<TPayload>, 'queueUrl'> {
