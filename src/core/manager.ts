@@ -12,6 +12,7 @@ import {
   WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES,
 } from './config';
 import { type DeleteBatchDependencies, flushPendingDeletes, queueDelete } from './delete-batch';
+import { runLifecycleHook, type SqsWorkerLifecyclePhase, validateLifecycleHooks } from './lifecycle';
 import { defaultDecodePayload } from './message';
 import {
   calculateRouteDemand,
@@ -57,6 +58,8 @@ export class SqsWorkerManager {
   private readonly processingDependencies: WorkerProcessingDependencies;
   private started = false;
   private stopping = false;
+  private startPromise?: Promise<void>;
+  private stopPromise?: Promise<void>;
 
   constructor(
     private readonly client: SqsRuntimeClient,
@@ -99,7 +102,7 @@ export class SqsWorkerManager {
   }
 
   register<TPayload>(route: SqsWorkerRoute<TPayload>): void {
-    if (this.started) {
+    if (this.started || this.startPromise) {
       throw new Error('Cannot register new SQS worker routes after the manager has started.');
     }
     if (this.routes.has(route.name)) {
@@ -108,6 +111,7 @@ export class SqsWorkerManager {
     if (route.onError !== undefined && typeof route.onError !== 'function') {
       throw new Error(`SQS worker route ${route.name} has invalid onError; expected a function.`);
     }
+    validateLifecycleHooks(route.name, route.lifecycle);
 
     const normalizedReceive = normalizeReceiveStrategy(this.receiveDefaults, route.receive);
     const normalized: NormalizedRoute<TPayload> = {
@@ -126,19 +130,20 @@ export class SqsWorkerManager {
       return;
     }
 
-    this.started = true;
-    this.stopping = false;
-
-    for (const runtime of this.routes.values()) {
-      runtime.buffer = [];
-      runtime.deleteBatch = { entries: [] };
-      runtime.activityVersion = 0;
-      runtime.activityWaiter = undefined;
-      runtime.status.running = true;
-      runtime.status.stopping = false;
-      runtime.status.buffered = 0;
-      runtime.loop = this.runRouteLoop(runtime);
+    if (!this.startPromise) {
+      const promise = this.startInternal();
+      this.startPromise = promise;
+      try {
+        await promise;
+      } finally {
+        if (this.startPromise === promise) {
+          this.startPromise = undefined;
+        }
+      }
+      return;
     }
+
+    await this.startPromise;
   }
 
   async stop(): Promise<void> {
@@ -146,23 +151,20 @@ export class SqsWorkerManager {
       return;
     }
 
-    this.stopping = true;
+    if (!this.stopPromise) {
+      const promise = this.stopInternal();
+      this.stopPromise = promise;
+      try {
+        await promise;
+      } finally {
+        if (this.stopPromise === promise) {
+          this.stopPromise = undefined;
+        }
+      }
+      return;
+    }
 
-    await Promise.all(
-      [...this.routes.values()].map(async (runtime) => {
-        runtime.status.stopping = true;
-        runtime.status.running = false;
-        runtime.pollAbortController?.abort();
-        this.signalRouteActivity(runtime);
-        await this.flushPendingDeletes(runtime);
-        await runtime.loop;
-        await Promise.all([...runtime.tasks]);
-        await this.flushPendingDeletes(runtime);
-      }),
-    );
-
-    this.started = false;
-    this.stopping = false;
+    await this.stopPromise;
   }
 
   getStatus(): SqsWorkerRouteStatus[] {
@@ -183,7 +185,7 @@ export class SqsWorkerManager {
     };
   }
 
-  private async runRouteLoop(runtime: RouteRuntime<unknown>): Promise<void> {
+  private async runRouteLoop<TPayload>(runtime: RouteRuntime<TPayload>): Promise<void> {
     const { route, status } = runtime;
 
     while (true) {
@@ -285,6 +287,56 @@ export class SqsWorkerManager {
     }
   }
 
+  private async startInternal(): Promise<void> {
+    const startedRuntimes: RouteRuntime<unknown>[] = [];
+    let loopsStarted = false;
+
+    this.stopping = false;
+
+    try {
+      for (const runtime of this.routes.values()) {
+        const hookError = await runLifecycleHook(runtime, 'beforeStart', this.logger);
+        if (hookError) {
+          throw hookError;
+        }
+        startedRuntimes.push(runtime);
+      }
+
+      for (const runtime of startedRuntimes) {
+        this.initializeRouteRuntime(runtime);
+      }
+      loopsStarted = true;
+
+      for (const runtime of startedRuntimes) {
+        const hookError = await runLifecycleHook(runtime, 'afterStart', this.logger);
+        if (hookError) {
+          throw hookError;
+        }
+      }
+
+      this.started = true;
+    } catch (error: unknown) {
+      const cleanupErrors = await this.cleanupFailedStart(startedRuntimes, loopsStarted);
+      throw new AggregateError([error, ...cleanupErrors], 'SQS worker manager failed to start.');
+    } finally {
+      if (!this.started) {
+        this.stopping = false;
+      }
+    }
+  }
+
+  private async stopInternal(): Promise<void> {
+    try {
+      const errors = await this.shutdownRoutes([...this.routes.values()], { runBeforeStop: true, runAfterStop: true });
+      if (errors.length > 0) {
+        throw new AggregateError(errors, 'SQS worker manager failed to stop cleanly.');
+      }
+    } finally {
+      this.started = false;
+      this.stopping = false;
+    }
+  }
+
   private signalRouteActivity<TPayload>(runtime: RouteRuntime<TPayload>): void {
     runtime.activityVersion += 1;
     const waiter = runtime.activityWaiter;
@@ -294,6 +346,104 @@ export class SqsWorkerManager {
 
   private async flushPendingDeletes<TPayload>(runtime: RouteRuntime<TPayload>): Promise<void> {
     await flushPendingDeletes(runtime, this.deleteBatchDependencies);
+  }
+
+  private initializeRouteRuntime<TPayload>(runtime: RouteRuntime<TPayload>): void {
+    runtime.buffer = [];
+    runtime.deleteBatch = { entries: [] };
+    runtime.tasks.clear();
+    runtime.loop = undefined;
+    runtime.pollAbortController = undefined;
+    runtime.pendingReceiveRequestAttempt = undefined;
+    runtime.activityVersion = 0;
+    runtime.activityWaiter = undefined;
+    runtime.status.running = true;
+    runtime.status.stopping = false;
+    runtime.status.inFlight = 0;
+    runtime.status.buffered = 0;
+    runtime.loop = this.runRouteLoop(runtime);
+  }
+
+  private async cleanupFailedStart(
+    startedRuntimes: readonly RouteRuntime<unknown>[],
+    loopsStarted: boolean,
+  ): Promise<unknown[]> {
+    if (startedRuntimes.length === 0) {
+      return [];
+    }
+
+    if (!loopsStarted) {
+      return this.runLifecycleHooks(startedRuntimes, 'afterStop', true);
+    }
+
+    return this.shutdownRoutes(startedRuntimes, { runBeforeStop: false, runAfterStop: true });
+  }
+
+  private async shutdownRoutes(
+    runtimes: readonly RouteRuntime<unknown>[],
+    options: { runBeforeStop: boolean; runAfterStop: boolean },
+  ): Promise<unknown[]> {
+    const errors: unknown[] = [];
+    if (runtimes.length === 0) {
+      return errors;
+    }
+
+    this.stopping = true;
+
+    for (const runtime of runtimes) {
+      runtime.status.stopping = true;
+      runtime.status.running = false;
+      runtime.pollAbortController?.abort();
+      this.signalRouteActivity(runtime);
+    }
+
+    if (options.runBeforeStop) {
+      errors.push(...(await this.runLifecycleHooks(runtimes, 'beforeStop', true)));
+    }
+
+    await Promise.all(
+      runtimes.map(async (runtime) => {
+        try {
+          await this.flushPendingDeletes(runtime);
+          await runtime.loop;
+          await Promise.all([...runtime.tasks]);
+          await this.flushPendingDeletes(runtime);
+        } catch (error: unknown) {
+          errors.push(error);
+        } finally {
+          runtime.loop = undefined;
+          runtime.pollAbortController = undefined;
+          runtime.pendingReceiveRequestAttempt = undefined;
+          runtime.status.running = false;
+          runtime.status.stopping = false;
+          runtime.status.buffered = runtime.buffer.length;
+        }
+      }),
+    );
+
+    if (options.runAfterStop) {
+      errors.push(...(await this.runLifecycleHooks(runtimes, 'afterStop', true)));
+    }
+
+    return errors;
+  }
+
+  private async runLifecycleHooks(
+    runtimes: readonly RouteRuntime<unknown>[],
+    phase: SqsWorkerLifecyclePhase,
+    reverseOrder = false,
+  ): Promise<unknown[]> {
+    const errors: unknown[] = [];
+    const orderedRuntimes = reverseOrder ? [...runtimes].reverse() : [...runtimes];
+
+    for (const runtime of orderedRuntimes) {
+      const hookError = await runLifecycleHook(runtime, phase, this.logger);
+      if (hookError) {
+        errors.push(hookError);
+      }
+    }
+
+    return errors;
   }
 
   private emitInfrastructureRuntimeEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
@@ -331,7 +481,7 @@ function normalizeReceiveStrategy(
   };
 }
 
-function getReceiveRequestAttemptId(runtime: RouteRuntime<unknown>): string | undefined {
+function getReceiveRequestAttemptId<TPayload>(runtime: RouteRuntime<TPayload>): string | undefined {
   const mode = runtime.route.receive.policy.requestAttemptIdMode ?? DEFAULT_RECEIVE_POLICY.requestAttemptIdMode;
   if (mode === 'off') {
     return undefined;
@@ -348,8 +498,8 @@ function getReceiveRequestAttemptId(runtime: RouteRuntime<unknown>): string | un
   return nextAttemptId;
 }
 
-function createReceiveRequestAttemptId(
-  route: NormalizedRoute<unknown>,
+function createReceiveRequestAttemptId<TPayload>(
+  route: NormalizedRoute<TPayload>,
   mode: SqsWorkerReceivePolicy['requestAttemptIdMode'],
 ): string {
   if (mode === 'runtime') {

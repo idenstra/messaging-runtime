@@ -15,7 +15,8 @@ export interface NormalizedReceiveStrategy extends SqsWorkerReceiveStrategy {
   policy: SqsWorkerReceivePolicy;
 }
 
-export interface NormalizedRoute<TPayload> extends Omit<SqsWorkerRoute<TPayload>, 'receive'> {
+export interface NormalizedRoute<TPayload> extends Omit<SqsWorkerRoute<TPayload>, 'receive' | 'decodePayload'> {
+  decodePayload: (message: SqsWorkerMessage) => TPayload;
   config: SqsWorkerRouteConfig;
   receive: NormalizedReceiveStrategy;
 }

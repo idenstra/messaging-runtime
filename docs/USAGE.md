@@ -11,6 +11,7 @@ The package currently provides four capability groups:
    - bounded concurrency
    - visibility heartbeat
    - graceful shutdown
+   - shared route lifecycle hooks
    - route-level failure and timeout policy
    - runtime counters and snapshots
 

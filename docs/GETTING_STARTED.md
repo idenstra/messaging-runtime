@@ -91,6 +91,76 @@ async function processJob(jobId: string): Promise<void> {
 }
 ```
 
+## Add route-owned startup and cleanup hooks
+
+Routes can capture local resources in closures and expose lifecycle hooks through `route.lifecycle`.
+
+Use:
+- `beforeStart` for startup work that must finish before the worker is considered started
+- `afterStart` for readiness follow-up after route loops are active
+- `beforeStop` for shutdown signaling while handlers may still drain
+- `afterStop` for destructive cleanup after drain completes
+
+```ts
+class FakePool {
+  async connect(): Promise<void> {}
+  async close(): Promise<void> {}
+}
+
+const pool = new FakePool();
+
+const host = new SqsWorkerServiceHost({
+  client: sqsAdapter,
+  queueResolver,
+  manifest,
+  routes: [
+    {
+      name: 'jobs',
+      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
+      lifecycle: {
+        beforeStart: async () => {
+          await pool.connect();
+        },
+        beforeStop: () => {
+          console.log('shutdown requested; handlers may still drain');
+        },
+        afterStop: async () => {
+          await pool.close();
+        },
+      },
+      handle: async ({ payload }) => {
+        await processJob(payload.jobId);
+      },
+    },
+  ],
+});
+```
+
+The hooks are code-owned only. They do not exist in worker manifests.
+
+If you use the core manager directly instead of the service host, the same lifecycle shape still applies:
+
+```ts
+const manager = new SqsWorkerManager(sqsAdapter);
+
+manager.register<JobMessage>({
+  name: 'jobs',
+  queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+  decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
+  lifecycle: {
+    beforeStart: async () => {
+      await pool.connect();
+    },
+    afterStop: async () => {
+      await pool.close();
+    },
+  },
+  handle: async ({ payload }) => {
+    await processJob(payload.jobId);
+  },
+});
+```
+
 ## Read typed SQS system attributes in handlers
 
 Use `message.systemAttributes` when handler logic depends on receive count or receive timestamps. The raw AWS `message.attributes` string map still remains available for compatibility.

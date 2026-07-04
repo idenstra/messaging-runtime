@@ -1296,6 +1296,9 @@ export interface SqsWorkerLateSettlementEvent extends SqsWorkerRuntimeEventBase 
 export type SqsWorkerLateSettlementOutcome = 'resolved' | 'rejected';
 
 // @public (undocumented)
+export type SqsWorkerLifecycleHook = () => Promise<void> | void;
+
+// @public (undocumented)
 export interface SqsWorkerLogger {
     // (undocumented)
     debug(message: string, meta?: Record<string, unknown>): void;
@@ -1515,6 +1518,8 @@ export interface SqsWorkerRoute<TPayload> {
     // (undocumented)
     handle: SqsWorkerHandler<TPayload>;
     // (undocumented)
+    lifecycle?: SqsWorkerRouteLifecycleHooks;
+    // (undocumented)
     name: string;
     // (undocumented)
     onError?: SqsWorkerErrorHook<TPayload>;
@@ -1582,6 +1587,18 @@ export interface SqsWorkerRouteCounters {
     preDispatchVisibilityFailureCount: number;
     // (undocumented)
     receiveEmptyCount: number;
+}
+
+// @public (undocumented)
+export interface SqsWorkerRouteLifecycleHooks {
+    // (undocumented)
+    afterStart?: SqsWorkerLifecycleHook;
+    // (undocumented)
+    afterStop?: SqsWorkerLifecycleHook;
+    // (undocumented)
+    beforeStart?: SqsWorkerLifecycleHook;
+    // (undocumented)
+    beforeStop?: SqsWorkerLifecycleHook;
 }
 
 // @public (undocumented)

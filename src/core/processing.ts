@@ -33,7 +33,7 @@ export interface WorkerProcessingDependencies {
   signalRouteActivity<TPayload>(runtime: RouteRuntime<TPayload>): void;
 }
 
-export function calculateRouteDemand(runtime: RouteRuntime<unknown>): number {
+export function calculateRouteDemand<TPayload>(runtime: RouteRuntime<TPayload>): number {
   const prefetchLimit = Math.min(runtime.route.config.concurrency, runtime.route.config.maxMessagesPerPoll);
   return Math.max(
     0,
@@ -41,8 +41,8 @@ export function calculateRouteDemand(runtime: RouteRuntime<unknown>): number {
   );
 }
 
-export async function dispatchBufferedMessages(
-  runtime: RouteRuntime<unknown>,
+export async function dispatchBufferedMessages<TPayload>(
+  runtime: RouteRuntime<TPayload>,
   dependencies: WorkerProcessingDependencies,
 ): Promise<void> {
   const { route, status } = runtime;
@@ -63,8 +63,8 @@ export async function dispatchBufferedMessages(
   }
 }
 
-export function startMessageTask(
-  runtime: RouteRuntime<unknown>,
+export function startMessageTask<TPayload>(
+  runtime: RouteRuntime<TPayload>,
   rawMessage: SqsSdkMessage,
   dependencies: WorkerProcessingDependencies,
 ): void {
@@ -91,8 +91,8 @@ export function startMessageTask(
   runtime.tasks.add(task);
 }
 
-export async function waitForRouteActivity(
-  runtime: RouteRuntime<unknown>,
+export async function waitForRouteActivity<TPayload>(
+  runtime: RouteRuntime<TPayload>,
   timeoutMs: number,
   observedActivityVersion: number,
 ): Promise<void> {
@@ -126,8 +126,8 @@ export async function waitForRouteActivity(
   });
 }
 
-async function prepareBufferedMessageForDispatch(
-  runtime: RouteRuntime<unknown>,
+async function prepareBufferedMessageForDispatch<TPayload>(
+  runtime: RouteRuntime<TPayload>,
   bufferedMessage: BufferedRouteMessage,
   dependencies: WorkerProcessingDependencies,
 ): Promise<boolean> {
@@ -205,8 +205,8 @@ async function prepareBufferedMessageForDispatch(
   }
 }
 
-async function processMessage(
-  runtime: RouteRuntime<unknown>,
+async function processMessage<TPayload>(
+  runtime: RouteRuntime<TPayload>,
   rawMessage: SqsSdkMessage,
   dependencies: WorkerProcessingDependencies,
 ): Promise<void> {

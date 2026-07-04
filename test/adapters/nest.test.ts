@@ -62,6 +62,7 @@ test('nest host starts and stops the underlying manager lifecycle', async () => 
 });
 
 test('nest host also works with the higher-level worker service host', async () => {
+  const events: string[] = [];
   const serviceHost = new SqsWorkerServiceHost({
     client: new FakeSqsClient(),
     queueResolver: new FakeQueueResolver({ 'dispatch-queue': 'https://queue.test/email' }),
@@ -70,6 +71,20 @@ test('nest host also works with the higher-level worker service host', async () 
         name: 'dispatch-email',
         queue: 'dispatch-queue',
         handle: async () => undefined,
+        lifecycle: {
+          beforeStart: () => {
+            events.push('beforeStart');
+          },
+          afterStart: () => {
+            events.push('afterStart');
+          },
+          beforeStop: () => {
+            events.push('beforeStop');
+          },
+          afterStop: () => {
+            events.push('afterStop');
+          },
+        },
         config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
       },
     ],
@@ -82,6 +97,7 @@ test('nest host also works with the higher-level worker service host', async () 
   assert.equal(host.snapshot().routeCount, 1);
   await host.onModuleDestroy();
   assert.equal(host.status()[0]?.running, false);
+  assert.deepEqual(events, ['beforeStart', 'afterStart', 'beforeStop', 'afterStop']);
 });
 
 test('nest logger adapter tolerates unserializable metadata', () => {

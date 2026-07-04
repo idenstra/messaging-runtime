@@ -4,6 +4,7 @@
 
 Owned surfaces:
 - queue polling/runtime behavior
+- shared route lifecycle hooks for startup, readiness, stop-signal, and cleanup
 - route-level failure policy and timeout semantics
 - runtime event hooks and status/snapshot surfaces
 - OTEL metrics/tracing helpers and W3C trace propagation helpers

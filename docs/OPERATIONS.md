@@ -13,10 +13,32 @@ Recommended pattern:
 3. create runtime and transport adapters;
 4. preload queue and topic mappings when known;
 5. parse the worker manifest;
-6. construct the host;
+6. construct the host and any route-owned resources captured by lifecycle hooks;
 7. start the host through the signal runner or framework lifecycle.
 
 This keeps the package deterministic and easy to test.
+
+## Route-owned resource lifecycle
+
+Use `route.lifecycle` when a worker route needs startup or cleanup affordances for resources that stay owned by the consuming app, such as:
+
+- database pools
+- HTTP clients
+- telemetry exporters
+- local buffers or caches
+
+Recommended split:
+
+- `beforeStart`
+  - connect or warm up resources that must exist before the worker is considered started
+- `afterStart`
+  - emit readiness side effects after route loops are active
+- `beforeStop`
+  - signal shutdown or flip local state while handlers may still drain
+- `afterStop`
+  - close resources after the route has fully drained
+
+Keep destructive cleanup in `afterStop`, not `beforeStop`. `beforeStop` runs after polling is halted but before in-flight work has necessarily finished.
 
 ## Queue and topic resolution
 

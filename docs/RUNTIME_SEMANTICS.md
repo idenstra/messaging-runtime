@@ -72,6 +72,48 @@ Config is merged in this order:
 
 The later value wins.
 
+## Route lifecycle hooks
+
+Routes may declare a nested `lifecycle` object with these optional zero-argument hooks:
+
+- `beforeStart`
+- `afterStart`
+- `beforeStop`
+- `afterStop`
+
+The lifecycle surface is code-owned only. It is available on both direct `SqsWorkerManager` routes and `SqsWorkerServiceHost` routes because the host forwards the same route contract into the manager. Worker manifests do not have lifecycle fields.
+
+Deterministic ordering:
+
+- startup uses route registration order
+- shutdown uses reverse registration order
+
+Startup sequence:
+
+1. run every `beforeStart` hook in registration order
+2. initialize route runtime state and start route loops
+3. run every `afterStart` hook in registration order
+4. mark startup complete only after all `afterStart` hooks succeed
+
+Startup-failure cleanup:
+
+- `beforeStart` failure stops startup immediately
+- `afterStart` failure stops remaining `afterStart` hooks and starts cleanup
+- failed-start cleanup runs `afterStop` in reverse order for any route whose `beforeStart` completed
+- failed-start cleanup does not call `beforeStop`
+
+Shutdown sequence:
+
+1. mark the manager stopping and abort in-flight long polls
+2. run `beforeStop` in reverse order
+3. drain buffered work, in-flight handlers, and pending deletes
+4. run `afterStop` in reverse order
+
+Semantic rule:
+
+- use `beforeStop` for shutdown signaling or stop-mode changes while handlers may still be running
+- use `afterStop` for destructive cleanup such as closing pools, sockets, or clients
+
 ## FIFO ReceiveRequestAttemptId policy
 
 Advanced FIFO receive support is optional and off by default.
@@ -247,12 +289,21 @@ Worker manager shutdown does the following:
 
 1. marks routes as stopping;
 2. aborts in-flight long polls;
-3. drains any locally buffered messages instead of abandoning them;
-4. waits for route loops to finish;
-5. waits for in-flight tasks to settle according to their timeout strategy;
-6. flushes pending delete batches before returning.
+3. runs `beforeStop` hooks in reverse order;
+4. drains any locally buffered messages instead of abandoning them;
+5. waits for route loops to finish;
+6. waits for in-flight tasks to settle according to their timeout strategy;
+7. flushes pending delete batches before returning;
+8. runs `afterStop` hooks in reverse order.
 
 A cooperative timeout can extend shutdown until the timed-out handler settles. An abandon timeout can finish shutdown sooner because the runtime does not wait for the late handler before releasing the slot.
+
+Hook error handling:
+
+- `beforeStart` and `afterStart` failures are startup-fatal
+- `beforeStop` and `afterStop` failures are best-effort and aggregated after all cleanup hooks run
+- hook failures are logged through the runtime logger
+- no separate runtime events or snapshot fields are added for lifecycle-hook failures in this slice
 
 ## Runtime events
 

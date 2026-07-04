@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (175):
+- exported symbols (177):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -145,6 +145,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerHeartbeatSuccessEvent`
   - `SqsWorkerLateSettlementEvent`
   - `SqsWorkerLateSettlementOutcome`
+  - `SqsWorkerLifecycleHook`
   - `SqsWorkerLogger`
   - `SqsWorkerManager`
   - `SqsWorkerManagerOptions`
@@ -167,6 +168,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRoute`
   - `SqsWorkerRouteConfig`
   - `SqsWorkerRouteCounters`
+  - `SqsWorkerRouteLifecycleHooks`
   - `SqsWorkerRouteStatus`
   - `SqsWorkerRuntimeEvent`
   - `SqsWorkerRuntimeEventBase`
@@ -187,7 +189,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core/index.d.ts`
-- exported symbols (49):
+- exported symbols (51):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsWorkerAckAction`
@@ -210,6 +212,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerHeartbeatSuccessEvent`
   - `SqsWorkerLateSettlementEvent`
   - `SqsWorkerLateSettlementOutcome`
+  - `SqsWorkerLifecycleHook`
   - `SqsWorkerLogger`
   - `SqsWorkerManager`
   - `SqsWorkerManagerOptions`
@@ -231,6 +234,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRoute`
   - `SqsWorkerRouteConfig`
   - `SqsWorkerRouteCounters`
+  - `SqsWorkerRouteLifecycleHooks`
   - `SqsWorkerRouteStatus`
   - `SqsWorkerRuntimeEvent`
   - `SqsWorkerRuntimeEventBase`

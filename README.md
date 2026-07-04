@@ -18,6 +18,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - SQS worker runtime with long polling, bounded concurrency, graceful shutdown, and visibility heartbeats
 - optional FIFO `ReceiveRequestAttemptId` support with manifest-safe mode selection and route-owned custom token generation
 - route-level decode, handler, timeout, and failure handling
+- shared route lifecycle hooks for startup, stop-signal, and cleanup
 - explicit ack policy: delete the message or keep it for SQS redelivery
 - runtime events and snapshots for health and observability
 - manifest-driven worker host bootstrap for app-owned worker processes
@@ -182,6 +183,30 @@ const route = {
 };
 ```
 
+Route-owned resources can use the shared lifecycle surface without adding manifest-only hooks or framework coupling:
+
+```ts
+const route = {
+  name: 'jobs',
+  lifecycle: {
+    beforeStart: async () => {
+      await pool.connect();
+    },
+    beforeStop: () => {
+      console.log('shutdown requested; handlers may still drain');
+    },
+    afterStop: async () => {
+      await pool.close();
+    },
+  },
+  handle: async ({ payload }) => {
+    console.log(payload.jobId);
+  },
+};
+```
+
+`beforeStop` is the stop-signal hook. Use `afterStop` for destructive cleanup after the route has drained.
+
 For operator queue work, use the queue-ops helpers rather than ad hoc AWS calls:
 
 ```ts
@@ -223,6 +248,11 @@ const auditQueueUrl = await queueResolver.resolve({
 Manual message-level replay remains consumer-owned because idempotency and safety rules depend on the consuming system. See [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md).
 
 For OTEL metrics, W3C trace propagation, and a SigNoz-backed worker example, use the dedicated observability subpath and start with [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) plus [`examples/observability/otel-signoz-worker.ts`](examples/observability/otel-signoz-worker.ts).
+
+For route lifecycle examples, see:
+
+- [`examples/worker-lifecycle/direct-manager-lifecycle.ts`](examples/worker-lifecycle/direct-manager-lifecycle.ts)
+- [`examples/worker-lifecycle/service-host-lifecycle.ts`](examples/worker-lifecycle/service-host-lifecycle.ts)
 
 For transport-level publisher work outside the worker core, use:
 

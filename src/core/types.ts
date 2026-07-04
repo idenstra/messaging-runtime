@@ -103,6 +103,15 @@ export interface SqsWorkerReceiveStrategy {
   createRequestAttemptId?: () => string;
 }
 
+export type SqsWorkerLifecycleHook = () => Promise<void> | void;
+
+export interface SqsWorkerRouteLifecycleHooks {
+  beforeStart?: SqsWorkerLifecycleHook;
+  afterStart?: SqsWorkerLifecycleHook;
+  beforeStop?: SqsWorkerLifecycleHook;
+  afterStop?: SqsWorkerLifecycleHook;
+}
+
 export interface SqsWorkerRouteConfig {
   concurrency: number;
   waitTimeSeconds: number;
@@ -122,6 +131,7 @@ export interface SqsWorkerRoute<TPayload> {
   decodePayload?: (message: SqsWorkerMessage) => TPayload;
   handle: SqsWorkerHandler<TPayload>;
   onError?: SqsWorkerErrorHook<TPayload>;
+  lifecycle?: SqsWorkerRouteLifecycleHooks;
   config?: Partial<SqsWorkerRouteConfig>;
   receive?: SqsWorkerReceiveStrategy;
 }
