@@ -17,6 +17,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 
 - SQS worker runtime with long polling, bounded concurrency, graceful shutdown, and visibility heartbeats
 - optional FIFO `ReceiveRequestAttemptId` support with manifest-safe mode selection and route-owned custom token generation
+- explicit `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` factories for the most common worker shapes
 - route-level decode, handler, timeout, and failure handling
 - shared route lifecycle hooks for startup, stop-signal, and cleanup
 - explicit ack policy: delete the message or keep it for SQS redelivery
@@ -70,7 +71,7 @@ For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](d
 
 A minimal framework-agnostic worker uses one AWS SDK `SQSClient` wrapped once by `AwsSqsAdapter`.
 
-The runtime has a built-in JSON body decoder for SQS messages. This example still provides an explicit `decodePayload` so the handler is strongly typed and the snippet stays copy-pasteable.
+For the common worker shapes, prefer the explicit route factories. Manual route objects remain available when you need a custom decoder or a different payload contract.
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -78,11 +79,11 @@ import { randomUUID } from 'node:crypto';
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
-  decodeSqsJsonBody,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
   parseSqsWorkerServiceManifest,
   runSqsWorkerServiceUntilSignal,
+  sqsJsonRoute,
 } from '@idenstra/messaging-runtime';
 
 type JobMessage = {
@@ -115,14 +116,13 @@ const host = new SqsWorkerServiceHost({
   queueResolver,
   manifest,
   routes: [
-    {
+    sqsJsonRoute<JobMessage>({
       name: 'jobs',
-      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
       handle: async ({ payload, message, heartbeat }) => {
         console.log('processing message', message.messageId, payload);
         await heartbeat();
       },
-    },
+    }),
   ],
 });
 
@@ -170,17 +170,28 @@ Use this only on FIFO queues. The runtime reuses a pending token only across fai
 For SNS notifications delivered through SQS, decode the SNS envelope in the route:
 
 ```ts
-import { decodeSnsNotificationJson } from '@idenstra/messaging-runtime';
+import { snsJsonQueueRoute } from '@idenstra/messaging-runtime';
 
 type UserCreated = { userId: string };
 
-const route = {
+const route = snsJsonQueueRoute<UserCreated>({
   name: 'user-created',
-  decodePayload: ({ body }) => decodeSnsNotificationJson<UserCreated>(body).payload,
-  handle: async ({ payload }: { payload: UserCreated }) => {
+  handle: async ({ payload }) => {
     console.log(payload.userId);
   },
-};
+});
+```
+
+When the handler also needs parsed SNS envelope metadata, switch the helper into `envelope+payload` mode:
+
+```ts
+const envelopeRoute = snsJsonQueueRoute<UserCreated>({
+  name: 'user-created-envelope',
+  messageShape: 'envelope+payload',
+  handle: async ({ payload }) => {
+    console.log(payload.envelope.TopicArn, payload.payload.userId);
+  },
+});
 ```
 
 Route-owned resources can use the shared lifecycle surface without adding manifest-only hooks or framework coupling:

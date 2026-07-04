@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (177):
+- exported symbols (185):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -31,6 +31,9 @@ Package: `@idenstra/messaging-runtime`
   - `SnsEnvelope`
   - `SnsEnvelopeBase`
   - `SnsEnvelopeType`
+  - `snsJsonQueueRoute`
+  - `SnsJsonQueueRouteMessageShape`
+  - `SnsJsonQueueRouteOptions`
   - `SnsMessageAttributes`
   - `SnsNotificationEnvelope`
   - `snsNumberAttribute`
@@ -82,6 +85,8 @@ Package: `@idenstra/messaging-runtime`
   - `SqsDeleteMessagesResult`
   - `SqsDlqRedriveManager`
   - `SqsDlqRedriveManagerOptions`
+  - `sqsJsonRoute`
+  - `SqsJsonRouteOptions`
   - `SqsMessageAttributes`
   - `SqsMessageBatchOperator`
   - `SqsMessageMoveTaskStatus`
@@ -124,6 +129,8 @@ Package: `@idenstra/messaging-runtime`
   - `SqsSendStringInput`
   - `SqsSendStringOptions`
   - `sqsStringAttribute`
+  - `sqsStringRoute`
+  - `SqsStringRouteOptions`
   - `SqsTransportClient`
   - `SqsWorkerAckAction`
   - `SqsWorkerBufferedMessageDropEvent`
@@ -178,6 +185,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerServiceLifecycle`
   - `SqsWorkerServiceManifest`
   - `SqsWorkerServiceManifestRoute`
+  - `SqsWorkerServiceRegisteredRoute`
   - `SqsWorkerServiceRoute`
   - `SqsWorkerServiceRunOptions`
   - `SqsWorkerTimeoutError`

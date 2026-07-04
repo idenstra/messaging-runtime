@@ -1,7 +1,12 @@
 import type {
   SqsRuntimeClient,
+  SqsWorkerAckAction,
+  SqsWorkerErrorContext,
+  SqsWorkerHandlerContext,
+  SqsWorkerHandlerResult,
   SqsWorkerManagerOptions,
   SqsWorkerManagerSnapshot,
+  SqsWorkerMessage,
   SqsWorkerReceivePolicy,
   SqsWorkerReceiveStrategy,
   SqsWorkerRoute,
@@ -25,6 +30,23 @@ export interface SqsWorkerServiceRoute<TPayload> extends Omit<SqsWorkerRoute<TPa
   queue?: string;
 }
 
+export type SqsWorkerServiceRegisteredRoute = Omit<
+  SqsWorkerServiceRoute<unknown>,
+  'decodePayload' | 'handle' | 'onError'
+> & {
+  decodePayload?(message: SqsWorkerMessage): unknown;
+  handle(
+    context: SqsWorkerHandlerContext<unknown>,
+  ): Promise<SqsWorkerHandlerResult | ReturnType<() => void> | undefined>;
+  onError?(
+    context: SqsWorkerErrorContext<unknown>,
+  ):
+    | SqsWorkerAckAction
+    | ReturnType<() => void>
+    | undefined
+    | Promise<SqsWorkerAckAction | ReturnType<() => void> | undefined>;
+};
+
 export interface SqsWorkerServiceManifestRoute {
   enabled?: boolean;
   queue?: string;
@@ -41,7 +63,7 @@ export interface SqsWorkerServiceManifest {
 export interface SqsWorkerServiceHostOptions {
   client: SqsRuntimeClient;
   queueResolver: SqsWorkerQueueResolver;
-  routes: readonly SqsWorkerServiceRoute<unknown>[];
+  routes: readonly SqsWorkerServiceRegisteredRoute[];
   manifest: SqsWorkerServiceManifest;
   managerOptions?: Omit<SqsWorkerManagerOptions, 'defaults'>;
 }
@@ -58,7 +80,7 @@ interface NormalizedManifestRoute {
 }
 
 interface ResolvedServiceRoute {
-  route: SqsWorkerServiceRoute<unknown>;
+  route: SqsWorkerServiceRegisteredRoute;
   queue: string;
   manifest: NormalizedManifestRoute;
 }
@@ -80,7 +102,7 @@ const RECEIVE_POLICY_KEYS = new Set<keyof SqsWorkerReceivePolicy>(['requestAttem
 
 export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
   private readonly manifest: SqsWorkerServiceManifest;
-  private readonly routesByName = new Map<string, SqsWorkerServiceRoute<unknown>>();
+  private readonly routesByName = new Map<string, SqsWorkerServiceRegisteredRoute>();
   private readonly activeRoutes: ResolvedServiceRoute[];
   private manager?: SqsWorkerManager;
   private managerPromise?: Promise<SqsWorkerManager>;
@@ -263,8 +285,8 @@ export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceM
   return { defaults, receiveDefaults, routes };
 }
 
-function indexRoutes(routes: readonly SqsWorkerServiceRoute<unknown>[]): Map<string, SqsWorkerServiceRoute<unknown>> {
-  const routesByName = new Map<string, SqsWorkerServiceRoute<unknown>>();
+function indexRoutes(routes: readonly SqsWorkerServiceRegisteredRoute[]): Map<string, SqsWorkerServiceRegisteredRoute> {
+  const routesByName = new Map<string, SqsWorkerServiceRegisteredRoute>();
 
   for (const route of routes) {
     const routeName = assertRouteName(route.name);
@@ -282,7 +304,7 @@ function indexRoutes(routes: readonly SqsWorkerServiceRoute<unknown>[]): Map<str
 }
 
 function resolveActiveRoutes(
-  routesByName: Map<string, SqsWorkerServiceRoute<unknown>>,
+  routesByName: Map<string, SqsWorkerServiceRegisteredRoute>,
   manifest: SqsWorkerServiceManifest,
 ): ResolvedServiceRoute[] {
   const activeRoutes: ResolvedServiceRoute[] = [];

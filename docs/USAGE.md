@@ -21,6 +21,7 @@ The package currently provides four capability groups:
    - signal-driven runner for app-owned worker processes
 
 3. Transport helpers
+   - explicit JSON/string route factories for common worker shapes
    - plain SQS JSON decoding
    - SNS-over-SQS envelope decoding
    - cached queue/topic resolution

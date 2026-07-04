@@ -1,6 +1,6 @@
 # Getting started
 
-This guide shows the smallest useful setup for a plain Node.js worker that consumes SQS messages, plus the common SNS-over-SQS, publish, and transport-batch helper paths.
+This guide shows the smallest useful setup for a plain Node.js worker that consumes SQS messages, plus the common route-factory, SNS-over-SQS, publish, and transport-batch helper paths.
 
 ## Prerequisites
 
@@ -27,7 +27,7 @@ Use one AWS SDK `SQSClient` wrapped by one `AwsSqsAdapter`.
 
 The package still keeps runtime and transport interfaces separate internally, but normal consumer setup should not need two different SQS wrapper classes.
 
-The runtime has a built-in JSON body decoder for SQS messages. The example below still provides an explicit `decodePayload` so the handler payload is strongly typed and the snippet is copy-pasteable as written.
+For the common worker shapes, prefer the explicit route factories. Manual route objects remain the escape hatch when you need a custom decoder or a different payload contract.
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -35,11 +35,11 @@ import { randomUUID } from 'node:crypto';
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
-  decodeSqsJsonBody,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
   parseSqsWorkerServiceManifest,
   runSqsWorkerServiceUntilSignal,
+  sqsJsonRoute,
 } from '@idenstra/messaging-runtime';
 
 type JobMessage = {
@@ -73,14 +73,13 @@ const host = new SqsWorkerServiceHost({
   queueResolver,
   manifest,
   routes: [
-    {
+    sqsJsonRoute<JobMessage>({
       name: 'jobs',
-      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
       handle: async ({ payload, heartbeat }) => {
         await processJob(payload.jobId);
         await heartbeat();
       },
-    },
+    }),
   ],
 });
 
@@ -89,6 +88,24 @@ await runSqsWorkerServiceUntilSignal(host);
 async function processJob(jobId: string): Promise<void> {
   console.log('processed job', jobId);
 }
+```
+
+The factory keeps the common JSON route shape short while preserving the same host and manager contracts underneath.
+
+## Use manual route objects when you need a custom decoder
+
+If the payload contract is not one of the built-in common shapes, keep using a plain route object:
+
+```ts
+import { decodeSqsJsonBody } from '@idenstra/messaging-runtime';
+
+const route = {
+  name: 'jobs',
+  decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
+  handle: async ({ payload }: { payload: JobMessage }) => {
+    await processJob(payload.jobId);
+  },
+};
 ```
 
 ## Add route-owned startup and cleanup hooks
@@ -256,29 +273,50 @@ Key behavior:
 
 ## Consume SNS notifications from SQS
 
-Use `decodeSnsNotificationJson` when an SQS queue is subscribed to an SNS topic.
+Use `snsJsonQueueRoute(...)` when an SQS queue is subscribed to an SNS topic and the handler should consume the decoded SNS `Message` payload directly.
 
 ```ts
-import { decodeSnsNotificationJson } from '@idenstra/messaging-runtime';
+import { snsJsonQueueRoute } from '@idenstra/messaging-runtime';
 
 type UserCreated = {
   userId: string;
 };
 
-const userCreatedRoute = {
+const userCreatedRoute = snsJsonQueueRoute<UserCreated>({
   name: 'user-created',
-  decodePayload: ({ body }: { body?: string }) => decodeSnsNotificationJson<UserCreated>(body).payload,
-  handle: async ({ payload }: { payload: UserCreated }) => {
+  handle: async ({ payload }) => {
     console.log('user created', payload.userId);
   },
-};
+});
 ```
 
-The decoder returns both the SNS envelope and the parsed JSON payload when the envelope is needed.
+When the handler also needs parsed SNS envelope metadata, switch the helper into `envelope+payload` mode:
 
 ```ts
-const { envelope, payload } = decodeSnsNotificationJson<UserCreated>(messageBody);
-console.log(envelope.TopicArn, payload.userId);
+const userCreatedEnvelopeRoute = snsJsonQueueRoute<UserCreated>({
+  name: 'user-created-envelope',
+  messageShape: 'envelope+payload',
+  handle: async ({ payload }) => {
+    console.log(payload.envelope.TopicArn, payload.payload.userId);
+  },
+});
+```
+
+If you need a different SNS-over-SQS payload contract than those two modes, use a manual route object with `decodeSnsNotificationJson(...)` directly.
+
+## Consume explicit string SQS bodies
+
+Use `sqsStringRoute(...)` when the worker should receive the SQS body as a required string instead of JSON.
+
+```ts
+import { sqsStringRoute } from '@idenstra/messaging-runtime';
+
+const rawRoute = sqsStringRoute({
+  name: 'raw-jobs',
+  handle: async ({ payload }) => {
+    console.log('raw body', payload);
+  },
+});
 ```
 
 ## Publish to SQS

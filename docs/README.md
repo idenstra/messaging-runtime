@@ -11,7 +11,7 @@ Start with the product documentation. Use the contributor documentation only whe
 
 | Document | Purpose |
 | --- | --- |
-| [`GETTING_STARTED.md`](GETTING_STARTED.md) | Build the first worker, decode SNS-over-SQS messages, and publish JSON messages. |
+| [`GETTING_STARTED.md`](GETTING_STARTED.md) | Build the first worker, use the common route factories, decode SNS-over-SQS messages, and publish messages. |
 | [`FEATURES.md`](FEATURES.md) | Understand the supported runtime surface, current gaps, and deliberate non-goals. |
 | [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) | Understand polling, concurrency, ack behavior, timeouts, heartbeats, and shutdown. |
 | [`OPERATIONS.md`](OPERATIONS.md) | Configure workers, observe runtime state, test without AWS, and use the Nest adapter. |
