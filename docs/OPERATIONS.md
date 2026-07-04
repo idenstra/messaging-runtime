@@ -226,7 +226,7 @@ handle: async ({ abortSignal }) => {
 
 ## Testing without AWS
 
-The runtime is designed around small client interfaces, so tests can use fake clients.
+The runtime is designed around small client interfaces, so unit and contract tests can use fake clients.
 
 ```ts
 class FakeSqsRuntimeClient {
@@ -244,7 +244,14 @@ class FakeSqsRuntimeClient {
 }
 ```
 
-Default repository verification must not require live AWS. Live AWS or emulator-backed tests should be optional lanes.
+Default repository verification must not require live AWS or Docker. Use the optional LocalStack lane when a change needs end-to-end proof against the built package output:
+
+```bash
+make verify-localstack
+npm run e2e:localstack -- --suite runtime,publishers
+```
+
+The full local testing story, suite names, prerequisites, and emulator boundaries live in [`TESTING.md`](TESTING.md).
 
 ## Queue operations and DLQ recovery
 
