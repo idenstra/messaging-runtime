@@ -9,13 +9,6 @@ import type {
   SqsPublisher,
 } from './transport';
 
-type SyncOrAsync<T> = T | Promise<T>;
-
-interface ForwardHandlerBaseOptions {
-  copyMessageAttributes?: boolean;
-  sizeValidation?: PublisherSizeValidationOverride;
-}
-
 export interface QueueForwardHandlerContext<TPayload> extends SqsWorkerHandlerContext<TPayload> {
   copiedMessageAttributes?: SqsMessageAttributes;
 }
@@ -26,32 +19,36 @@ export interface TopicForwardHandlerContext<TPayload> extends SqsWorkerHandlerCo
 
 export type QueueForwardMessageAttributeBuilder<TPayload> = (
   context: QueueForwardHandlerContext<TPayload>,
-) => SyncOrAsync<SqsMessageAttributes | undefined>;
+) => SqsMessageAttributes | undefined | Promise<SqsMessageAttributes | undefined>;
 
 export type TopicForwardMessageAttributeBuilder<TPayload> = (
   context: TopicForwardHandlerContext<TPayload>,
-) => SyncOrAsync<SnsMessageAttributes | undefined>;
+) => SnsMessageAttributes | undefined | Promise<SnsMessageAttributes | undefined>;
 
 export type QueueForwardValueBuilder<TPayload, TValue> =
   | TValue
-  | ((context: QueueForwardHandlerContext<TPayload>) => SyncOrAsync<TValue>);
+  | ((context: QueueForwardHandlerContext<TPayload>) => TValue | Promise<TValue>);
 
 export type TopicForwardValueBuilder<TPayload, TValue> =
   | TValue
-  | ((context: TopicForwardHandlerContext<TPayload>) => SyncOrAsync<TValue>);
+  | ((context: TopicForwardHandlerContext<TPayload>) => TValue | Promise<TValue>);
 
-export interface SqsForwardToQueueBaseOptions<TPayload> extends ForwardHandlerBaseOptions {
+export interface SqsForwardToQueueBaseOptions<TPayload> {
   publisher: SqsPublisher;
   queue: string;
+  copyMessageAttributes?: boolean;
+  sizeValidation?: PublisherSizeValidationOverride;
   buildMessageAttributes?: QueueForwardMessageAttributeBuilder<TPayload>;
   delaySeconds?: QueueForwardValueBuilder<TPayload, number | undefined>;
   messageGroupId?: QueueForwardValueBuilder<TPayload, string | undefined>;
   messageDeduplicationId?: QueueForwardValueBuilder<TPayload, string | undefined>;
 }
 
-export interface SnsForwardToTopicBaseOptions<TPayload> extends ForwardHandlerBaseOptions {
+export interface SnsForwardToTopicBaseOptions<TPayload> {
   publisher: SnsPublisher;
   topic: string;
+  copyMessageAttributes?: boolean;
+  sizeValidation?: PublisherSizeValidationOverride;
   buildMessageAttributes?: TopicForwardMessageAttributeBuilder<TPayload>;
   subject?: TopicForwardValueBuilder<TPayload, string | undefined>;
   messageGroupId?: TopicForwardValueBuilder<TPayload, string | undefined>;
@@ -60,37 +57,39 @@ export interface SnsForwardToTopicBaseOptions<TPayload> extends ForwardHandlerBa
 
 export interface SqsJsonToQueueForwardHandlerOptions<TPayload, TForwardPayload = TPayload>
   extends SqsForwardToQueueBaseOptions<TPayload> {
-  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => TForwardPayload | Promise<TForwardPayload>;
 }
 
 export interface SqsStringToQueueForwardHandlerOptions<TPayload> extends SqsForwardToQueueBaseOptions<TPayload> {
-  mapBody?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+  mapBody?: (context: SqsWorkerHandlerContext<TPayload>) => string | Promise<string>;
 }
 
 export interface SqsSerializedToQueueForwardHandlerOptions<TPayload, TForwardPayload = TPayload>
   extends SqsForwardToQueueBaseOptions<TPayload> {
   serialize: PublisherSerializer<TForwardPayload>;
-  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => TForwardPayload | Promise<TForwardPayload>;
 }
 
 export interface SqsJsonToTopicForwardHandlerOptions<TPayload, TForwardPayload = TPayload>
   extends SnsForwardToTopicBaseOptions<TPayload> {
-  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => TForwardPayload | Promise<TForwardPayload>;
 }
 
 export interface SqsStringToTopicForwardHandlerOptions<TPayload> extends SnsForwardToTopicBaseOptions<TPayload> {
-  mapMessage?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+  mapMessage?: (context: SqsWorkerHandlerContext<TPayload>) => string | Promise<string>;
 }
 
 export interface SqsSerializedToTopicForwardHandlerOptions<TPayload, TForwardPayload = TPayload>
   extends SnsForwardToTopicBaseOptions<TPayload> {
   serialize: PublisherSerializer<TForwardPayload>;
-  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => TForwardPayload | Promise<TForwardPayload>;
 }
 
 export interface SqsStructuredJsonToTopicForwardHandlerOptions<TPayload>
   extends Omit<SnsForwardToTopicBaseOptions<TPayload>, 'copyMessageAttributes' | 'buildMessageAttributes'> {
-  mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<SnsStructuredJsonMessage>;
+  mapPayload?: (
+    context: SqsWorkerHandlerContext<TPayload>,
+  ) => SnsStructuredJsonMessage | Promise<SnsStructuredJsonMessage>;
 }
 
 export function sqsJsonToQueueForwardHandler<TPayload>(
@@ -120,7 +119,7 @@ export function sqsStringToQueueForwardHandler(
 ): SqsWorkerHandler<string>;
 export function sqsStringToQueueForwardHandler<TPayload>(
   options: SqsStringToQueueForwardHandlerOptions<TPayload> & {
-    mapBody: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+    mapBody: (context: SqsWorkerHandlerContext<TPayload>) => string | Promise<string>;
   },
 ): SqsWorkerHandler<TPayload>;
 export function sqsStringToQueueForwardHandler<TPayload>(
@@ -190,7 +189,7 @@ export function sqsStringToTopicForwardHandler(
 ): SqsWorkerHandler<string>;
 export function sqsStringToTopicForwardHandler<TPayload>(
   options: SqsStringToTopicForwardHandlerOptions<TPayload> & {
-    mapMessage: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+    mapMessage: (context: SqsWorkerHandlerContext<TPayload>) => string | Promise<string>;
   },
 ): SqsWorkerHandler<TPayload>;
 export function sqsStringToTopicForwardHandler<TPayload>(
@@ -238,7 +237,9 @@ export function sqsStructuredJsonToTopicForwardHandler(
 ): SqsWorkerHandler<SnsStructuredJsonMessage>;
 export function sqsStructuredJsonToTopicForwardHandler<TPayload>(
   options: SqsStructuredJsonToTopicForwardHandlerOptions<TPayload> & {
-    mapPayload: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<SnsStructuredJsonMessage>;
+    mapPayload: (
+      context: SqsWorkerHandlerContext<TPayload>,
+    ) => SnsStructuredJsonMessage | Promise<SnsStructuredJsonMessage>;
   },
 ): SqsWorkerHandler<TPayload>;
 export function sqsStructuredJsonToTopicForwardHandler<TPayload>(
@@ -345,11 +346,11 @@ async function buildTopicMessageAttributes<TPayload>(
 }
 
 async function readOptionalValue<TContext, TValue>(
-  value: TValue | ((context: TContext) => SyncOrAsync<TValue>) | undefined,
+  value: TValue | ((context: TContext) => TValue | Promise<TValue>) | undefined,
   context: TContext,
 ): Promise<TValue | undefined> {
   if (typeof value === 'function') {
-    return (value as (context: TContext) => SyncOrAsync<TValue>)(context);
+    return (value as (context: TContext) => TValue | Promise<TValue>)(context);
   }
 
   return value;
@@ -439,7 +440,7 @@ function assertNoListValues(
 }
 
 function readStringPayload(payload: unknown, label: string): string {
-  return assertNonEmptyText(payload, `${label} must be a non-empty string`);
+  return assertNonEmptyText(payload, label);
 }
 
 function readStructuredPayload(payload: unknown, label: string): SnsStructuredJsonMessage {
@@ -461,7 +462,7 @@ function isStructuredJsonMessage(payload: unknown): payload is SnsStructuredJson
 
 function assertNonEmptyText(value: unknown, label: string): string {
   if (typeof value !== 'string' || !value.trim()) {
-    throw new Error(label);
+    throw new Error(`${label} must be a non-empty string.`);
   }
 
   return value.trim();
