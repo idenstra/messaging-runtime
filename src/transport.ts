@@ -71,6 +71,8 @@ const DEFAULT_SNS_ENVELOPE_LABEL = 'SNS envelope body';
 const DEFAULT_SNS_NOTIFICATION_LABEL = 'SNS notification message';
 const DEFAULT_SQS_QUEUE_DISCOVERY_PAGE_SIZE = 1_000;
 const MAX_SQS_QUEUE_DISCOVERY_PAGE_SIZE = 1_000;
+const DEFAULT_SQS_PUBLISH_MAX_BYTES = 1_048_576;
+const DEFAULT_SNS_PUBLISH_MAX_BYTES = 262_144;
 
 export type SnsEnvelopeType = 'Notification' | 'SubscriptionConfirmation' | 'UnsubscribeConfirmation';
 
@@ -197,6 +199,22 @@ export interface ListSnsTopicsResult {
   nextToken?: string;
 }
 
+export interface PublisherSizeValidation {
+  maxBytes?: number;
+}
+
+export type PublisherSizeValidationOverride = PublisherSizeValidation | false;
+
+export type PublisherSerializer<TPayload> = (payload: TPayload) => string;
+
+export interface SqsPublisherOptions {
+  sizeValidation?: PublisherSizeValidation;
+}
+
+export interface SnsPublisherOptions {
+  sizeValidation?: PublisherSizeValidation;
+}
+
 export interface SqsSendJsonOptions {
   delaySeconds?: number;
   messageAttributes?: SqsMessageAttributes;
@@ -207,6 +225,7 @@ export interface SqsSendJsonOptions {
 export interface SqsSendJsonInput<TPayload> extends SqsSendJsonOptions {
   queue: string;
   payload: TPayload;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SqsSendJsonBatchEntry<TId extends string = string, TPayload = unknown> extends SqsSendJsonOptions {
@@ -217,6 +236,48 @@ export interface SqsSendJsonBatchEntry<TId extends string = string, TPayload = u
 export interface SqsSendJsonBatchInput<TId extends string = string, TPayload = unknown> {
   queue: string;
   entries: Array<SqsSendJsonBatchEntry<TId, TPayload>>;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SqsSendStringOptions extends SqsSendJsonOptions {}
+
+export interface SqsSendStringInput extends SqsSendStringOptions {
+  queue: string;
+  body: string;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SqsSendStringBatchEntry<TId extends string = string> extends SqsSendStringOptions {
+  id: TId;
+  body: string;
+}
+
+export interface SqsSendStringBatchInput<TId extends string = string> {
+  queue: string;
+  entries: Array<SqsSendStringBatchEntry<TId>>;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SqsSendSerializedOptions extends SqsSendJsonOptions {}
+
+export interface SqsSendSerializedInput<TPayload> extends SqsSendSerializedOptions {
+  queue: string;
+  payload: TPayload;
+  serialize: PublisherSerializer<TPayload>;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SqsSendSerializedBatchEntry<TId extends string = string, TPayload = unknown>
+  extends SqsSendSerializedOptions {
+  id: TId;
+  payload: TPayload;
+}
+
+export interface SqsSendSerializedBatchInput<TId extends string = string, TPayload = unknown> {
+  queue: string;
+  serialize: PublisherSerializer<TPayload>;
+  entries: Array<SqsSendSerializedBatchEntry<TId, TPayload>>;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SqsSendJsonResult {
@@ -331,17 +392,36 @@ export interface SnsPublishStructuredJsonOptions {
 export interface SnsPublishJsonInput<TPayload> extends SnsPublishJsonOptions {
   topic: string;
   payload: TPayload;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SnsPublishStructuredJsonInput extends SnsPublishStructuredJsonOptions {
   topic: string;
   payload: SnsStructuredJsonMessage;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SnsPublishJsonResult {
   topicArn: string;
   messageId?: string;
   sequenceNumber?: string;
+}
+
+export interface SnsPublishStringOptions extends SnsPublishJsonOptions {}
+
+export interface SnsPublishStringInput extends SnsPublishStringOptions {
+  topic: string;
+  message: string;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SnsPublishSerializedOptions extends SnsPublishJsonOptions {}
+
+export interface SnsPublishSerializedInput<TPayload> extends SnsPublishSerializedOptions {
+  topic: string;
+  payload: TPayload;
+  serialize: PublisherSerializer<TPayload>;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SnsPublishJsonBatchEntry<TId extends string = string, TPayload = unknown>
@@ -359,11 +439,37 @@ export interface SnsPublishStructuredJsonBatchEntry<TId extends string = string>
 export interface SnsPublishJsonBatchInput<TId extends string = string, TPayload = unknown> {
   topic: string;
   entries: Array<SnsPublishJsonBatchEntry<TId, TPayload>>;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SnsPublishStructuredJsonBatchInput<TId extends string = string> {
   topic: string;
   entries: Array<SnsPublishStructuredJsonBatchEntry<TId>>;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SnsPublishStringBatchEntry<TId extends string = string> extends SnsPublishStringOptions {
+  id: TId;
+  message: string;
+}
+
+export interface SnsPublishStringBatchInput<TId extends string = string> {
+  topic: string;
+  entries: Array<SnsPublishStringBatchEntry<TId>>;
+  sizeValidation?: PublisherSizeValidationOverride;
+}
+
+export interface SnsPublishSerializedBatchEntry<TId extends string = string, TPayload = unknown>
+  extends SnsPublishSerializedOptions {
+  id: TId;
+  payload: TPayload;
+}
+
+export interface SnsPublishSerializedBatchInput<TId extends string = string, TPayload = unknown> {
+  topic: string;
+  serialize: PublisherSerializer<TPayload>;
+  entries: Array<SnsPublishSerializedBatchEntry<TId, TPayload>>;
+  sizeValidation?: PublisherSizeValidationOverride;
 }
 
 export interface SnsPublishJsonBatchSuccess<TId extends string = string> {
@@ -682,25 +788,157 @@ export class SnsTopicDiscovery {
   }
 }
 
+export type SnsStringArrayAttributeValue = string | number | boolean | null;
+
+export function sqsStringAttribute(value: string): SqsSdkMessageAttributeValue {
+  return { DataType: 'String', StringValue: assertNonEmptyText(value, 'SQS string attribute value') };
+}
+
+export function sqsNumberAttribute(value: number | bigint | string): SqsSdkMessageAttributeValue {
+  return { DataType: 'Number', StringValue: normalizeNumericAttributeValue(value, 'SQS number attribute value') };
+}
+
+export function sqsBinaryAttribute(value: Uint8Array): SqsSdkMessageAttributeValue {
+  return { DataType: 'Binary', BinaryValue: assertNonEmptyBinaryValue(value, 'SQS binary attribute value') };
+}
+
+export function snsStringAttribute(value: string): SnsSdkMessageAttributeValue {
+  return { DataType: 'String', StringValue: assertNonEmptyText(value, 'SNS string attribute value') };
+}
+
+export function snsNumberAttribute(value: number | bigint | string): SnsSdkMessageAttributeValue {
+  return { DataType: 'Number', StringValue: normalizeNumericAttributeValue(value, 'SNS number attribute value') };
+}
+
+export function snsBinaryAttribute(value: Uint8Array): SnsSdkMessageAttributeValue {
+  return { DataType: 'Binary', BinaryValue: assertNonEmptyBinaryValue(value, 'SNS binary attribute value') };
+}
+
+export function snsStringArrayAttribute(values: readonly SnsStringArrayAttributeValue[]): SnsSdkMessageAttributeValue {
+  return { DataType: 'String.Array', StringValue: JSON.stringify([...values]) };
+}
+
 export class SqsPublisher {
   private readonly resolver: SqsQueueUrlResolver;
+  private readonly sizeValidationDefaults?: PublisherSizeValidation;
 
   constructor(
     private readonly client: SqsTransportClient,
     resolver?: SqsQueueUrlResolver,
+    options: SqsPublisherOptions = {},
   ) {
     this.resolver = resolver ?? new SqsQueueUrlResolver(client);
+    this.sizeValidationDefaults = options.sizeValidation;
   }
 
   async sendJson<TPayload>(input: SqsSendJsonInput<TPayload>): Promise<SqsSendJsonResult> {
-    const queueUrl = await this.resolver.resolve(input.queue);
+    return this.sendPrepared(
+      input.queue,
+      {
+        body: serializeJsonPayload(input.payload, 'SQS publish payload'),
+        delaySeconds: input.delaySeconds,
+        messageAttributes: input.messageAttributes,
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      input.sizeValidation,
+      'SQS publish request',
+    );
+  }
+
+  async sendString(input: SqsSendStringInput): Promise<SqsSendJsonResult> {
+    return this.sendPrepared(
+      input.queue,
+      {
+        body: assertNonEmptyText(input.body, 'SQS publish body'),
+        delaySeconds: input.delaySeconds,
+        messageAttributes: input.messageAttributes,
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      input.sizeValidation,
+      'SQS string publish request',
+    );
+  }
+
+  async sendSerialized<TPayload>(input: SqsSendSerializedInput<TPayload>): Promise<SqsSendJsonResult> {
+    return this.sendPrepared(
+      input.queue,
+      {
+        body: serializeWithSerializer(input.payload, input.serialize, 'SQS serialized publish payload'),
+        delaySeconds: input.delaySeconds,
+        messageAttributes: input.messageAttributes,
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      input.sizeValidation,
+      'SQS serialized publish request',
+    );
+  }
+
+  async sendJsonBatch<TId extends string, TPayload>(
+    input: SqsSendJsonBatchInput<TId, TPayload>,
+  ): Promise<SqsSendJsonBatchResult<TId>> {
+    return this.sendBatchPrepared(input, (entry) => ({
+      body: serializeJsonPayload(entry.payload, `SQS batch publish entry ${entry.id} payload`),
+      delaySeconds: entry.delaySeconds,
+      messageAttributes: entry.messageAttributes,
+      messageGroupId: entry.messageGroupId,
+      messageDeduplicationId: entry.messageDeduplicationId,
+    }));
+  }
+
+  async sendStringBatch<TId extends string>(input: SqsSendStringBatchInput<TId>): Promise<SqsSendJsonBatchResult<TId>> {
+    return this.sendBatchPrepared(input, (entry) => ({
+      body: assertNonEmptyText(entry.body, `body for SQS string batch publish entry ${entry.id}`),
+      delaySeconds: entry.delaySeconds,
+      messageAttributes: entry.messageAttributes,
+      messageGroupId: entry.messageGroupId,
+      messageDeduplicationId: entry.messageDeduplicationId,
+    }));
+  }
+
+  async sendSerializedBatch<TId extends string, TPayload>(
+    input: SqsSendSerializedBatchInput<TId, TPayload>,
+  ): Promise<SqsSendJsonBatchResult<TId>> {
+    return this.sendBatchPrepared(input, (entry) => ({
+      body: serializeWithSerializer(
+        entry.payload,
+        input.serialize,
+        `SQS serialized batch publish entry ${entry.id} payload`,
+      ),
+      delaySeconds: entry.delaySeconds,
+      messageAttributes: entry.messageAttributes,
+      messageGroupId: entry.messageGroupId,
+      messageDeduplicationId: entry.messageDeduplicationId,
+    }));
+  }
+
+  private async sendPrepared(
+    queue: string,
+    prepared: PreparedSqsPublishRequest,
+    sizeValidationOverride: PublisherSizeValidationOverride | undefined,
+    label: string,
+  ): Promise<SqsSendJsonResult> {
+    const queueUrl = await this.resolver.resolve(queue);
+    validateSqsPublishRequestSize(
+      prepared.body,
+      prepared.messageAttributes,
+      resolveSizeValidation(
+        this.sizeValidationDefaults,
+        sizeValidationOverride,
+        `${label} sizeValidation`,
+        DEFAULT_SQS_PUBLISH_MAX_BYTES,
+      ),
+      label,
+    );
     const response = await this.client.sendMessage({
       QueueUrl: queueUrl,
-      MessageBody: JSON.stringify(input.payload),
-      DelaySeconds: input.delaySeconds,
-      MessageAttributes: input.messageAttributes,
-      MessageGroupId: input.messageGroupId,
-      MessageDeduplicationId: input.messageDeduplicationId,
+      MessageBody: prepared.body,
+      DelaySeconds: prepared.delaySeconds,
+      MessageAttributes: prepared.messageAttributes,
+      MessageGroupId: prepared.messageGroupId,
+      MessageDeduplicationId: prepared.messageDeduplicationId,
     });
 
     return {
@@ -713,11 +951,18 @@ export class SqsPublisher {
     };
   }
 
-  async sendJsonBatch<TId extends string, TPayload>(
-    input: SqsSendJsonBatchInput<TId, TPayload>,
+  private async sendBatchPrepared<TId extends string, TEntry extends { id: TId }>(
+    input: { queue: string; entries: TEntry[]; sizeValidation?: PublisherSizeValidationOverride },
+    prepareEntry: (entry: TEntry) => PreparedSqsPublishRequest,
   ): Promise<SqsSendJsonBatchResult<TId>> {
     assertUniqueBatchEntryIds(input.entries, 'SQS batch publish entry id');
     const queueUrl = await this.resolver.resolve(input.queue);
+    const sizeValidation = resolveSizeValidation(
+      this.sizeValidationDefaults,
+      input.sizeValidation,
+      'SQS batch publish sizeValidation',
+      DEFAULT_SQS_PUBLISH_MAX_BYTES,
+    );
     const successfulById: Record<string, SqsSendJsonBatchSuccess<TId>> = {};
     const failedById: Record<string, SqsSendJsonBatchFailure<TId>> = {};
 
@@ -729,14 +974,21 @@ export class SqsPublisher {
         Entries: chunk.map((entry, index) => {
           const internalId = `entry-${offset + index}`;
           internalIdMap.set(internalId, entry.id);
+          const prepared = prepareEntry(entry);
+          validateSqsPublishRequestSize(
+            prepared.body,
+            prepared.messageAttributes,
+            sizeValidation,
+            `SQS batch publish entry ${entry.id}`,
+          );
 
           return {
             Id: internalId,
-            MessageBody: JSON.stringify(entry.payload),
-            DelaySeconds: entry.delaySeconds,
-            MessageAttributes: entry.messageAttributes,
-            MessageGroupId: entry.messageGroupId,
-            MessageDeduplicationId: entry.messageDeduplicationId,
+            MessageBody: prepared.body,
+            DelaySeconds: prepared.delaySeconds,
+            MessageAttributes: prepared.messageAttributes,
+            MessageGroupId: prepared.messageGroupId,
+            MessageDeduplicationId: prepared.messageDeduplicationId,
           };
         }),
       });
@@ -841,113 +1093,179 @@ export class SqsMessageBatchOperator {
 
 export class SnsPublisher {
   private readonly resolver: SnsTopicArnResolver;
+  private readonly sizeValidationDefaults?: PublisherSizeValidation;
 
   constructor(
     private readonly client: SnsTransportClient,
     resolver?: SnsTopicArnResolver,
+    options: SnsPublisherOptions = {},
   ) {
     this.resolver = resolver ?? new SnsTopicArnResolver(client);
+    this.sizeValidationDefaults = options.sizeValidation;
   }
 
   async publishJson<TPayload>(input: SnsPublishJsonInput<TPayload>): Promise<SnsPublishJsonResult> {
-    const topicArn = await this.resolver.resolve(input.topic);
-    validateSnsPublishEntry(
+    return this.publishPrepared(
+      input.topic,
       {
+        message: serializeJsonPayload(input.payload, 'SNS publish payload'),
         subject: input.subject,
         messageAttributes: input.messageAttributes,
         messageGroupId: input.messageGroupId,
         messageDeduplicationId: input.messageDeduplicationId,
       },
-      { topicArn, label: 'SNS publish request', structuredJson: false },
+      input.sizeValidation,
+      { label: 'SNS publish request', structuredJson: false },
     );
-    const response = await this.client.publish({
-      TopicArn: topicArn,
-      Message: JSON.stringify(input.payload),
-      Subject: input.subject,
-      MessageAttributes: input.messageAttributes,
-      MessageGroupId: input.messageGroupId,
-      MessageDeduplicationId: input.messageDeduplicationId,
-    });
+  }
 
-    return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
+  async publishString(input: SnsPublishStringInput): Promise<SnsPublishJsonResult> {
+    return this.publishPrepared(
+      input.topic,
+      {
+        message: assertNonEmptyText(input.message, 'SNS publish message'),
+        subject: input.subject,
+        messageAttributes: input.messageAttributes,
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      input.sizeValidation,
+      { label: 'SNS string publish request', structuredJson: false },
+    );
+  }
+
+  async publishSerialized<TPayload>(input: SnsPublishSerializedInput<TPayload>): Promise<SnsPublishJsonResult> {
+    return this.publishPrepared(
+      input.topic,
+      {
+        message: serializeWithSerializer(input.payload, input.serialize, 'SNS serialized publish payload'),
+        subject: input.subject,
+        messageAttributes: input.messageAttributes,
+        messageGroupId: input.messageGroupId,
+        messageDeduplicationId: input.messageDeduplicationId,
+      },
+      input.sizeValidation,
+      { label: 'SNS serialized publish request', structuredJson: false },
+    );
   }
 
   async publishStructuredJson(input: SnsPublishStructuredJsonInput): Promise<SnsPublishJsonResult> {
-    const topicArn = await this.resolver.resolve(input.topic);
     validateSnsStructuredJsonMessage(input.payload, 'SNS structured publish payload');
-    validateSnsPublishEntry(
+    return this.publishPrepared(
+      input.topic,
       {
+        message: JSON.stringify(input.payload),
+        messageStructure: 'json',
         subject: input.subject,
         messageAttributes: readUnsupportedStructuredMessageAttributes(input),
         messageGroupId: input.messageGroupId,
         messageDeduplicationId: input.messageDeduplicationId,
       },
-      { topicArn, label: 'SNS structured publish request', structuredJson: true },
+      input.sizeValidation,
+      { label: 'SNS structured publish request', structuredJson: true },
     );
-    const response = await this.client.publish({
-      TopicArn: topicArn,
-      Message: JSON.stringify(input.payload),
-      MessageStructure: 'json',
-      Subject: input.subject,
-      MessageGroupId: input.messageGroupId,
-      MessageDeduplicationId: input.messageDeduplicationId,
-    });
-
-    return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
   }
 
   async publishJsonBatch<TId extends string, TPayload>(
     input: SnsPublishJsonBatchInput<TId, TPayload>,
   ): Promise<SnsPublishJsonBatchResult<TId>> {
-    assertUniqueBatchEntryIds(input.entries, 'SNS batch publish entry id');
-    const topicArn = await this.resolver.resolve(input.topic);
-    const successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>> = {};
-    const failedById: Record<string, SnsPublishJsonBatchFailure<TId>> = {};
+    return this.publishBatchPrepared(input, (entry) => ({
+      message: serializeJsonPayload(entry.payload, `SNS batch publish entry ${entry.id} payload`),
+      subject: entry.subject,
+      messageAttributes: entry.messageAttributes,
+      messageGroupId: entry.messageGroupId,
+      messageDeduplicationId: entry.messageDeduplicationId,
+    }));
+  }
 
-    for (let offset = 0; offset < input.entries.length; offset += 10) {
-      const chunk = input.entries.slice(offset, offset + 10);
-      const internalIdMap = new Map<string, TId>();
-      const response = await this.client.publishBatch({
-        TopicArn: topicArn,
-        PublishBatchRequestEntries: chunk.map((entry, index) => {
-          validateSnsPublishEntry(entry, {
-            topicArn,
-            label: `SNS batch publish entry ${entry.id}`,
-            structuredJson: false,
-          });
-          const internalId = createInternalBatchEntryId(offset, index);
-          internalIdMap.set(internalId, entry.id);
+  async publishStringBatch<TId extends string>(
+    input: SnsPublishStringBatchInput<TId>,
+  ): Promise<SnsPublishJsonBatchResult<TId>> {
+    return this.publishBatchPrepared(input, (entry) => ({
+      message: assertNonEmptyText(entry.message, `message for SNS string batch publish entry ${entry.id}`),
+      subject: entry.subject,
+      messageAttributes: entry.messageAttributes,
+      messageGroupId: entry.messageGroupId,
+      messageDeduplicationId: entry.messageDeduplicationId,
+    }));
+  }
 
-          return {
-            Id: internalId,
-            Message: JSON.stringify(entry.payload),
-            Subject: entry.subject,
-            MessageAttributes: entry.messageAttributes,
-            MessageGroupId: entry.messageGroupId,
-            MessageDeduplicationId: entry.messageDeduplicationId,
-          };
-        }),
-      });
-
-      recordSnsPublishSuccessfulBatchEntries(internalIdMap, response.Successful ?? [], successfulById);
-      recordFailedBatchEntries(internalIdMap, response.Failed ?? [], failedById);
-    }
-
-    return {
-      topicArn,
-      requestedCount: input.entries.length,
-      successfulCount: Object.keys(successfulById).length,
-      failedCount: Object.keys(failedById).length,
-      successfulById,
-      failedById,
-    };
+  async publishSerializedBatch<TId extends string, TPayload>(
+    input: SnsPublishSerializedBatchInput<TId, TPayload>,
+  ): Promise<SnsPublishJsonBatchResult<TId>> {
+    return this.publishBatchPrepared(input, (entry) => ({
+      message: serializeWithSerializer(
+        entry.payload,
+        input.serialize,
+        `SNS serialized batch publish entry ${entry.id} payload`,
+      ),
+      subject: entry.subject,
+      messageAttributes: entry.messageAttributes,
+      messageGroupId: entry.messageGroupId,
+      messageDeduplicationId: entry.messageDeduplicationId,
+    }));
   }
 
   async publishStructuredJsonBatch<TId extends string>(
     input: SnsPublishStructuredJsonBatchInput<TId>,
   ): Promise<SnsPublishJsonBatchResult<TId>> {
-    assertUniqueBatchEntryIds(input.entries, 'SNS structured batch publish entry id');
+    return this.publishBatchPrepared(
+      input,
+      (entry) => {
+        validateSnsStructuredJsonMessage(entry.payload, `SNS structured batch publish payload ${entry.id}`);
+        return {
+          message: JSON.stringify(entry.payload),
+          messageStructure: 'json',
+          subject: entry.subject,
+          messageAttributes: readUnsupportedStructuredMessageAttributes(entry),
+          messageGroupId: entry.messageGroupId,
+          messageDeduplicationId: entry.messageDeduplicationId,
+        };
+      },
+      { structuredJson: true, labelPrefix: 'SNS structured batch publish entry' },
+    );
+  }
+
+  private async publishPrepared(
+    topic: string,
+    prepared: PreparedSnsPublishRequest,
+    sizeValidationOverride: PublisherSizeValidationOverride | undefined,
+    context: { label: string; structuredJson: boolean },
+  ): Promise<SnsPublishJsonResult> {
+    const topicArn = await this.resolver.resolve(topic);
+    validateSnsPublishEntry(prepared, { topicArn, label: context.label, structuredJson: context.structuredJson });
+    validateSnsPublishRequestSize(
+      prepared.message,
+      prepared.messageAttributes,
+      prepared.subject,
+      resolveSizeValidation(
+        this.sizeValidationDefaults,
+        sizeValidationOverride,
+        `${context.label} sizeValidation`,
+        DEFAULT_SNS_PUBLISH_MAX_BYTES,
+      ),
+      context.label,
+    );
+    const response = await this.client.publish(
+      createSnsPublishCommandInput(topicArn, prepared, { includeMessageAttributes: !context.structuredJson }),
+    );
+
+    return { topicArn, messageId: response.MessageId, sequenceNumber: response.SequenceNumber };
+  }
+
+  private async publishBatchPrepared<TId extends string, TEntry extends { id: TId }>(
+    input: { topic: string; entries: TEntry[]; sizeValidation?: PublisherSizeValidationOverride },
+    prepareEntry: (entry: TEntry) => PreparedSnsPublishRequest,
+    options: { structuredJson?: boolean; labelPrefix?: string } = {},
+  ): Promise<SnsPublishJsonBatchResult<TId>> {
+    assertUniqueBatchEntryIds(input.entries, 'SNS batch publish entry id');
     const topicArn = await this.resolver.resolve(input.topic);
+    const sizeValidation = resolveSizeValidation(
+      this.sizeValidationDefaults,
+      input.sizeValidation,
+      'SNS batch publish sizeValidation',
+      DEFAULT_SNS_PUBLISH_MAX_BYTES,
+    );
     const successfulById: Record<string, SnsPublishJsonBatchSuccess<TId>> = {};
     const failedById: Record<string, SnsPublishJsonBatchFailure<TId>> = {};
 
@@ -957,22 +1275,22 @@ export class SnsPublisher {
       const response = await this.client.publishBatch({
         TopicArn: topicArn,
         PublishBatchRequestEntries: chunk.map((entry, index) => {
-          validateSnsStructuredJsonMessage(entry.payload, `SNS structured batch publish payload ${entry.id}`);
-          validateSnsPublishEntry(
-            { ...entry, messageAttributes: readUnsupportedStructuredMessageAttributes(entry) },
-            { topicArn, label: `SNS structured batch publish entry ${entry.id}`, structuredJson: true },
-          );
           const internalId = createInternalBatchEntryId(offset, index);
           internalIdMap.set(internalId, entry.id);
+          const prepared = prepareEntry(entry);
+          const label = `${options.labelPrefix ?? 'SNS batch publish entry'} ${entry.id}`;
+          validateSnsPublishEntry(prepared, { topicArn, label, structuredJson: options.structuredJson ?? false });
+          validateSnsPublishRequestSize(
+            prepared.message,
+            prepared.messageAttributes,
+            prepared.subject,
+            sizeValidation,
+            label,
+          );
 
-          return {
-            Id: internalId,
-            Message: JSON.stringify(entry.payload),
-            MessageStructure: 'json',
-            Subject: entry.subject,
-            MessageGroupId: entry.messageGroupId,
-            MessageDeduplicationId: entry.messageDeduplicationId,
-          };
+          return createSnsPublishBatchRequestEntry(internalId, prepared, {
+            includeMessageAttributes: !(options.structuredJson ?? false),
+          });
         }),
       });
 
@@ -1096,6 +1414,27 @@ export class AwsSnsAdapter implements SnsTransportClient {
   async publishBatch(input: PublishBatchCommandInput): Promise<PublishBatchCommandOutput> {
     return this.client.send(new PublishBatchCommand(input));
   }
+}
+
+interface PreparedSqsPublishRequest {
+  body: string;
+  delaySeconds?: number;
+  messageAttributes?: SqsMessageAttributes;
+  messageGroupId?: string;
+  messageDeduplicationId?: string;
+}
+
+interface PreparedSnsPublishRequest {
+  message: string;
+  messageStructure?: 'json';
+  subject?: string;
+  messageAttributes?: SnsMessageAttributes;
+  messageGroupId?: string;
+  messageDeduplicationId?: string;
+}
+
+interface NormalizedSizeValidation {
+  maxBytes: number;
 }
 
 interface NormalizedSqsQueueResolutionInput {
@@ -1458,6 +1797,185 @@ function createSimpleBatchResult<TId extends string>(
   };
 }
 
+function serializeJsonPayload<TPayload>(payload: TPayload, label: string): string {
+  const serialized = JSON.stringify(payload);
+  if (typeof serialized !== 'string') {
+    throw new Error(`${label} must serialize to a JSON string.`);
+  }
+  return serialized;
+}
+
+function serializeWithSerializer<TPayload>(
+  payload: TPayload,
+  serialize: PublisherSerializer<TPayload>,
+  label: string,
+): string {
+  if (typeof serialize !== 'function') {
+    throw new Error(`${label} serialize must be a function.`);
+  }
+
+  const serialized = serialize(payload);
+  return assertNonEmptyText(serialized, `${label} serialized message`);
+}
+
+function resolveSizeValidation(
+  defaults: PublisherSizeValidation | undefined,
+  override: PublisherSizeValidationOverride | undefined,
+  label: string,
+  defaultMaxBytes: number,
+): NormalizedSizeValidation | undefined {
+  if (override === false) {
+    return undefined;
+  }
+
+  if (override === undefined && defaults === undefined) {
+    return undefined;
+  }
+
+  const merged = { ...(defaults ?? {}), ...(override ?? {}) };
+  return {
+    maxBytes:
+      merged.maxBytes === undefined ? defaultMaxBytes : assertPositiveSafeInteger(merged.maxBytes, `${label} maxBytes`),
+  };
+}
+
+function validateSqsPublishRequestSize(
+  body: string,
+  messageAttributes: SqsMessageAttributes | undefined,
+  sizeValidation: NormalizedSizeValidation | undefined,
+  label: string,
+): void {
+  if (!sizeValidation) {
+    return;
+  }
+
+  const sizeBytes = utf8ByteLength(body) + calculateMessageAttributeBytes(messageAttributes);
+  assertWithinSizeLimit(sizeBytes, sizeValidation.maxBytes, label);
+}
+
+function validateSnsPublishRequestSize(
+  message: string,
+  messageAttributes: SnsMessageAttributes | undefined,
+  subject: string | undefined,
+  sizeValidation: NormalizedSizeValidation | undefined,
+  label: string,
+): void {
+  if (!sizeValidation) {
+    return;
+  }
+
+  const sizeBytes =
+    utf8ByteLength(message) +
+    calculateMessageAttributeBytes(messageAttributes) +
+    (subject === undefined ? 0 : utf8ByteLength(subject));
+  assertWithinSizeLimit(sizeBytes, sizeValidation.maxBytes, label);
+}
+
+function createSnsPublishCommandInput(
+  topicArn: string,
+  prepared: PreparedSnsPublishRequest,
+  options: { includeMessageAttributes: boolean },
+): PublishCommandInput {
+  return {
+    TopicArn: topicArn,
+    Message: prepared.message,
+    ...(prepared.messageStructure === undefined ? {} : { MessageStructure: prepared.messageStructure }),
+    Subject: prepared.subject,
+    ...(options.includeMessageAttributes ? { MessageAttributes: prepared.messageAttributes } : {}),
+    MessageGroupId: prepared.messageGroupId,
+    MessageDeduplicationId: prepared.messageDeduplicationId,
+  };
+}
+
+function createSnsPublishBatchRequestEntry(
+  id: string,
+  prepared: PreparedSnsPublishRequest,
+  options: { includeMessageAttributes: boolean },
+): NonNullable<PublishBatchCommandInput['PublishBatchRequestEntries']>[number] {
+  return {
+    Id: id,
+    Message: prepared.message,
+    ...(prepared.messageStructure === undefined ? {} : { MessageStructure: prepared.messageStructure }),
+    Subject: prepared.subject,
+    ...(options.includeMessageAttributes ? { MessageAttributes: prepared.messageAttributes } : {}),
+    MessageGroupId: prepared.messageGroupId,
+    MessageDeduplicationId: prepared.messageDeduplicationId,
+  };
+}
+
+function assertWithinSizeLimit(sizeBytes: number, maxBytes: number, label: string): void {
+  if (sizeBytes > maxBytes) {
+    throw new Error(`${label} exceeds the configured size limit of ${maxBytes} bytes (${sizeBytes} bytes).`);
+  }
+}
+
+function calculateMessageAttributeBytes(messageAttributes: Record<string, AttributeValueLike> | undefined): number {
+  if (!messageAttributes) {
+    return 0;
+  }
+
+  let total = 0;
+  for (const [name, attribute] of Object.entries(messageAttributes)) {
+    total += utf8ByteLength(assertNonEmptyIdentifier(name, 'message attribute name'));
+    total += calculateMessageAttributeValueBytes(attribute);
+  }
+  return total;
+}
+
+function calculateMessageAttributeValueBytes(attribute: AttributeValueLike): number {
+  let total = 0;
+  if (typeof attribute.DataType === 'string') {
+    total += utf8ByteLength(attribute.DataType);
+  }
+  if (typeof attribute.StringValue === 'string') {
+    total += utf8ByteLength(attribute.StringValue);
+  }
+  if (attribute.BinaryValue instanceof Uint8Array) {
+    total += attribute.BinaryValue.byteLength;
+  }
+  if (Array.isArray(attribute.StringListValues)) {
+    for (const value of attribute.StringListValues) {
+      total += utf8ByteLength(assertNonEmptyText(value, 'message attribute StringListValues item'));
+    }
+  }
+  if (Array.isArray(attribute.BinaryListValues)) {
+    for (const value of attribute.BinaryListValues) {
+      total += assertNonEmptyBinaryValue(value, 'message attribute BinaryListValues item').byteLength;
+    }
+  }
+  return total;
+}
+
+function utf8ByteLength(value: string): number {
+  return Buffer.byteLength(value, 'utf8');
+}
+
+function normalizeNumericAttributeValue(value: number | bigint | string, label: string): string {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label} must be a finite number.`);
+    }
+    return value.toString();
+  }
+
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+
+  const normalized = assertNonEmptyText(value, label);
+  if (!/^[+-]?(?:\d+|\d*\.\d+)(?:[eE][+-]?\d+)?$/.test(normalized)) {
+    throw new Error(`${label} must be a numeric string.`);
+  }
+  return normalized;
+}
+
+function assertNonEmptyBinaryValue(value: Uint8Array, label: string): Uint8Array {
+  if (!(value instanceof Uint8Array) || value.byteLength === 0) {
+    throw new Error(`${label} must be a non-empty Uint8Array.`);
+  }
+  return value;
+}
+
 function validateSnsPublishEntry(
   entry: {
     subject?: string;
@@ -1521,4 +2039,20 @@ function assertIntegerInRange(value: number, label: string, min: number, max: nu
   }
 
   return value;
+}
+
+function assertPositiveSafeInteger(value: number, label: string): number {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive safe integer.`);
+  }
+
+  return value;
+}
+
+interface AttributeValueLike {
+  DataType?: string;
+  StringValue?: string;
+  BinaryValue?: Uint8Array;
+  StringListValues?: string[];
+  BinaryListValues?: Uint8Array[];
 }

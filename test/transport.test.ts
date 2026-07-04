@@ -26,6 +26,13 @@ import {
   SqsQueueDiscovery,
   SqsQueueUrlResolver,
   type SqsTransportClient,
+  snsBinaryAttribute,
+  snsNumberAttribute,
+  snsStringArrayAttribute,
+  snsStringAttribute,
+  sqsBinaryAttribute,
+  sqsNumberAttribute,
+  sqsStringAttribute,
 } from '../src';
 
 class FakeSqsTransportClient implements SqsTransportClient {
@@ -482,6 +489,19 @@ test('SnsTopicDiscovery lists page-first topic summaries', async () => {
   });
 });
 
+test('attribute helper builders return service-native AWS attribute shapes', () => {
+  assert.deepEqual(sqsStringAttribute('alpha'), { DataType: 'String', StringValue: 'alpha' });
+  assert.deepEqual(sqsNumberAttribute(42), { DataType: 'Number', StringValue: '42' });
+  assert.deepEqual(sqsBinaryAttribute(Buffer.from('abc')), { DataType: 'Binary', BinaryValue: Buffer.from('abc') });
+  assert.deepEqual(snsStringAttribute('beta'), { DataType: 'String', StringValue: 'beta' });
+  assert.deepEqual(snsNumberAttribute('3.14'), { DataType: 'Number', StringValue: '3.14' });
+  assert.deepEqual(snsBinaryAttribute(Buffer.from('xyz')), { DataType: 'Binary', BinaryValue: Buffer.from('xyz') });
+  assert.deepEqual(snsStringArrayAttribute(['alpha', 2, true, null]), {
+    DataType: 'String.Array',
+    StringValue: JSON.stringify(['alpha', 2, true, null]),
+  });
+});
+
 test('SqsPublisher sendJson resolves queue identifiers and forwards transport-native options', async () => {
   const attribute: SqsMessageAttributeValue = { DataType: 'String', StringValue: 'alpha' };
   const client = new FakeSqsTransportClient().withQueueUrl(
@@ -512,6 +532,24 @@ test('SqsPublisher sendJson resolves queue identifiers and forwards transport-na
   });
 });
 
+test('SqsPublisher sendString and sendSerialized publish explicit string bodies', async () => {
+  const client = new FakeSqsTransportClient().withQueueUrl(
+    'dispatch-queue',
+    'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+  );
+  const publisher = new SqsPublisher(client);
+
+  await publisher.sendString({ queue: 'dispatch-queue', body: 'plain text body' });
+  await publisher.sendSerialized({
+    queue: 'dispatch-queue',
+    payload: { jobId: 'job-1' },
+    serialize: (payload) => `job:${payload.jobId}`,
+  });
+
+  assert.equal(client.sendMessageInputs[0]?.MessageBody, 'plain text body');
+  assert.equal(client.sendMessageInputs[1]?.MessageBody, 'job:job-1');
+});
+
 test('SqsPublisher sendJsonBatch chunks entries and returns keyed aggregate results', async () => {
   const client = new FakeSqsTransportClient()
     .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue')
@@ -538,6 +576,84 @@ test('SqsPublisher sendJsonBatch chunks entries and returns keyed aggregate resu
   assert.equal(result.successfulById['job-0']?.messageId, 'message-0');
   assert.equal(result.successfulById['job-10']?.messageId, 'message-10');
   assert.equal(result.failedById['job-11']?.code, 'InternalError');
+});
+
+test('SqsPublisher sendStringBatch and sendSerializedBatch preserve chunking and keyed failures', async () => {
+  const client = new FakeSqsTransportClient()
+    .withQueueUrl('dispatch-queue', 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue')
+    .withBatchResponse({
+      Successful: [{ Id: 'entry-0', MessageId: 'message-0' }],
+      Failed: [{ Id: 'entry-1', Code: 'InternalError', Message: 'boom', SenderFault: false }],
+    })
+    .withBatchResponse({ Successful: [{ Id: 'entry-0', MessageId: 'message-2' }] });
+  const publisher = new SqsPublisher(client);
+
+  const stringResult = await publisher.sendStringBatch({
+    queue: 'dispatch-queue',
+    entries: [
+      { id: 'job-0', body: 'body-0' },
+      { id: 'job-1', body: 'body-1' },
+    ],
+  });
+  const serializedResult = await publisher.sendSerializedBatch({
+    queue: 'dispatch-queue',
+    serialize: (payload: { index: number }) => `payload:${payload.index}`,
+    entries: [{ id: 'job-2', payload: { index: 2 } }],
+  });
+
+  assert.equal(client.sendMessageBatchInputs[0]?.Entries?.[0]?.MessageBody, 'body-0');
+  assert.equal(client.sendMessageBatchInputs[1]?.Entries?.[0]?.MessageBody, 'payload:2');
+  assert.equal(stringResult.failedById['job-1']?.code, 'InternalError');
+  assert.equal(serializedResult.successfulById['job-2']?.messageId, 'message-2');
+});
+
+test('SqsPublisher size validation supports constructor defaults, per-call override, disable, and batch entry failures', async () => {
+  const client = new FakeSqsTransportClient().withQueueUrl(
+    'dispatch-queue',
+    'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-queue',
+  );
+  const publisher = new SqsPublisher(client, undefined, { sizeValidation: { maxBytes: 24 } });
+
+  await assert.rejects(
+    () => publisher.sendString({ queue: 'dispatch-queue', body: '01234567890123456789012345' }),
+    /SQS string publish request exceeds the configured size limit of 24 bytes/i,
+  );
+  assert.equal(client.sendMessageInputs.length, 0);
+
+  await publisher.sendString({ queue: 'dispatch-queue', body: '01234567890123456789012345', sizeValidation: false });
+
+  await assert.rejects(
+    () =>
+      publisher.sendString({
+        queue: 'dispatch-queue',
+        body: '01234567890123456789012345',
+        sizeValidation: { maxBytes: 12 },
+      }),
+    /configured size limit of 12 bytes/i,
+  );
+
+  await assert.rejects(
+    () =>
+      publisher.sendStringBatch({
+        queue: 'dispatch-queue',
+        sizeValidation: { maxBytes: 8 },
+        entries: [{ id: 'job-0', body: 'too-large' }],
+      }),
+    /SQS batch publish entry job-0 exceeds the configured size limit of 8 bytes/i,
+  );
+  assert.equal(client.sendMessageBatchInputs.length, 0);
+
+  const rawAttribute: SqsMessageAttributeValue = { DataType: 'String', StringValue: 'abc' };
+  await assert.rejects(
+    () =>
+      publisher.sendJson({
+        queue: 'dispatch-queue',
+        payload: { ok: true },
+        sizeValidation: { maxBytes: 20 },
+        messageAttributes: { channel: rawAttribute },
+      }),
+    /configured size limit of 20 bytes/i,
+  );
 });
 
 test('SqsMessageBatchOperator deleteMessages chunks entries and returns keyed aggregate results', async () => {
@@ -649,6 +765,23 @@ test('SnsPublisher publishJson resolves topic identifiers and validates standard
   );
 });
 
+test('SnsPublisher publishString and publishSerialized send explicit string-mode messages', async () => {
+  const client = new FakeSnsTransportClient().withListTopicsResponse({
+    Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:events' }],
+  });
+  const publisher = new SnsPublisher(client);
+
+  await publisher.publishString({ topic: 'events', message: 'plain text event' });
+  await publisher.publishSerialized({
+    topic: 'events',
+    payload: { eventId: 'event-1' },
+    serialize: (payload) => `event:${payload.eventId}`,
+  });
+
+  assert.equal(client.publishInputs[0]?.Message, 'plain text event');
+  assert.equal(client.publishInputs[1]?.Message, 'event:event-1');
+});
+
 test('SnsPublisher publishJson enforces FIFO group semantics and allows omitted dedupe IDs', async () => {
   const client = new FakeSnsTransportClient();
   const publisher = new SnsPublisher(client);
@@ -714,6 +847,34 @@ test('SnsPublisher publishJsonBatch chunks entries and returns keyed aggregate r
   assert.equal(result.failedCount, 1);
   assert.equal(result.successfulById['event-10']?.sequenceNumber, '10');
   assert.equal(result.failedById['event-11']?.code, 'InternalError');
+});
+
+test('SnsPublisher publishStringBatch and publishSerializedBatch preserve keyed aggregate results', async () => {
+  const client = new FakeSnsTransportClient()
+    .withPublishBatchResponse({
+      Successful: [{ Id: 'entry-0', MessageId: 'message-0' }],
+      Failed: [{ Id: 'entry-1', Code: 'InternalError', Message: 'boom', SenderFault: false }],
+    })
+    .withPublishBatchResponse({ Successful: [{ Id: 'entry-0', MessageId: 'message-2' }] });
+  const publisher = new SnsPublisher(client);
+
+  const stringResult = await publisher.publishStringBatch({
+    topic: 'arn:aws:sns:us-east-1:123456789012:events',
+    entries: [
+      { id: 'event-0', message: 'plain-0' },
+      { id: 'event-1', message: 'plain-1' },
+    ],
+  });
+  const serializedResult = await publisher.publishSerializedBatch({
+    topic: 'arn:aws:sns:us-east-1:123456789012:events',
+    serialize: (payload: { eventId: string }) => `event:${payload.eventId}`,
+    entries: [{ id: 'event-2', payload: { eventId: 'event-2' } }],
+  });
+
+  assert.equal(client.publishBatchInputs[0]?.PublishBatchRequestEntries?.[0]?.Message, 'plain-0');
+  assert.equal(client.publishBatchInputs[1]?.PublishBatchRequestEntries?.[0]?.Message, 'event:event-2');
+  assert.equal(stringResult.failedById['event-1']?.code, 'InternalError');
+  assert.equal(serializedResult.successfulById['event-2']?.messageId, 'message-2');
 });
 
 test('SnsPublisher publishJsonBatch applies standard and FIFO topic semantics', async () => {
@@ -794,6 +955,42 @@ test('SnsPublisher publishJsonBatch applies standard and FIFO topic semantics', 
         entries: [{ id: 'event-3', payload: { kind: 'delivery' }, messageDeduplicationId: 'dedupe-3' }],
       }),
     /SNS batch publish entry event-3 must not declare messageDeduplicationId for a standard SNS topic/i,
+  );
+});
+
+test('SnsPublisher size validation supports defaults, per-call override, disable, and structured entries', async () => {
+  const client = new FakeSnsTransportClient().withListTopicsResponse({
+    Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:events' }],
+  });
+  const publisher = new SnsPublisher(client, undefined, { sizeValidation: { maxBytes: 18 } });
+
+  await assert.rejects(
+    () => publisher.publishString({ topic: 'events', message: '01234567890123456789' }),
+    /SNS string publish request exceeds the configured size limit of 18 bytes/i,
+  );
+  assert.equal(client.publishInputs.length, 0);
+
+  await publisher.publishString({ topic: 'events', message: '01234567890123456789', sizeValidation: false });
+
+  await assert.rejects(
+    () =>
+      publisher.publishJson({
+        topic: 'events',
+        payload: { ok: true },
+        sizeValidation: { maxBytes: 20 },
+        messageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
+      }),
+    /configured size limit of 20 bytes/i,
+  );
+
+  await assert.rejects(
+    () =>
+      publisher.publishStructuredJsonBatch({
+        topic: 'arn:aws:sns:us-east-1:123456789012:events',
+        sizeValidation: { maxBytes: 30 },
+        entries: [{ id: 'event-0', payload: { default: '0123456789012345678901234567890' } }],
+      }),
+    /SNS structured batch publish entry event-0 exceeds the configured size limit of 30 bytes/i,
   );
 });
 

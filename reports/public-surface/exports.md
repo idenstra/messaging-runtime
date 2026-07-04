@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (146):
+- exported symbols (175):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -23,14 +23,20 @@ Package: `@idenstra/messaging-runtime`
   - `ListSqsQueuesResult`
   - `packageMetadata`
   - `parseSqsWorkerServiceManifest`
+  - `PublisherSerializer`
+  - `PublisherSizeValidation`
+  - `PublisherSizeValidationOverride`
   - `runSqsWorkerServiceUntilSignal`
+  - `snsBinaryAttribute`
   - `SnsEnvelope`
   - `SnsEnvelopeBase`
   - `SnsEnvelopeType`
   - `SnsMessageAttributes`
   - `SnsNotificationEnvelope`
+  - `snsNumberAttribute`
   - `SnsPublishClient`
   - `SnsPublisher`
+  - `SnsPublisherOptions`
   - `SnsPublishJsonBatchEntry`
   - `SnsPublishJsonBatchFailure`
   - `SnsPublishJsonBatchInput`
@@ -39,10 +45,21 @@ Package: `@idenstra/messaging-runtime`
   - `SnsPublishJsonInput`
   - `SnsPublishJsonOptions`
   - `SnsPublishJsonResult`
+  - `SnsPublishSerializedBatchEntry`
+  - `SnsPublishSerializedBatchInput`
+  - `SnsPublishSerializedInput`
+  - `SnsPublishSerializedOptions`
+  - `SnsPublishStringBatchEntry`
+  - `SnsPublishStringBatchInput`
+  - `SnsPublishStringInput`
+  - `SnsPublishStringOptions`
   - `SnsPublishStructuredJsonBatchEntry`
   - `SnsPublishStructuredJsonBatchInput`
   - `SnsPublishStructuredJsonInput`
   - `SnsPublishStructuredJsonOptions`
+  - `snsStringArrayAttribute`
+  - `SnsStringArrayAttributeValue`
+  - `snsStringAttribute`
   - `SnsStructuredJsonMessage`
   - `SnsSubscriptionConfirmationEnvelope`
   - `SnsTopicArnResolver`
@@ -55,6 +72,7 @@ Package: `@idenstra/messaging-runtime`
   - `SqsBatchOperationClient`
   - `SqsBatchOperationFailure`
   - `SqsBatchOperationSuccess`
+  - `sqsBinaryAttribute`
   - `SqsChangeMessageVisibilityBatchEntry`
   - `SqsChangeMessageVisibilityInput`
   - `SqsChangeMessageVisibilityResult`
@@ -68,8 +86,10 @@ Package: `@idenstra/messaging-runtime`
   - `SqsMessageBatchOperator`
   - `SqsMessageMoveTaskStatus`
   - `SqsMessageMoveTaskSummary`
+  - `sqsNumberAttribute`
   - `SqsPublishClient`
   - `SqsPublisher`
+  - `SqsPublisherOptions`
   - `SqsQueueAttributesMap`
   - `SqsQueueDescription`
   - `SqsQueueDiscovery`
@@ -95,6 +115,15 @@ Package: `@idenstra/messaging-runtime`
   - `SqsSendJsonInput`
   - `SqsSendJsonOptions`
   - `SqsSendJsonResult`
+  - `SqsSendSerializedBatchEntry`
+  - `SqsSendSerializedBatchInput`
+  - `SqsSendSerializedInput`
+  - `SqsSendSerializedOptions`
+  - `SqsSendStringBatchEntry`
+  - `SqsSendStringBatchInput`
+  - `SqsSendStringInput`
+  - `SqsSendStringOptions`
+  - `sqsStringAttribute`
   - `SqsTransportClient`
   - `SqsWorkerAckAction`
   - `SqsWorkerBufferedMessageDropEvent`

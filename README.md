@@ -24,7 +24,8 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - OpenTelemetry metrics and tracing helpers through `@idenstra/messaging-runtime/observability`
 - SNS-over-SQS and plain SQS JSON decoding helpers
 - cached SQS queue URL and SNS topic ARN resolvers, including typed cross-account SQS name resolution
-- JSON SQS/SNS publishers, plus explicit SNS structured topic publishing
+- JSON, explicit string, and serializer-based SQS/SNS publishers, plus explicit SNS structured topic publishing
+- service-native SNS/SQS message-attribute builders plus optional local publish size validation
 - SQS batch message operations for delete and visibility changes
 - read-only queue/topic discovery, queue inspection helpers, and native SQS DLQ redrive task management
 - optional Nest lifecycle and logger adapter through `@idenstra/messaging-runtime/nest`
@@ -223,7 +224,14 @@ Manual message-level replay remains consumer-owned because idempotency and safet
 
 For OTEL metrics, W3C trace propagation, and a SigNoz-backed worker example, use the dedicated observability subpath and start with [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) plus [`examples/observability/otel-signoz-worker.ts`](examples/observability/otel-signoz-worker.ts).
 
-For transport-level batch message operations outside the worker core, use `SqsMessageBatchOperator`, `SnsPublisher.publishJsonBatch(...)`, and `SnsPublisher.publishStructuredJsonBatch(...)`. These helpers chunk automatically to AWS's 10-entry batch limit while keeping caller entry IDs stable in the result maps.
+For transport-level publisher work outside the worker core, use:
+
+- `SqsPublisher.sendJson(...)`, `sendString(...)`, `sendSerialized(...)`, and their batch variants
+- `SnsPublisher.publishJson(...)`, `publishString(...)`, `publishSerialized(...)`, and their batch variants
+- `SnsPublisher.publishStructuredJson(...)` when you intentionally need SNS `MessageStructure: 'json'`
+- `sqsStringAttribute(...)`, `snsStringArrayAttribute(...)`, and the other service-native attribute builders when you want typed message-attribute maps
+
+These helpers keep queue/topic resolution, AWS 10-entry chunking, and keyed aggregate success/failure results inside the package instead of duplicating them in each consumer.
 
 ## Development
 
