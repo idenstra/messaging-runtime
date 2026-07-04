@@ -197,6 +197,42 @@ test('activates only manifest-enabled routes and merges config with the document
   assert.equal(host.getSnapshot().routes[0]?.name, 'dispatch');
 });
 
+test('service host preserves shared route lifecycle hooks without adding manifest lifecycle knobs', async () => {
+  const events: string[] = [];
+  const host = new SqsWorkerServiceHost({
+    client: new FakeSqsClient(),
+    queueResolver: new FakeQueueResolver({ 'dispatch-queue': 'https://queue.test/dispatch' }),
+    routes: [
+      {
+        name: 'dispatch',
+        queue: 'dispatch-queue',
+        handle: async () => undefined,
+        lifecycle: {
+          beforeStart: () => {
+            events.push('beforeStart');
+          },
+          afterStart: () => {
+            events.push('afterStart');
+          },
+          beforeStop: () => {
+            events.push('beforeStop');
+          },
+          afterStop: () => {
+            events.push('afterStop');
+          },
+        },
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 10, heartbeatIntervalMs: 0 },
+      },
+    ],
+    manifest: parseSqsWorkerServiceManifest({ routes: { dispatch: {} } }),
+  });
+
+  await host.start();
+  await host.stop();
+
+  assert.deepEqual(events, ['beforeStart', 'afterStart', 'beforeStop', 'afterStop']);
+});
+
 test('manifest receive defaults can enable runtime-generated ReceiveRequestAttemptId for FIFO routes', async () => {
   const dispatchQueueUrl = 'https://queue.test/dispatch.fifo';
   const client = new FakeSqsClient().withMessage(dispatchQueueUrl, {

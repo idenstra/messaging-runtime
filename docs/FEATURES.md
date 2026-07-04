@@ -15,6 +15,7 @@
 | Message delete on success | Yes | Default success action is delete, finalized through route-local delete batching in the worker core. |
 | Keep message for redelivery | Yes | Handler or error policy can return `keep`. |
 | Route-level error hook | Yes | `onError` can override failure action. |
+| Shared route lifecycle hooks | Yes | `route.lifecycle.beforeStart`, `afterStart`, `beforeStop`, and `afterStop` work for both direct-manager and service-host usage. |
 | Handler timeout | Yes | Optional `handlerTimeoutMs`. |
 | Timeout strategies | Yes | `cooperative` waits for handler settlement; `abandon` finalizes immediately and observes late settlement. |
 | Visibility heartbeat | Yes | Interval heartbeat and manual `heartbeat()` callback. |

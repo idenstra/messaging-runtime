@@ -165,6 +165,7 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
         decodePayload: activeRoute.route.decodePayload,
         handle: activeRoute.route.handle,
         onError: activeRoute.route.onError,
+        lifecycle: activeRoute.route.lifecycle,
         config: routeConfig,
         receive,
       });
