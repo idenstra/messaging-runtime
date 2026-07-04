@@ -54,6 +54,7 @@ export type SqsWorkerMessageFinalizationReason = 'success' | 'failure' | 'timeou
 export type SqsWorkerDeleteBatchFailureMode = 'request-error' | 'response-failure';
 export type SqsWorkerBufferedMessageDropReason = 'missing-receipt-handle' | 'pre-dispatch-visibility-failure';
 export type SqsWorkerReceiveRequestAttemptIdMode = 'off' | 'runtime' | 'custom';
+export type SqsWorkerFiniteRunCompletionReason = 'idle' | 'bounded';
 
 export interface SqsWorkerHandlerResult {
   action?: SqsWorkerAckAction;
@@ -103,6 +104,35 @@ export interface SqsWorkerReceiveStrategy {
   createRequestAttemptId?: () => string;
 }
 
+export interface SqsWorkerFiniteRunDefaults {
+  idleEmptyReceiveWaves: number;
+}
+
+export interface SqsWorkerRunUntilIdleOptions {
+  idleEmptyReceiveWaves?: number;
+}
+
+export interface SqsWorkerRunBoundedOptions extends SqsWorkerRunUntilIdleOptions {
+  maxHandledMessagesPerRoute: number;
+}
+
+export interface SqsWorkerFiniteRunRouteResult {
+  routeName: string;
+  handledMessageCount: number;
+  completionReason: SqsWorkerFiniteRunCompletionReason;
+}
+
+export interface SqsWorkerFiniteRunResult {
+  startedAt: Date;
+  finishedAt: Date;
+  routes: SqsWorkerFiniteRunRouteResult[];
+}
+
+export interface SqsWorkerFiniteRunLifecycle {
+  runUntilIdle(options?: SqsWorkerRunUntilIdleOptions): Promise<SqsWorkerFiniteRunResult>;
+  runBounded(options: SqsWorkerRunBoundedOptions): Promise<SqsWorkerFiniteRunResult>;
+}
+
 export type SqsWorkerLifecycleHook = () => Promise<void> | void;
 
 export interface SqsWorkerRouteLifecycleHooks {
@@ -140,6 +170,7 @@ export interface SqsWorkerManagerOptions {
   logger?: SqsWorkerLogger;
   defaults?: Partial<SqsWorkerRouteConfig>;
   receiveDefaults?: Partial<SqsWorkerReceivePolicy>;
+  finiteRunDefaults?: Partial<SqsWorkerFiniteRunDefaults>;
   onEvent?: SqsWorkerRuntimeEventHook;
 }
 

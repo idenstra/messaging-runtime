@@ -157,6 +157,74 @@ Validation and correctness rules:
 
 This feature improves transport-level retry continuity only. It does not add an idempotency store or exactly-once delivery semantics, and visibility timeout plus duplicate-risk behavior still apply.
 
+## Finite-run execution
+
+The runtime now supports two explicit finite-run modes in addition to the normal long-running signal-driven lifecycle:
+
+- `runUntilIdle(...)`
+- `runBounded(...)`
+
+Both modes are available on:
+- `SqsWorkerManager`
+- `SqsWorkerServiceHost`
+- thin root-exported manager/host helper functions
+
+Finite-run configuration is entrypoint-owned:
+
+- manager construction may set `finiteRunDefaults`
+- each run may override `idleEmptyReceiveWaves`
+- manifests stay unchanged; there are no manifest-owned finite-run knobs
+
+### `runUntilIdle(...)`
+
+`runUntilIdle(...)` owns the full lifecycle:
+
+1. start the worker
+2. monitor route-local idle state
+3. call the normal `stop()` path when every active route is idle-complete
+
+Idle completion is route-local, not global-scheduler-based. A route is idle-complete only when:
+
+- `buffered === 0`
+- `inFlight === 0`
+- it has observed the configured number of consecutive empty receives
+
+Defaults:
+
+- `idleEmptyReceiveWaves` defaults to `2`
+- any non-empty receive resets the empty counter for that route
+
+### `runBounded(...)`
+
+`runBounded(...)` adds a per-route handled-message cap through `maxHandledMessagesPerRoute`.
+
+The runtime counts a message when it is handed to the handler. To keep the cap exact, polling demand is additionally constrained by:
+
+- handled messages already admitted to handlers
+- current buffered backlog
+- current in-flight work
+
+This means a route stops polling once its remaining budget is exhausted, then drains the already admitted local work through the normal runtime path.
+
+Route completion reasons:
+
+- `bounded`
+  - the route hit its handled-message cap and drained local work
+- `idle`
+  - the route dried up and satisfied the idle rule before consuming its full cap
+
+### Finite-run boundaries
+
+Finite-run execution does not change:
+
+- route lifecycle hook ordering
+- timeout semantics
+- keep/delete behavior
+- delete batching and retry-once fallback
+- graceful stop/drain behavior
+
+Finite-run execution also does not guarantee global queue emptiness. If external producers continue publishing while the run is active, new messages may still appear after a route has become idle-complete.
+
 ## Prefetch and buffer behavior
 
 The runtime now keeps a bounded raw-message prefetch buffer per route.

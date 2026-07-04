@@ -16,6 +16,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 ## What it provides
 
 - SQS worker runtime with long polling, bounded concurrency, graceful shutdown, and visibility heartbeats
+- explicit finite-run execution for idle drain and bounded maintenance passes
 - optional FIFO `ReceiveRequestAttemptId` support with manifest-safe mode selection and route-owned custom token generation
 - explicit `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` factories for the most common worker shapes
 - route-level decode, handler, timeout, and failure handling
@@ -250,6 +251,29 @@ const route = {
 ```
 
 `beforeStop` is the stop-signal hook. Use `afterStop` for destructive cleanup after the route has drained.
+
+Finite-run execution is available when the worker should stop on its own instead of waiting for a process signal:
+
+```ts
+const manager = new SqsWorkerManager(sqsAdapter, {
+  finiteRunDefaults: { idleEmptyReceiveWaves: 2 },
+});
+
+manager.register(
+  sqsJsonRoute<JobMessage>({
+    name: 'jobs',
+    queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+    handle: async ({ payload }) => {
+      console.log(payload.jobId);
+    },
+  }),
+);
+
+await manager.runUntilIdle();
+await manager.runBounded({ maxHandledMessagesPerRoute: 100 });
+```
+
+Use `runUntilIdle(...)` for drain-until-quiet maintenance runs and `runBounded(...)` for a capped per-route maintenance pass. Neither mode guarantees global queue emptiness when other producers may still publish concurrently.
 
 For operator queue work, use the queue-ops helpers rather than ad hoc AWS calls:
 

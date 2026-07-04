@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  DEFAULT_FINITE_RUN_DEFAULTS,
   DEFAULT_LOGGER,
   DEFAULT_RECEIVE_POLICY,
   DEFAULT_ROUTE_CONFIG,
@@ -12,6 +13,17 @@ import {
   WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES,
 } from './config';
 import { type DeleteBatchDependencies, flushPendingDeletes, queueDelete } from './delete-batch';
+import {
+  assignFiniteRunState,
+  buildFiniteRunResult,
+  clearFiniteRunState,
+  getFiniteRunCompletionReason,
+  normalizeFiniteRunDefaults,
+  normalizeRunBoundedOptions,
+  normalizeRunUntilIdleOptions,
+  recordFiniteRunMessagesReceived,
+  recordFiniteRunReceiveEmpty,
+} from './finite-run';
 import { runLifecycleHook, type SqsWorkerLifecyclePhase, validateLifecycleHooks } from './lifecycle';
 import { defaultDecodePayload } from './message';
 import {
@@ -37,6 +49,8 @@ import {
 } from './status';
 import type {
   SqsRuntimeClient,
+  SqsWorkerFiniteRunDefaults,
+  SqsWorkerFiniteRunResult,
   SqsWorkerLogger,
   SqsWorkerManagerOptions,
   SqsWorkerManagerSnapshot,
@@ -44,14 +58,17 @@ import type {
   SqsWorkerReceiveStrategy,
   SqsWorkerRoute,
   SqsWorkerRouteStatus,
+  SqsWorkerRunBoundedOptions,
   SqsWorkerRuntimeEvent,
+  SqsWorkerRunUntilIdleOptions,
 } from './types';
-import { describeUnknownError, isAbortError, sleep } from './utils';
+import { clearTimer, describeUnknownError, isAbortError, sleep } from './utils';
 
 export class SqsWorkerManager {
   private readonly logger: SqsWorkerLogger;
   private readonly defaults: Partial<import('./types').SqsWorkerRouteConfig>;
   private readonly receiveDefaults: SqsWorkerReceivePolicy;
+  private readonly finiteRunDefaults: SqsWorkerFiniteRunDefaults;
   private readonly onEvent?: import('./types').SqsWorkerRuntimeEventHook;
   private readonly routes = new Map<string, RouteRuntime<unknown>>();
   private readonly deleteBatchDependencies: DeleteBatchDependencies;
@@ -60,6 +77,8 @@ export class SqsWorkerManager {
   private stopping = false;
   private startPromise?: Promise<void>;
   private stopPromise?: Promise<void>;
+  private managerActivityVersion = 0;
+  private managerActivityWaiter?: () => void;
 
   constructor(
     private readonly client: SqsRuntimeClient,
@@ -68,6 +87,7 @@ export class SqsWorkerManager {
     this.logger = options.logger ?? DEFAULT_LOGGER;
     this.defaults = options.defaults ?? {};
     this.receiveDefaults = normalizeReceivePolicy(options.receiveDefaults);
+    this.finiteRunDefaults = normalizeFiniteRunDefaults(DEFAULT_FINITE_RUN_DEFAULTS, options.finiteRunDefaults);
     this.onEvent = options.onEvent;
 
     this.deleteBatchDependencies = {
@@ -171,6 +191,16 @@ export class SqsWorkerManager {
     return [...this.routes.values()].map(({ status }) => cloneRouteStatus(status));
   }
 
+  async runUntilIdle(options: SqsWorkerRunUntilIdleOptions = {}): Promise<SqsWorkerFiniteRunResult> {
+    const finiteRunOptions = normalizeRunUntilIdleOptions(this.finiteRunDefaults, options);
+    return this.runFinite(finiteRunOptions);
+  }
+
+  async runBounded(options: SqsWorkerRunBoundedOptions): Promise<SqsWorkerFiniteRunResult> {
+    const finiteRunOptions = normalizeRunBoundedOptions(this.finiteRunDefaults, options);
+    return this.runFinite(finiteRunOptions);
+  }
+
   getSnapshot(): SqsWorkerManagerSnapshot {
     const routes = this.getStatus();
 
@@ -228,6 +258,7 @@ export class SqsWorkerManager {
 
         const messages = (response.Messages ?? []).slice(0, demand);
         if (messages.length === 0) {
+          recordFiniteRunReceiveEmpty(runtime);
           this.emitRuntimeEvent(status, {
             type: 'receive-empty',
             at: new Date(),
@@ -238,6 +269,7 @@ export class SqsWorkerManager {
           continue;
         }
 
+        recordFiniteRunMessagesReceived(runtime);
         this.emitRuntimeEvent(status, {
           type: 'messages-received',
           at: new Date(),
@@ -315,6 +347,7 @@ export class SqsWorkerManager {
       }
 
       this.started = true;
+      this.signalManagerActivity();
     } catch (error: unknown) {
       const cleanupErrors = await this.cleanupFailedStart(startedRuntimes, loopsStarted);
       throw new AggregateError([error, ...cleanupErrors], 'SQS worker manager failed to start.');
@@ -342,6 +375,92 @@ export class SqsWorkerManager {
     const waiter = runtime.activityWaiter;
     runtime.activityWaiter = undefined;
     waiter?.();
+    this.signalManagerActivity();
+  }
+
+  private signalManagerActivity(): void {
+    this.managerActivityVersion += 1;
+    const waiter = this.managerActivityWaiter;
+    this.managerActivityWaiter = undefined;
+    waiter?.();
+  }
+
+  private assertFiniteRunAvailable(): void {
+    if (this.started || this.startPromise || this.stopping || this.stopPromise) {
+      throw new Error('Cannot run SQS worker finite-run execution while the manager is already running or stopping.');
+    }
+  }
+
+  private async runFinite(options: {
+    idleEmptyReceiveWaves: number;
+    maxHandledMessagesPerRoute?: number;
+  }): Promise<SqsWorkerFiniteRunResult> {
+    this.assertFiniteRunAvailable();
+
+    const runtimes = [...this.routes.values()];
+    const startedAt = new Date();
+    for (const runtime of runtimes) {
+      assignFiniteRunState(runtime, options);
+    }
+
+    try {
+      await this.start();
+      while (true) {
+        const completion = this.getFiniteRunCompletion(runtimes);
+        if (completion) {
+          await this.stop();
+          return buildFiniteRunResult(runtimes, startedAt, new Date());
+        }
+
+        await this.waitForManagerActivity(this.managerActivityVersion);
+      }
+    } finally {
+      for (const runtime of runtimes) {
+        clearFiniteRunState(runtime);
+      }
+    }
+  }
+
+  private getFiniteRunCompletion(
+    runtimes: readonly RouteRuntime<unknown>[],
+  ): Array<{ routeName: string; completionReason: string }> | undefined {
+    const completion = runtimes.map((runtime) => ({
+      routeName: runtime.route.name,
+      completionReason: getFiniteRunCompletionReason(runtime),
+    }));
+
+    if (completion.every((route) => route.completionReason !== undefined)) {
+      return completion as Array<{ routeName: string; completionReason: string }>;
+    }
+
+    return undefined;
+  }
+
+  private async waitForManagerActivity(observedActivityVersion: number): Promise<void> {
+    if (this.managerActivityVersion !== observedActivityVersion) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      let timer: NodeJS.Timeout | undefined;
+
+      const complete = (): void => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        clearTimer(timer);
+        if (this.managerActivityWaiter === complete) {
+          this.managerActivityWaiter = undefined;
+        }
+        resolve();
+      };
+
+      this.managerActivityWaiter = complete;
+      timer = setTimeout(complete, ROUTE_ACTIVITY_WAIT_MS);
+    });
   }
 
   private async flushPendingDeletes<TPayload>(runtime: RouteRuntime<TPayload>): Promise<void> {
@@ -453,6 +572,7 @@ export class SqsWorkerManager {
 
   private emitRuntimeEvent(status: SqsWorkerRouteStatus, event: SqsWorkerRuntimeEvent): void {
     recordEvent(status, event);
+    this.signalManagerActivity();
 
     if (!this.onEvent) {
       return;

@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (207):
+- exported symbols (218):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -29,6 +29,10 @@ Package: `@idenstra/messaging-runtime`
   - `QueueForwardHandlerContext`
   - `QueueForwardMessageAttributeBuilder`
   - `QueueForwardValueBuilder`
+  - `runSqsWorkerManagerBounded`
+  - `runSqsWorkerManagerUntilIdle`
+  - `runSqsWorkerServiceBounded`
+  - `runSqsWorkerServiceUntilIdle`
   - `runSqsWorkerServiceUntilSignal`
   - `snsBinaryAttribute`
   - `SnsEnvelope`
@@ -159,6 +163,11 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerErrorContext`
   - `SqsWorkerErrorHook`
   - `SqsWorkerFailureKind`
+  - `SqsWorkerFiniteRunCompletionReason`
+  - `SqsWorkerFiniteRunDefaults`
+  - `SqsWorkerFiniteRunLifecycle`
+  - `SqsWorkerFiniteRunResult`
+  - `SqsWorkerFiniteRunRouteResult`
   - `SqsWorkerHandler`
   - `SqsWorkerHandlerContext`
   - `SqsWorkerHandlerFailureEvent`
@@ -196,9 +205,11 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteLifecycleHooks`
   - `SqsWorkerRouteStatus`
+  - `SqsWorkerRunBoundedOptions`
   - `SqsWorkerRuntimeEvent`
   - `SqsWorkerRuntimeEventBase`
   - `SqsWorkerRuntimeEventHook`
+  - `SqsWorkerRunUntilIdleOptions`
   - `SqsWorkerServiceHost`
   - `SqsWorkerServiceHostOptions`
   - `SqsWorkerServiceLifecycle`
@@ -219,7 +230,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./core`
 - declarations: `dist/core/index.d.ts`
-- exported symbols (51):
+- exported symbols (58):
   - `SqsRuntimeClient`
   - `SqsRuntimeRequestOptions`
   - `SqsWorkerAckAction`
@@ -230,6 +241,11 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerErrorContext`
   - `SqsWorkerErrorHook`
   - `SqsWorkerFailureKind`
+  - `SqsWorkerFiniteRunCompletionReason`
+  - `SqsWorkerFiniteRunDefaults`
+  - `SqsWorkerFiniteRunLifecycle`
+  - `SqsWorkerFiniteRunResult`
+  - `SqsWorkerFiniteRunRouteResult`
   - `SqsWorkerHandler`
   - `SqsWorkerHandlerContext`
   - `SqsWorkerHandlerFailureEvent`
@@ -266,9 +282,11 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerRouteCounters`
   - `SqsWorkerRouteLifecycleHooks`
   - `SqsWorkerRouteStatus`
+  - `SqsWorkerRunBoundedOptions`
   - `SqsWorkerRuntimeEvent`
   - `SqsWorkerRuntimeEventBase`
   - `SqsWorkerRuntimeEventHook`
+  - `SqsWorkerRunUntilIdleOptions`
   - `SqsWorkerTimeoutError`
   - `SqsWorkerTimeoutStrategy`
 

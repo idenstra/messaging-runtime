@@ -1,4 +1,10 @@
-import type { SqsWorkerLogger, SqsWorkerReceivePolicy, SqsWorkerReceiveStrategy, SqsWorkerRouteConfig } from './types';
+import type {
+  SqsWorkerFiniteRunDefaults,
+  SqsWorkerLogger,
+  SqsWorkerReceivePolicy,
+  SqsWorkerReceiveStrategy,
+  SqsWorkerRouteConfig,
+} from './types';
 
 export const DEFAULT_ROUTE_CONFIG: SqsWorkerRouteConfig = {
   concurrency: 4,
@@ -20,6 +26,7 @@ export const DEFAULT_LOGGER: SqsWorkerLogger = {
 };
 
 export const DEFAULT_RECEIVE_POLICY: SqsWorkerReceivePolicy = { requestAttemptIdMode: 'off' };
+export const DEFAULT_FINITE_RUN_DEFAULTS: SqsWorkerFiniteRunDefaults = { idleEmptyReceiveWaves: 2 };
 
 export const ROUTE_ACTIVITY_WAIT_MS = 25;
 export const DELETE_BATCH_SIZE_LIMIT = 10;

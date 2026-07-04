@@ -1,4 +1,5 @@
 import type { Message as SqsSdkMessage } from '@aws-sdk/client-sqs';
+import type { RouteFiniteRunState } from './finite-run';
 import { createRouteStatus } from './status';
 import type {
   SqsWorkerHandlerResult,
@@ -47,6 +48,7 @@ export interface RouteRuntime<TPayload> {
   deleteBatch: RouteDeleteBatchState;
   pollAbortController?: AbortController;
   pendingReceiveRequestAttempt?: { value: string; createdAtMs: number };
+  finiteRun?: RouteFiniteRunState;
   activityVersion: number;
   activityWaiter?: () => void;
 }

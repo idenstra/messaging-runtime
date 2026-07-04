@@ -12,6 +12,7 @@ Format rules:
 ### Added
 
 - added explicit `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` factories for the most common worker declaration shapes
+- added explicit finite-run execution through `runUntilIdle(...)` and `runBounded(...)` on both the manager and the service host
 - added typed cross-account SQS queue-name resolution, typed preload entries, and read-only queue/topic discovery helpers
 - added `@idenstra/messaging-runtime/observability` with OTEL metrics adapters, W3C trace propagation helpers, and worker span wrappers
 - added OTEL/SigNoz observability docs, a compile-checked example worker, and AWS-aware autoscaling guidance for ECS/Fargate and Kubernetes

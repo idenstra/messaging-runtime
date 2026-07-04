@@ -1,5 +1,6 @@
 import type { Message as SqsSdkMessage } from '@aws-sdk/client-sqs';
 import { BUFFERED_VISIBILITY_EXTENSION_THRESHOLD_RATIO } from './config';
+import { getFiniteRunDemandCap, recordFiniteRunHandlerStart } from './finite-run';
 import { toWorkerMessage } from './message';
 import type { BufferedRouteMessage, RouteRuntime, SqsWorkerHandlerOutcome } from './runtime-state';
 import { recordFailure } from './status';
@@ -35,10 +36,12 @@ export interface WorkerProcessingDependencies {
 
 export function calculateRouteDemand<TPayload>(runtime: RouteRuntime<TPayload>): number {
   const prefetchLimit = Math.min(runtime.route.config.concurrency, runtime.route.config.maxMessagesPerPoll);
-  return Math.max(
+  const demand = Math.max(
     0,
     runtime.route.config.concurrency + prefetchLimit - (runtime.status.inFlight + runtime.buffer.length),
   );
+  const finiteRunCap = getFiniteRunDemandCap(runtime);
+  return finiteRunCap === undefined ? demand : Math.min(demand, finiteRunCap);
 }
 
 export async function dispatchBufferedMessages<TPayload>(
@@ -298,6 +301,7 @@ async function processMessage<TPayload>(
 
   try {
     const payload = route.decodePayload?.(message);
+    recordFiniteRunHandlerStart(runtime);
     dependencies.emitRuntimeEvent(status, {
       type: 'handler-start',
       at: new Date(),

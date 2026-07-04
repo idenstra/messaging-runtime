@@ -179,8 +179,10 @@ export interface SqsWorkerRouteStatus {
     stopping: boolean;
 }
 
+// Warning: (ae-forgotten-export) The symbol "SqsWorkerFiniteRunLifecycle" needs to be exported by the entry point nest.d.ts
+//
 // @public (undocumented)
-export interface SqsWorkerServiceLifecycle {
+export interface SqsWorkerServiceLifecycle extends SqsWorkerFiniteRunLifecycle {
     // (undocumented)
     getSnapshot(): SqsWorkerManagerSnapshot;
     // (undocumented)
