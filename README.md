@@ -27,6 +27,7 @@ It is intentionally **SNS/SQS-only**. It does not try to abstract Kafka, RabbitM
 - SNS-over-SQS and plain SQS JSON decoding helpers
 - cached SQS queue URL and SNS topic ARN resolvers, including typed cross-account SQS name resolution
 - JSON, explicit string, and serializer-based SQS/SNS publishers, plus explicit SNS structured topic publishing
+- thin forwarding handlers for fixed queue-to-queue and queue-to-topic relay flows
 - service-native SNS/SQS message-attribute builders plus optional local publish size validation
 - SQS batch message operations for delete and visibility changes
 - read-only queue/topic discovery, queue inspection helpers, and native SQS DLQ redrive task management
@@ -193,6 +194,38 @@ const envelopeRoute = snsJsonQueueRoute<UserCreated>({
   },
 });
 ```
+
+For simple relay workers, compose a route factory with one of the forwarding helpers instead of writing custom publish glue:
+
+```ts
+import {
+  AwsSnsAdapter,
+  SnsPublisher,
+  sqsJsonRoute,
+  sqsJsonToTopicForwardHandler,
+} from '@idenstra/messaging-runtime';
+import { SNSClient } from '@aws-sdk/client-sns';
+
+type EventPayload = {
+  eventId: string;
+  eventType: string;
+};
+
+const topicPublisher = new SnsPublisher(new AwsSnsAdapter(new SNSClient({ region: 'us-east-1' })));
+
+const relayRoute = sqsJsonRoute<EventPayload>({
+  name: 'event-relay',
+  queue: 'event-relay',
+  handle: sqsJsonToTopicForwardHandler({
+    publisher: topicPublisher,
+    topic: 'event-stream',
+    copyMessageAttributes: true,
+    subject: ({ payload }) => payload.eventType,
+  }),
+});
+```
+
+The forwarding helpers keep destinations fixed per helper instance. Use a normal custom handler when the flow needs dynamic routing, workflow behavior, or domain-level orchestration.
 
 Route-owned resources can use the shared lifecycle surface without adding manifest-only hooks or framework coupling:
 

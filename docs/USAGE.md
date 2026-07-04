@@ -25,7 +25,8 @@ The package currently provides four capability groups:
    - plain SQS JSON decoding
    - SNS-over-SQS envelope decoding
    - cached queue/topic resolution
-   - JSON SQS/SNS publishers
+   - JSON, string, serializer, and structured SNS publishers
+   - thin queue-to-queue and queue-to-topic forwarding handlers
 
 4. Queue operations
    - queue inspection
@@ -91,12 +92,15 @@ flowchart LR
   Broker["AWS SNS/SQS"]
   Consumer["worker route"]
   Decoder["decodeSqsJsonBody / decodeSnsNotificationJson"]
+  Relay["optional forwarding handler"]
 
   Producer --> Publisher
   Publisher --> Resolver
   Resolver --> Broker
   Broker --> Consumer
   Consumer --> Decoder
+  Consumer --> Relay
+  Relay --> Publisher
 ```
 
 ## Queue-ops flow

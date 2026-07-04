@@ -92,6 +92,47 @@ async function processJob(jobId: string): Promise<void> {
 
 The factory keeps the common JSON route shape short while preserving the same host and manager contracts underneath.
 
+## Compose simple relay workers with forwarding helpers
+
+When a worker only needs to republish messages to another queue or topic, compose the route with a forwarding helper instead of rewriting publish glue in every handler.
+
+```ts
+import { SNSClient } from '@aws-sdk/client-sns';
+import {
+  AwsSnsAdapter,
+  SnsPublisher,
+  sqsJsonRoute,
+  sqsJsonToTopicForwardHandler,
+} from '@idenstra/messaging-runtime';
+
+type EventPayload = {
+  eventId: string;
+  eventType: string;
+};
+
+const topicPublisher = new SnsPublisher(new AwsSnsAdapter(new SNSClient({ region: 'us-east-1' })));
+
+const relayRoute = sqsJsonRoute<EventPayload>({
+  name: 'event-relay',
+  queue: 'event-relay',
+  handle: sqsJsonToTopicForwardHandler({
+    publisher: topicPublisher,
+    topic: 'event-stream',
+    copyMessageAttributes: true,
+    subject: ({ payload }) => payload.eventType,
+  }),
+});
+```
+
+The forwarding layer stays intentionally thin:
+
+- destinations are fixed per helper instance
+- success returns normally and follows the route's normal delete-on-success path
+- publish failure throws and stays on the route failure path
+- metadata carry-over is explicit through `copyMessageAttributes` and destination-native builder fields
+
+Use a normal custom handler when you need dynamic target selection or domain workflow logic.
+
 ## Use manual route objects when you need a custom decoder
 
 If the payload contract is not one of the built-in common shapes, keep using a plain route object:
