@@ -219,6 +219,49 @@ manager.register<JobMessage>({
 });
 ```
 
+## Run a worker until idle or through a bounded maintenance pass
+
+Use finite-run execution when the worker should stop on its own after a maintenance-style pass instead of waiting for `SIGINT`/`SIGTERM`.
+
+`runUntilIdle(...)`:
+- starts the worker
+- waits until every active route has drained buffered/in-flight work and observed the configured number of consecutive empty receives
+- then performs the normal stop/drain sequence
+
+`runBounded(...)`:
+- starts the worker
+- caps admitted work per route by `maxHandledMessagesPerRoute`
+- lets already admitted work drain
+- returns `bounded` for routes that hit the cap and `idle` for routes that dried up first
+
+```ts
+const manager = new SqsWorkerManager(sqsAdapter, {
+  finiteRunDefaults: { idleEmptyReceiveWaves: 2 },
+});
+
+manager.register(
+  sqsJsonRoute<JobMessage>({
+    name: 'jobs',
+    queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+    handle: async ({ payload }) => {
+      await processJob(payload.jobId);
+    },
+  }),
+);
+
+await manager.runUntilIdle();
+await manager.runBounded({ maxHandledMessagesPerRoute: 100 });
+```
+
+The same surface is available on `SqsWorkerServiceHost` and through the thin helper functions:
+
+```ts
+await host.runUntilIdle();
+await host.runBounded({ maxHandledMessagesPerRoute: 100 });
+```
+
+Finite-run execution is still queue-local and transport-native. It does not guarantee global queue emptiness when external producers may keep publishing while the run is in progress.
+
 ## Read typed SQS system attributes in handlers
 
 Use `message.systemAttributes` when handler logic depends on receive count or receive timestamps. The raw AWS `message.attributes` string map still remains available for compatibility.

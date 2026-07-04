@@ -9,7 +9,13 @@ import type {
   ReceiveMessageCommandOutput,
 } from '@aws-sdk/client-sqs';
 import type { SqsRuntimeClient } from '../src';
-import { parseSqsWorkerServiceManifest, runSqsWorkerServiceUntilSignal, SqsWorkerServiceHost } from '../src';
+import {
+  parseSqsWorkerServiceManifest,
+  runSqsWorkerServiceBounded,
+  runSqsWorkerServiceUntilIdle,
+  runSqsWorkerServiceUntilSignal,
+  SqsWorkerServiceHost,
+} from '../src';
 
 class FakeSqsClient implements SqsRuntimeClient {
   readonly receiveInputs: ReceiveMessageCommandInput[] = [];
@@ -231,6 +237,77 @@ test('service host preserves shared route lifecycle hooks without adding manifes
   await host.stop();
 
   assert.deepEqual(events, ['beforeStart', 'afterStart', 'beforeStop', 'afterStop']);
+});
+
+test('service host exposes finite-run methods on top of manager defaults', async () => {
+  const dispatchQueueUrl = 'https://queue.test/dispatch';
+  const client = new FakeSqsClient().withMessage(dispatchQueueUrl, {
+    MessageId: 'm1',
+    ReceiptHandle: 'r1',
+    Body: JSON.stringify({ type: 'dispatch' }),
+  });
+  const host = new SqsWorkerServiceHost({
+    client,
+    queueResolver: new FakeQueueResolver({ 'dispatch-queue': dispatchQueueUrl }),
+    routes: [
+      {
+        name: 'dispatch',
+        queue: 'dispatch-queue',
+        handle: async () => undefined,
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+      },
+    ],
+    manifest: parseSqsWorkerServiceManifest({ routes: { dispatch: {} } }),
+    managerOptions: { finiteRunDefaults: { idleEmptyReceiveWaves: 1 } },
+  });
+
+  const result = await host.runUntilIdle();
+
+  assert.equal(client.receiveInputs.length, 2);
+  assert.deepEqual(result.routes, [{ routeName: 'dispatch', handledMessageCount: 1, completionReason: 'idle' }]);
+});
+
+test('service-host finite-run helpers delegate to the same host lifecycle surface', async () => {
+  const idleQueueUrl = 'https://queue.test/idle';
+  const idleHost = new SqsWorkerServiceHost({
+    client: new FakeSqsClient(),
+    queueResolver: new FakeQueueResolver({ 'idle-queue': idleQueueUrl }),
+    routes: [
+      {
+        name: 'idle',
+        queue: 'idle-queue',
+        handle: async () => undefined,
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+      },
+    ],
+    manifest: parseSqsWorkerServiceManifest({ routes: { idle: {} } }),
+  });
+
+  const idleResult = await runSqsWorkerServiceUntilIdle(idleHost, { idleEmptyReceiveWaves: 1 });
+  assert.equal(idleResult.routes[0]?.completionReason, 'idle');
+
+  const boundedQueueUrl = 'https://queue.test/bounded';
+  const boundedClient = new FakeSqsClient().withMessage(boundedQueueUrl, {
+    MessageId: 'm1',
+    ReceiptHandle: 'r1',
+    Body: JSON.stringify({ type: 'dispatch' }),
+  });
+  const boundedHost = new SqsWorkerServiceHost({
+    client: boundedClient,
+    queueResolver: new FakeQueueResolver({ 'dispatch-queue': boundedQueueUrl }),
+    routes: [
+      {
+        name: 'dispatch',
+        queue: 'dispatch-queue',
+        handle: async () => undefined,
+        config: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0 },
+      },
+    ],
+    manifest: parseSqsWorkerServiceManifest({ routes: { dispatch: {} } }),
+  });
+
+  const boundedResult = await runSqsWorkerServiceBounded(boundedHost, { maxHandledMessagesPerRoute: 1 });
+  assert.equal(boundedResult.routes[0]?.completionReason, 'bounded');
 });
 
 test('manifest receive defaults can enable runtime-generated ReceiveRequestAttemptId for FIFO routes', async () => {

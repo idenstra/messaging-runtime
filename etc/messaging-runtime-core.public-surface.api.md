@@ -106,6 +106,43 @@ export type SqsWorkerErrorHook<TPayload> = (context: SqsWorkerErrorContext<TPayl
 export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 
 // @public (undocumented)
+export type SqsWorkerFiniteRunCompletionReason = 'idle' | 'bounded';
+
+// @public (undocumented)
+export interface SqsWorkerFiniteRunDefaults {
+    // (undocumented)
+    idleEmptyReceiveWaves: number;
+}
+
+// @public (undocumented)
+export interface SqsWorkerFiniteRunLifecycle {
+    // (undocumented)
+    runBounded(options: SqsWorkerRunBoundedOptions): Promise<SqsWorkerFiniteRunResult>;
+    // (undocumented)
+    runUntilIdle(options?: SqsWorkerRunUntilIdleOptions): Promise<SqsWorkerFiniteRunResult>;
+}
+
+// @public (undocumented)
+export interface SqsWorkerFiniteRunResult {
+    // (undocumented)
+    finishedAt: Date;
+    // (undocumented)
+    routes: SqsWorkerFiniteRunRouteResult[];
+    // (undocumented)
+    startedAt: Date;
+}
+
+// @public (undocumented)
+export interface SqsWorkerFiniteRunRouteResult {
+    // (undocumented)
+    completionReason: SqsWorkerFiniteRunCompletionReason;
+    // (undocumented)
+    handledMessageCount: number;
+    // (undocumented)
+    routeName: string;
+}
+
+// @public (undocumented)
 export type SqsWorkerHandler<TPayload> = (context: SqsWorkerHandlerContext<TPayload>) => Promise<SqsWorkerHandlerResult | ReturnType<() => void> | undefined>;
 
 // @public (undocumented)
@@ -247,6 +284,10 @@ export class SqsWorkerManager {
     // (undocumented)
     register<TPayload>(route: SqsWorkerRoute<TPayload>): void;
     // (undocumented)
+    runBounded(options: SqsWorkerRunBoundedOptions): Promise<SqsWorkerFiniteRunResult>;
+    // (undocumented)
+    runUntilIdle(options?: SqsWorkerRunUntilIdleOptions): Promise<SqsWorkerFiniteRunResult>;
+    // (undocumented)
     start(): Promise<void>;
     // (undocumented)
     stop(): Promise<void>;
@@ -256,6 +297,8 @@ export class SqsWorkerManager {
 export interface SqsWorkerManagerOptions {
     // (undocumented)
     defaults?: Partial<SqsWorkerRouteConfig>;
+    // (undocumented)
+    finiteRunDefaults?: Partial<SqsWorkerFiniteRunDefaults>;
     // (undocumented)
     logger?: SqsWorkerLogger;
     // (undocumented)
@@ -591,6 +634,12 @@ export interface SqsWorkerRouteStatus {
 }
 
 // @public (undocumented)
+export interface SqsWorkerRunBoundedOptions extends SqsWorkerRunUntilIdleOptions {
+    // (undocumented)
+    maxHandledMessagesPerRoute: number;
+}
+
+// @public (undocumented)
 export type SqsWorkerRuntimeEvent = SqsWorkerReceiveEmptyEvent | SqsWorkerPollErrorEvent | SqsWorkerMessagesReceivedEvent | SqsWorkerHandlerStartEvent | SqsWorkerHandlerSuccessEvent | SqsWorkerHandlerFailureEvent | SqsWorkerHandlerTimeoutEvent | SqsWorkerLateSettlementEvent | SqsWorkerMessageDeleteEvent | SqsWorkerDeleteBatchFailureEvent | SqsWorkerMessageDeleteFailureEvent | SqsWorkerPreDispatchVisibilityFailureEvent | SqsWorkerBufferedMessageDropEvent | SqsWorkerMessageKeepEvent | SqsWorkerHeartbeatSuccessEvent | SqsWorkerHeartbeatFailureEvent;
 
 // @public (undocumented)
@@ -607,6 +656,12 @@ export interface SqsWorkerRuntimeEventBase {
 
 // @public (undocumented)
 export type SqsWorkerRuntimeEventHook = (event: SqsWorkerRuntimeEvent) => void;
+
+// @public (undocumented)
+export interface SqsWorkerRunUntilIdleOptions {
+    // (undocumented)
+    idleEmptyReceiveWaves?: number;
+}
 
 // @public (undocumented)
 export class SqsWorkerTimeoutError extends Error {

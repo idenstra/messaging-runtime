@@ -2,6 +2,8 @@ import type {
   SqsRuntimeClient,
   SqsWorkerAckAction,
   SqsWorkerErrorContext,
+  SqsWorkerFiniteRunLifecycle,
+  SqsWorkerFiniteRunResult,
   SqsWorkerHandlerContext,
   SqsWorkerHandlerResult,
   SqsWorkerManagerOptions,
@@ -12,10 +14,12 @@ import type {
   SqsWorkerRoute,
   SqsWorkerRouteConfig,
   SqsWorkerRouteStatus,
+  SqsWorkerRunBoundedOptions,
+  SqsWorkerRunUntilIdleOptions,
 } from './core';
 import { SqsWorkerManager } from './core';
 
-export interface SqsWorkerServiceLifecycle {
+export interface SqsWorkerServiceLifecycle extends SqsWorkerFiniteRunLifecycle {
   start(): Promise<void>;
   stop(): Promise<void>;
   getStatus(): SqsWorkerRouteStatus[];
@@ -132,6 +136,16 @@ export class SqsWorkerServiceHost implements SqsWorkerServiceLifecycle {
     await manager.stop();
   }
 
+  async runUntilIdle(options: SqsWorkerRunUntilIdleOptions = {}): Promise<SqsWorkerFiniteRunResult> {
+    const manager = await this.ensureManager();
+    return manager.runUntilIdle(options);
+  }
+
+  async runBounded(options: SqsWorkerRunBoundedOptions): Promise<SqsWorkerFiniteRunResult> {
+    const manager = await this.ensureManager();
+    return manager.runBounded(options);
+  }
+
   getStatus(): SqsWorkerRouteStatus[] {
     return this.manager?.getStatus() ?? [];
   }
@@ -243,6 +257,34 @@ export async function runSqsWorkerServiceUntilSignal(
       await stopPromise;
     }
   }
+}
+
+export async function runSqsWorkerManagerUntilIdle(
+  manager: SqsWorkerFiniteRunLifecycle,
+  options: SqsWorkerRunUntilIdleOptions = {},
+): Promise<SqsWorkerFiniteRunResult> {
+  return manager.runUntilIdle(options);
+}
+
+export async function runSqsWorkerManagerBounded(
+  manager: SqsWorkerFiniteRunLifecycle,
+  options: SqsWorkerRunBoundedOptions,
+): Promise<SqsWorkerFiniteRunResult> {
+  return manager.runBounded(options);
+}
+
+export async function runSqsWorkerServiceUntilIdle(
+  host: SqsWorkerFiniteRunLifecycle,
+  options: SqsWorkerRunUntilIdleOptions = {},
+): Promise<SqsWorkerFiniteRunResult> {
+  return host.runUntilIdle(options);
+}
+
+export async function runSqsWorkerServiceBounded(
+  host: SqsWorkerFiniteRunLifecycle,
+  options: SqsWorkerRunBoundedOptions,
+): Promise<SqsWorkerFiniteRunResult> {
+  return host.runBounded(options);
 }
 
 export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceManifest {

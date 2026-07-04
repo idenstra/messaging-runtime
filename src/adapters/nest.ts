@@ -5,6 +5,7 @@ import type { SqsWorkerServiceLifecycle } from '../host';
 export type {
   SqsWorkerBufferedMessageDropReason,
   SqsWorkerFailureKind,
+  SqsWorkerFiniteRunLifecycle,
   SqsWorkerLateSettlementOutcome,
   SqsWorkerLogger,
   SqsWorkerManagerSnapshot,
