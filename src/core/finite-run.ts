@@ -1,3 +1,4 @@
+import { DEFAULT_FINITE_RUN_DEFAULTS } from './config';
 import type { RouteRuntime } from './runtime-state';
 import type {
   SqsWorkerFiniteRunCompletionReason,
@@ -6,8 +7,6 @@ import type {
   SqsWorkerRunBoundedOptions,
   SqsWorkerRunUntilIdleOptions,
 } from './types';
-
-export const DEFAULT_FINITE_RUN_DEFAULTS: SqsWorkerFiniteRunDefaults = { idleEmptyReceiveWaves: 2 };
 
 export interface NormalizedFiniteRunOptions {
   idleEmptyReceiveWaves: number;
@@ -52,6 +51,7 @@ export function normalizeRunBoundedOptions(
   options: SqsWorkerRunBoundedOptions,
 ): NormalizedFiniteRunOptions {
   validateMaxHandledMessagesPerRoute(options.maxHandledMessagesPerRoute);
+  validateIdleEmptyReceiveWaves(options.idleEmptyReceiveWaves ?? defaults.idleEmptyReceiveWaves);
 
   return {
     idleEmptyReceiveWaves: options.idleEmptyReceiveWaves ?? defaults.idleEmptyReceiveWaves,

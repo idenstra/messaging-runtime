@@ -43,6 +43,19 @@ export type SqsWorkerBufferedMessageDropReason = 'missing-receipt-handle' | 'pre
 export type SqsWorkerFailureKind = 'decode' | 'handler' | 'timeout';
 
 // @public (undocumented)
+export interface SqsWorkerFiniteRunLifecycle {
+    // Warning: (ae-forgotten-export) The symbol "SqsWorkerRunBoundedOptions" needs to be exported by the entry point nest.d.ts
+    //
+    // (undocumented)
+    runBounded(options: SqsWorkerRunBoundedOptions): Promise<SqsWorkerFiniteRunResult>;
+    // Warning: (ae-forgotten-export) The symbol "SqsWorkerRunUntilIdleOptions" needs to be exported by the entry point nest.d.ts
+    // Warning: (ae-forgotten-export) The symbol "SqsWorkerFiniteRunResult" needs to be exported by the entry point nest.d.ts
+    //
+    // (undocumented)
+    runUntilIdle(options?: SqsWorkerRunUntilIdleOptions): Promise<SqsWorkerFiniteRunResult>;
+}
+
+// @public (undocumented)
 export type SqsWorkerLateSettlementOutcome = 'resolved' | 'rejected';
 
 // @public (undocumented)
@@ -179,8 +192,6 @@ export interface SqsWorkerRouteStatus {
     stopping: boolean;
 }
 
-// Warning: (ae-forgotten-export) The symbol "SqsWorkerFiniteRunLifecycle" needs to be exported by the entry point nest.d.ts
-//
 // @public (undocumented)
 export interface SqsWorkerServiceLifecycle extends SqsWorkerFiniteRunLifecycle {
     // (undocumented)

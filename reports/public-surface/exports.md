@@ -294,11 +294,12 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `./nest`
 - declarations: `dist/adapters/nest.d.ts`
-- exported symbols (10):
+- exported symbols (11):
   - `AbstractNestSqsWorkerHost`
   - `NestSqsWorkerLoggerAdapter`
   - `SqsWorkerBufferedMessageDropReason`
   - `SqsWorkerFailureKind`
+  - `SqsWorkerFiniteRunLifecycle`
   - `SqsWorkerLateSettlementOutcome`
   - `SqsWorkerLogger`
   - `SqsWorkerManagerSnapshot`

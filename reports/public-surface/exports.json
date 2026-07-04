@@ -300,6 +300,7 @@
         "NestSqsWorkerLoggerAdapter",
         "SqsWorkerBufferedMessageDropReason",
         "SqsWorkerFailureKind",
+        "SqsWorkerFiniteRunLifecycle",
         "SqsWorkerLateSettlementOutcome",
         "SqsWorkerLogger",
         "SqsWorkerManagerSnapshot",
