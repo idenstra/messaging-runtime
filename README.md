@@ -61,13 +61,30 @@ Read the docs in this order:
 3. [`docs/FEATURES.md`](docs/FEATURES.md) - supported feature set and non-goals
 4. [`docs/RUNTIME_SEMANTICS.md`](docs/RUNTIME_SEMANTICS.md) - polling, ack, timeout, and shutdown behavior
 5. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) - configuration, observability, testing, and Nest usage
-6. [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) - OTEL metrics, W3C tracing, SigNoz wiring, and autoscaling guidance
-7. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
-8. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
-9. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
+6. [`docs/TESTING.md`](docs/TESTING.md) - deterministic checks, optional LocalStack E2E, and testing boundaries
+7. [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) - OTEL metrics, W3C tracing, SigNoz wiring, and autoscaling guidance
+8. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
+9. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
+10. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
 
 Contributor and governance docs remain available under [`AGENTS.md`](AGENTS.md), [`WORKFLOW.md`](WORKFLOW.md), and `docs/`.
 For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](docs/HARNESS.md) and [`WORKFLOW.md`](WORKFLOW.md).
+
+## Verification entrypoints
+
+The standard repo gate stays deterministic:
+
+```bash
+make audit
+HARNESS_STRICT=1 make verify-fast
+```
+
+When a change needs end-to-end SNS/SQS proof against the built package surface, use the optional LocalStack lane:
+
+```bash
+make verify-localstack
+npm run e2e:localstack -- --suite runtime,publishers
+```
 
 ## Quick start
 

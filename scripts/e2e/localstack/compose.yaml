@@ -1,0 +1,13 @@
+services:
+  localstack:
+    image: localstack/localstack:community-archive@sha256:6b6172cfceb04b4fbc35097a55f717c365a35fafa572be49f7341771cf9023ed
+    container_name: messaging-runtime-localstack
+    ports:
+      - '4566:4566'
+    environment:
+      SERVICES: sns,sqs
+      AWS_DEFAULT_REGION: us-east-1
+      EAGER_SERVICE_LOADING: '1'
+      SQS_ENDPOINT_STRATEGY: path
+      LS_LOG: warn
+      DEBUG: '0'

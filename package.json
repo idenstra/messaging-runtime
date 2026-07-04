@@ -24,6 +24,8 @@
     "benchmark:ci": "tsx scripts/benchmarks/run.ts --json",
     "benchmark:baseline": "tsx scripts/benchmarks/run.ts --write-baseline",
     "benchmark:compare": "node scripts/benchmarks/compare.mjs",
+    "e2e:localstack": "node scripts/e2e/localstack/run.mjs",
+    "e2e:localstack:ci": "node scripts/e2e/localstack/run.mjs --ci",
     "public-surface:report": "node scripts/public-surface/run-interface-reports.mjs --write",
     "public-surface:snapshot": "node scripts/public-surface/check-export-snapshot.mjs --write",
     "public-surface:check": "node scripts/public-surface/run-interface-reports.mjs && node scripts/public-surface/check-export-snapshot.mjs",

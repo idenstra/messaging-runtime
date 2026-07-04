@@ -16,6 +16,7 @@ Command surface:
 - `make audit`
 - `make verify-fast`
 - `make verify`
+- `make verify-localstack`
 - `make plan-sync`
 - `make plan-close ISSUE=<number>`
 
@@ -24,3 +25,9 @@ Default proof posture:
 - no AWS dependency
 - no live SNS/SQS requirement
 - deterministic package, runtime, style, public package surface, and harness validation only
+
+Optional proof lane:
+- `make verify-localstack`
+- LocalStack-backed SNS/SQS end-to-end coverage against the built package output
+- local-first and opt-in only
+- not part of the default CI or `make verify-fast`
