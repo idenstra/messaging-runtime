@@ -192,6 +192,20 @@ export interface PublisherSizeValidation {
 export type PublisherSizeValidationOverride = PublisherSizeValidation | false;
 
 // @public (undocumented)
+export interface QueueForwardHandlerContext<TPayload> extends SqsWorkerHandlerContext<TPayload> {
+    // (undocumented)
+    copiedMessageAttributes?: SqsMessageAttributes;
+}
+
+// Warning: (ae-forgotten-export) The symbol "SyncOrAsync" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export type QueueForwardMessageAttributeBuilder<TPayload> = (context: QueueForwardHandlerContext<TPayload>) => SyncOrAsync<SqsMessageAttributes | undefined>;
+
+// @public (undocumented)
+export type QueueForwardValueBuilder<TPayload, TValue> = TValue | ((context: QueueForwardHandlerContext<TPayload>) => SyncOrAsync<TValue>);
+
+// @public (undocumented)
 export function runSqsWorkerServiceUntilSignal(host: SqsWorkerServiceLifecycle, options?: SqsWorkerServiceRunOptions): Promise<void>;
 
 // @public (undocumented)
@@ -224,6 +238,24 @@ export interface SnsEnvelopeBase extends Record<string, unknown> {
 
 // @public (undocumented)
 export type SnsEnvelopeType = 'Notification' | 'SubscriptionConfirmation' | 'UnsubscribeConfirmation';
+
+// Warning: (ae-forgotten-export) The symbol "ForwardHandlerBaseOptions" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export interface SnsForwardToTopicBaseOptions<TPayload> extends ForwardHandlerBaseOptions {
+    // (undocumented)
+    buildMessageAttributes?: TopicForwardMessageAttributeBuilder<TPayload>;
+    // (undocumented)
+    messageDeduplicationId?: TopicForwardValueBuilder<TPayload, string | undefined>;
+    // (undocumented)
+    messageGroupId?: TopicForwardValueBuilder<TPayload, string | undefined>;
+    // (undocumented)
+    publisher: SnsPublisher;
+    // (undocumented)
+    subject?: TopicForwardValueBuilder<TPayload, string | undefined>;
+    // (undocumented)
+    topic: string;
+}
 
 // @public (undocumented)
 export function snsJsonQueueRoute<TPayload>(options: SnsJsonQueueRouteOptions<TPayload, 'payload'> & {
@@ -725,6 +757,22 @@ export interface SqsDlqRedriveManagerOptions {
 }
 
 // @public (undocumented)
+export interface SqsForwardToQueueBaseOptions<TPayload> extends ForwardHandlerBaseOptions {
+    // (undocumented)
+    buildMessageAttributes?: QueueForwardMessageAttributeBuilder<TPayload>;
+    // (undocumented)
+    delaySeconds?: QueueForwardValueBuilder<TPayload, number | undefined>;
+    // (undocumented)
+    messageDeduplicationId?: QueueForwardValueBuilder<TPayload, string | undefined>;
+    // (undocumented)
+    messageGroupId?: QueueForwardValueBuilder<TPayload, string | undefined>;
+    // (undocumented)
+    publisher: SqsPublisher;
+    // (undocumented)
+    queue: string;
+}
+
+// @public (undocumented)
 export function sqsJsonRoute<TPayload>(options: SqsJsonRouteOptions<TPayload> & {
     queueUrl: string;
 }): SqsWorkerRoute<TPayload>;
@@ -744,6 +792,30 @@ export type SqsJsonRouteOptions<TPayload> = {
     config?: Partial<SqsWorkerRouteConfig>;
     receive?: SqsWorkerReceiveStrategy;
 } & RouteBindingOptions;
+
+// @public (undocumented)
+export function sqsJsonToQueueForwardHandler<TPayload>(options: SqsJsonToQueueForwardHandlerOptions<TPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export function sqsJsonToQueueForwardHandler<TPayload, TForwardPayload>(options: SqsJsonToQueueForwardHandlerOptions<TPayload, TForwardPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsJsonToQueueForwardHandlerOptions<TPayload, TForwardPayload = TPayload> extends SqsForwardToQueueBaseOptions<TPayload> {
+    // (undocumented)
+    mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+}
+
+// @public (undocumented)
+export function sqsJsonToTopicForwardHandler<TPayload>(options: SqsJsonToTopicForwardHandlerOptions<TPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export function sqsJsonToTopicForwardHandler<TPayload, TForwardPayload>(options: SqsJsonToTopicForwardHandlerOptions<TPayload, TForwardPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsJsonToTopicForwardHandlerOptions<TPayload, TForwardPayload = TPayload> extends SnsForwardToTopicBaseOptions<TPayload> {
+    // (undocumented)
+    mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+}
 
 // @public (undocumented)
 export type SqsMessageAttributes = Record<string, MessageAttributeValue>;
@@ -1157,6 +1229,34 @@ export interface SqsSendStringOptions extends SqsSendJsonOptions {
 }
 
 // @public (undocumented)
+export function sqsSerializedToQueueForwardHandler<TPayload>(options: SqsSerializedToQueueForwardHandlerOptions<TPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export function sqsSerializedToQueueForwardHandler<TPayload, TForwardPayload>(options: SqsSerializedToQueueForwardHandlerOptions<TPayload, TForwardPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsSerializedToQueueForwardHandlerOptions<TPayload, TForwardPayload = TPayload> extends SqsForwardToQueueBaseOptions<TPayload> {
+    // (undocumented)
+    mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+    // (undocumented)
+    serialize: PublisherSerializer<TForwardPayload>;
+}
+
+// @public (undocumented)
+export function sqsSerializedToTopicForwardHandler<TPayload>(options: SqsSerializedToTopicForwardHandlerOptions<TPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export function sqsSerializedToTopicForwardHandler<TPayload, TForwardPayload>(options: SqsSerializedToTopicForwardHandlerOptions<TPayload, TForwardPayload>): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsSerializedToTopicForwardHandlerOptions<TPayload, TForwardPayload = TPayload> extends SnsForwardToTopicBaseOptions<TPayload> {
+    // (undocumented)
+    mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<TForwardPayload>;
+    // (undocumented)
+    serialize: PublisherSerializer<TForwardPayload>;
+}
+
+// @public (undocumented)
 export function sqsStringAttribute(value: string): MessageAttributeValue;
 
 // @public (undocumented)
@@ -1179,6 +1279,50 @@ export type SqsStringRouteOptions = {
     config?: Partial<SqsWorkerRouteConfig>;
     receive?: SqsWorkerReceiveStrategy;
 } & RouteBindingOptions;
+
+// @public (undocumented)
+export function sqsStringToQueueForwardHandler(options: SqsStringToQueueForwardHandlerOptions<string>): SqsWorkerHandler<string>;
+
+// @public (undocumented)
+export function sqsStringToQueueForwardHandler<TPayload>(options: SqsStringToQueueForwardHandlerOptions<TPayload> & {
+    mapBody: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+}): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsStringToQueueForwardHandlerOptions<TPayload> extends SqsForwardToQueueBaseOptions<TPayload> {
+    // (undocumented)
+    mapBody?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+}
+
+// @public (undocumented)
+export function sqsStringToTopicForwardHandler(options: SqsStringToTopicForwardHandlerOptions<string>): SqsWorkerHandler<string>;
+
+// @public (undocumented)
+export function sqsStringToTopicForwardHandler<TPayload>(options: SqsStringToTopicForwardHandlerOptions<TPayload> & {
+    mapMessage: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+}): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsStringToTopicForwardHandlerOptions<TPayload> extends SnsForwardToTopicBaseOptions<TPayload> {
+    // (undocumented)
+    mapMessage?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<string>;
+}
+
+// @public (undocumented)
+export function sqsStructuredJsonToTopicForwardHandler(options: SqsStructuredJsonToTopicForwardHandlerOptions<SnsStructuredJsonMessage> & {
+    mapPayload?: undefined;
+}): SqsWorkerHandler<SnsStructuredJsonMessage>;
+
+// @public (undocumented)
+export function sqsStructuredJsonToTopicForwardHandler<TPayload>(options: SqsStructuredJsonToTopicForwardHandlerOptions<TPayload> & {
+    mapPayload: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<SnsStructuredJsonMessage>;
+}): SqsWorkerHandler<TPayload>;
+
+// @public (undocumented)
+export interface SqsStructuredJsonToTopicForwardHandlerOptions<TPayload> extends Omit<SnsForwardToTopicBaseOptions<TPayload>, 'copyMessageAttributes' | 'buildMessageAttributes'> {
+    // (undocumented)
+    mapPayload?: (context: SqsWorkerHandlerContext<TPayload>) => SyncOrAsync<SnsStructuredJsonMessage>;
+}
 
 // @public (undocumented)
 export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
@@ -1895,6 +2039,18 @@ export interface StartSqsDlqRedriveResult {
     // (undocumented)
     taskHandle?: string;
 }
+
+// @public (undocumented)
+export interface TopicForwardHandlerContext<TPayload> extends SqsWorkerHandlerContext<TPayload> {
+    // (undocumented)
+    copiedMessageAttributes?: SnsMessageAttributes;
+}
+
+// @public (undocumented)
+export type TopicForwardMessageAttributeBuilder<TPayload> = (context: TopicForwardHandlerContext<TPayload>) => SyncOrAsync<SnsMessageAttributes | undefined>;
+
+// @public (undocumented)
+export type TopicForwardValueBuilder<TPayload, TValue> = TValue | ((context: TopicForwardHandlerContext<TPayload>) => SyncOrAsync<TValue>);
 
 // (No @packageDocumentation comment for this package)
 

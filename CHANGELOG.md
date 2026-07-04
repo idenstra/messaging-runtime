@@ -31,6 +31,7 @@ Format rules:
 - added benchmark coverage for decode, resolver, many-route scheduling, failure-keep, abandon-timeout, and snapshot hot paths plus runner self-tests for stable scenario ordering and machine-readable output
 - added optional FIFO `ReceiveRequestAttemptId` support through manager defaults, manifest-safe receive policy, and route-owned custom token generation
 - added shared route lifecycle hooks for startup, stop-signal, and cleanup across direct manager and service-host usage
+- added thin queue-to-queue and queue-to-topic forwarding handlers that compose over the existing route factories and publisher surfaces
 
 ### Changed
 

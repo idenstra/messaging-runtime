@@ -12,6 +12,7 @@
 | Bounded per-route prefetch | Yes | Raw-message prefetch is capped to `min(concurrency, maxMessagesPerPoll)` per route. |
 | Plain SQS JSON decoding | Yes | Built-in default route decode parses JSON bodies when a route does not supply `decodePayload`. `decodeSqsJsonBody` is also exported for explicit typed decoders. |
 | Common route factories | Yes | `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` cover the most common worker declaration shapes while preserving the existing route/host model. |
+| Thin forwarding handlers | Yes | Root-exported helpers cover fixed queue-to-queue and queue-to-topic relay flows across JSON, string, serializer, and structured SNS publisher modes. |
 | SNS-over-SQS JSON decoding | Yes | `decodeSnsEnvelope` and `decodeSnsNotificationJson`. |
 | Message delete on success | Yes | Default success action is delete, finalized through route-local delete batching in the worker core. |
 | Keep message for redelivery | Yes | Handler or error policy can return `keep`. |

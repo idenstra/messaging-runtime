@@ -6,7 +6,7 @@ Package: `@idenstra/messaging-runtime`
 
 - subpath: `.`
 - declarations: `dist/index.d.ts`
-- exported symbols (185):
+- exported symbols (207):
   - `AwsSnsAdapter`
   - `AwsSqsAdapter`
   - `CancelSqsDlqRedriveInput`
@@ -26,11 +26,15 @@ Package: `@idenstra/messaging-runtime`
   - `PublisherSerializer`
   - `PublisherSizeValidation`
   - `PublisherSizeValidationOverride`
+  - `QueueForwardHandlerContext`
+  - `QueueForwardMessageAttributeBuilder`
+  - `QueueForwardValueBuilder`
   - `runSqsWorkerServiceUntilSignal`
   - `snsBinaryAttribute`
   - `SnsEnvelope`
   - `SnsEnvelopeBase`
   - `SnsEnvelopeType`
+  - `SnsForwardToTopicBaseOptions`
   - `snsJsonQueueRoute`
   - `SnsJsonQueueRouteMessageShape`
   - `SnsJsonQueueRouteOptions`
@@ -85,8 +89,13 @@ Package: `@idenstra/messaging-runtime`
   - `SqsDeleteMessagesResult`
   - `SqsDlqRedriveManager`
   - `SqsDlqRedriveManagerOptions`
+  - `SqsForwardToQueueBaseOptions`
   - `sqsJsonRoute`
   - `SqsJsonRouteOptions`
+  - `sqsJsonToQueueForwardHandler`
+  - `SqsJsonToQueueForwardHandlerOptions`
+  - `sqsJsonToTopicForwardHandler`
+  - `SqsJsonToTopicForwardHandlerOptions`
   - `SqsMessageAttributes`
   - `SqsMessageBatchOperator`
   - `SqsMessageMoveTaskStatus`
@@ -128,9 +137,19 @@ Package: `@idenstra/messaging-runtime`
   - `SqsSendStringBatchInput`
   - `SqsSendStringInput`
   - `SqsSendStringOptions`
+  - `sqsSerializedToQueueForwardHandler`
+  - `SqsSerializedToQueueForwardHandlerOptions`
+  - `sqsSerializedToTopicForwardHandler`
+  - `SqsSerializedToTopicForwardHandlerOptions`
   - `sqsStringAttribute`
   - `sqsStringRoute`
   - `SqsStringRouteOptions`
+  - `sqsStringToQueueForwardHandler`
+  - `SqsStringToQueueForwardHandlerOptions`
+  - `sqsStringToTopicForwardHandler`
+  - `SqsStringToTopicForwardHandlerOptions`
+  - `sqsStructuredJsonToTopicForwardHandler`
+  - `SqsStructuredJsonToTopicForwardHandlerOptions`
   - `SqsTransportClient`
   - `SqsWorkerAckAction`
   - `SqsWorkerBufferedMessageDropEvent`
@@ -192,6 +211,9 @@ Package: `@idenstra/messaging-runtime`
   - `SqsWorkerTimeoutStrategy`
   - `StartSqsDlqRedriveInput`
   - `StartSqsDlqRedriveResult`
+  - `TopicForwardHandlerContext`
+  - `TopicForwardMessageAttributeBuilder`
+  - `TopicForwardValueBuilder`
 
 ## @idenstra/messaging-runtime/core
 
