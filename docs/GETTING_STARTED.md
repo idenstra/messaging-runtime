@@ -233,6 +233,23 @@ await publisher.sendJson({
 });
 ```
 
+## Publish explicit strings or custom-serialized payloads to SQS
+
+Use `sendString(...)` when the body is already the exact string you want on the wire. Use `sendSerialized(...)` when the payload stays typed in your code but should serialize to something other than `JSON.stringify(...)`.
+
+```ts
+await publisher.sendString({
+  queue: 'jobs',
+  body: 'plain text body',
+});
+
+await publisher.sendSerialized({
+  queue: 'jobs',
+  payload: { jobId: 'job-1' },
+  serialize: (payload) => `job:${payload.jobId}`,
+});
+```
+
 ## Publish a batch to SQS
 
 `sendJsonBatch` chunks entries into SQS-compatible batches of ten.
@@ -248,6 +265,8 @@ await publisher.sendJsonBatch({
 ```
 
 The result reports successes and failures keyed by the caller-provided entry IDs.
+
+The same chunking and result shape apply to `sendStringBatch(...)` and `sendSerializedBatch(...)`.
 
 ## Resolve a cross-account SQS queue by name
 
@@ -309,6 +328,55 @@ await batchOperator.changeMessageVisibility({
 
 These helpers chunk automatically to the AWS 10-entry limit and normalize partial successes and failures by the caller-provided entry IDs.
 
+## Build message attributes and enable optional size validation
+
+Raw AWS `messageAttributes` maps are still accepted directly, but the package now exports service-native builders for the supported logical types.
+
+```ts
+import {
+  snsStringArrayAttribute,
+  snsStringAttribute,
+  sqsNumberAttribute,
+  sqsStringAttribute,
+} from '@idenstra/messaging-runtime';
+
+const sqsPublisher = new SqsPublisher(sqsAdapter, queueResolver, {
+  sizeValidation: {
+    maxBytes: 1_048_576,
+  },
+});
+
+await sqsPublisher.sendJson({
+  queue: 'jobs',
+  payload: { jobId: 'job-1' },
+  messageAttributes: {
+    priority: sqsNumberAttribute(5),
+    source: sqsStringAttribute('scheduler'),
+  },
+});
+
+const snsPublisher = new SnsPublisher(snsAdapter, topicResolver, {
+  sizeValidation: {
+    maxBytes: 262_144,
+  },
+});
+
+await snsPublisher.publishString({
+  topic: 'events',
+  message: 'user-created',
+  messageAttributes: {
+    channel: snsStringAttribute('email'),
+    audiences: snsStringArrayAttribute(['ops', 'support']),
+  },
+});
+```
+
+`sizeValidation` is optional and off by default. When configured on the publisher, each send/publish call can still:
+
+- inherit the publisher default
+- override `maxBytes`
+- disable the guard with `sizeValidation: false`
+
 ## Publish to SNS
 
 ```ts
@@ -328,6 +396,23 @@ const publisher = new SnsPublisher(snsAdapter, topicResolver);
 await publisher.publishJson({
   topic: 'events',
   payload: { eventType: 'USER_CREATED', userId: 'user-1' },
+});
+```
+
+## Publish explicit strings or custom-serialized payloads to SNS
+
+The normal JSON helpers are convenience wrappers around SNS string-mode publishing. When you already have a final string body, use `publishString(...)`. When you need custom serialization, use `publishSerialized(...)`.
+
+```ts
+await publisher.publishString({
+  topic: 'events',
+  message: 'user-created',
+});
+
+await publisher.publishSerialized({
+  topic: 'events',
+  payload: { eventType: 'USER_CREATED', userId: 'user-1' },
+  serialize: (payload) => `${payload.eventType}:${payload.userId}`,
 });
 ```
 
@@ -352,6 +437,8 @@ SNS topic semantics are validated against the resolved topic type:
 - FIFO topics require `messageGroupId`
 - FIFO topics may omit `messageDeduplicationId` when topic-level content-based deduplication is intended
 
+The same semantics apply to `publishString(...)`, `publishStringBatch(...)`, `publishSerialized(...)`, and `publishSerializedBatch(...)`.
+
 ## Publish a structured SNS topic message
 
 Use the structured helpers only when you intentionally want SNS `MessageStructure: 'json'` protocol-specific publishing.
@@ -369,8 +456,10 @@ await publisher.publishStructuredJson({
 
 `publishStructuredJson(...)` and `publishStructuredJsonBatch(...)` are intentionally separate from the normal JSON helpers:
 - `publishJson(...)` and `publishJsonBatch(...)` send a normal SNS string body whose contents happen to come from `JSON.stringify(...)`
+- `publishString(...)` / `publishStringBatch(...)` send your exact SNS string body as-is
+- `publishSerialized(...)` / `publishSerializedBatch(...)` keep typed payloads in consumer code while letting you choose the string serializer
 - the structured helpers set `MessageStructure: 'json'` and expect a protocol map with a required `default` string
-- structured helpers reject `messageAttributes`; attribute-friendly raw/string publishing stays with the later serializer-agnostic publisher work
+- structured helpers reject `messageAttributes`; use the normal JSON, string, or serializer helpers when you need attribute-friendly SNS string-mode publishing
 
 ## Discover existing queues and topics
 

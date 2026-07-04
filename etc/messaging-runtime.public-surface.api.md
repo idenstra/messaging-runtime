@@ -180,7 +180,22 @@ export const packageMetadata: {
 export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceManifest;
 
 // @public (undocumented)
+export type PublisherSerializer<TPayload> = (payload: TPayload) => string;
+
+// @public (undocumented)
+export interface PublisherSizeValidation {
+    // (undocumented)
+    maxBytes?: number;
+}
+
+// @public (undocumented)
+export type PublisherSizeValidationOverride = PublisherSizeValidation | false;
+
+// @public (undocumented)
 export function runSqsWorkerServiceUntilSignal(host: SqsWorkerServiceLifecycle, options?: SqsWorkerServiceRunOptions): Promise<void>;
+
+// @public (undocumented)
+export function snsBinaryAttribute(value: Uint8Array): MessageAttributeValue_2;
 
 // @public (undocumented)
 export type SnsEnvelope = SnsNotificationEnvelope | SnsSubscriptionConfirmationEnvelope | SnsUnsubscribeConfirmationEnvelope;
@@ -222,6 +237,9 @@ export interface SnsNotificationEnvelope extends SnsEnvelopeBase {
 }
 
 // @public (undocumented)
+export function snsNumberAttribute(value: number | bigint | string): MessageAttributeValue_2;
+
+// @public (undocumented)
 export interface SnsPublishClient {
     // (undocumented)
     publish(input: PublishCommandInput): Promise<PublishCommandOutput>;
@@ -231,15 +249,29 @@ export interface SnsPublishClient {
 
 // @public (undocumented)
 export class SnsPublisher {
-    constructor(client: SnsTransportClient, resolver?: SnsTopicArnResolver);
+    constructor(client: SnsTransportClient, resolver?: SnsTopicArnResolver, options?: SnsPublisherOptions);
     // (undocumented)
     publishJson<TPayload>(input: SnsPublishJsonInput<TPayload>): Promise<SnsPublishJsonResult>;
     // (undocumented)
     publishJsonBatch<TId extends string, TPayload>(input: SnsPublishJsonBatchInput<TId, TPayload>): Promise<SnsPublishJsonBatchResult<TId>>;
     // (undocumented)
+    publishSerialized<TPayload>(input: SnsPublishSerializedInput<TPayload>): Promise<SnsPublishJsonResult>;
+    // (undocumented)
+    publishSerializedBatch<TId extends string, TPayload>(input: SnsPublishSerializedBatchInput<TId, TPayload>): Promise<SnsPublishJsonBatchResult<TId>>;
+    // (undocumented)
+    publishString(input: SnsPublishStringInput): Promise<SnsPublishJsonResult>;
+    // (undocumented)
+    publishStringBatch<TId extends string>(input: SnsPublishStringBatchInput<TId>): Promise<SnsPublishJsonBatchResult<TId>>;
+    // (undocumented)
     publishStructuredJson(input: SnsPublishStructuredJsonInput): Promise<SnsPublishJsonResult>;
     // (undocumented)
     publishStructuredJsonBatch<TId extends string>(input: SnsPublishStructuredJsonBatchInput<TId>): Promise<SnsPublishJsonBatchResult<TId>>;
+}
+
+// @public (undocumented)
+export interface SnsPublisherOptions {
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidation;
 }
 
 // @public (undocumented)
@@ -266,6 +298,8 @@ export interface SnsPublishJsonBatchFailure<TId extends string = string> {
 export interface SnsPublishJsonBatchInput<TId extends string = string, TPayload = unknown> {
     // (undocumented)
     entries: Array<SnsPublishJsonBatchEntry<TId, TPayload>>;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
     // (undocumented)
     topic: string;
 }
@@ -301,6 +335,8 @@ export interface SnsPublishJsonInput<TPayload> extends SnsPublishJsonOptions {
     // (undocumented)
     payload: TPayload;
     // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+    // (undocumented)
     topic: string;
 }
 
@@ -327,6 +363,74 @@ export interface SnsPublishJsonResult {
 }
 
 // @public (undocumented)
+export interface SnsPublishSerializedBatchEntry<TId extends string = string, TPayload = unknown> extends SnsPublishSerializedOptions {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    payload: TPayload;
+}
+
+// @public (undocumented)
+export interface SnsPublishSerializedBatchInput<TId extends string = string, TPayload = unknown> {
+    // (undocumented)
+    entries: Array<SnsPublishSerializedBatchEntry<TId, TPayload>>;
+    // (undocumented)
+    serialize: PublisherSerializer<TPayload>;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishSerializedInput<TPayload> extends SnsPublishSerializedOptions {
+    // (undocumented)
+    payload: TPayload;
+    // (undocumented)
+    serialize: PublisherSerializer<TPayload>;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishSerializedOptions extends SnsPublishJsonOptions {
+}
+
+// @public (undocumented)
+export interface SnsPublishStringBatchEntry<TId extends string = string> extends SnsPublishStringOptions {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    message: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishStringBatchInput<TId extends string = string> {
+    // (undocumented)
+    entries: Array<SnsPublishStringBatchEntry<TId>>;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishStringInput extends SnsPublishStringOptions {
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+    // (undocumented)
+    topic: string;
+}
+
+// @public (undocumented)
+export interface SnsPublishStringOptions extends SnsPublishJsonOptions {
+}
+
+// @public (undocumented)
 export interface SnsPublishStructuredJsonBatchEntry<TId extends string = string> extends SnsPublishStructuredJsonOptions {
     // (undocumented)
     id: TId;
@@ -339,6 +443,8 @@ export interface SnsPublishStructuredJsonBatchInput<TId extends string = string>
     // (undocumented)
     entries: Array<SnsPublishStructuredJsonBatchEntry<TId>>;
     // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+    // (undocumented)
     topic: string;
 }
 
@@ -346,6 +452,8 @@ export interface SnsPublishStructuredJsonBatchInput<TId extends string = string>
 export interface SnsPublishStructuredJsonInput extends SnsPublishStructuredJsonOptions {
     // (undocumented)
     payload: SnsStructuredJsonMessage;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
     // (undocumented)
     topic: string;
 }
@@ -359,6 +467,15 @@ export interface SnsPublishStructuredJsonOptions {
     // (undocumented)
     subject?: string;
 }
+
+// @public (undocumented)
+export function snsStringArrayAttribute(values: readonly SnsStringArrayAttributeValue[]): MessageAttributeValue_2;
+
+// @public (undocumented)
+export type SnsStringArrayAttributeValue = string | number | boolean | null;
+
+// @public (undocumented)
+export function snsStringAttribute(value: string): MessageAttributeValue_2;
 
 // @public (undocumented)
 export interface SnsStructuredJsonMessage {
@@ -468,6 +585,9 @@ export interface SqsBatchOperationSuccess<TId extends string = string> {
     // (undocumented)
     id: TId;
 }
+
+// @public (undocumented)
+export function sqsBinaryAttribute(value: Uint8Array): MessageAttributeValue;
 
 // @public (undocumented)
 export interface SqsChangeMessageVisibilityBatchEntry<TId extends string = string> {
@@ -604,6 +724,9 @@ export interface SqsMessageMoveTaskSummary {
 }
 
 // @public (undocumented)
+export function sqsNumberAttribute(value: number | bigint | string): MessageAttributeValue;
+
+// @public (undocumented)
 export interface SqsPublishClient {
     // (undocumented)
     sendMessage(input: SendMessageCommandInput): Promise<SendMessageCommandOutput>;
@@ -613,11 +736,25 @@ export interface SqsPublishClient {
 
 // @public (undocumented)
 export class SqsPublisher {
-    constructor(client: SqsTransportClient, resolver?: SqsQueueUrlResolver);
+    constructor(client: SqsTransportClient, resolver?: SqsQueueUrlResolver, options?: SqsPublisherOptions);
     // (undocumented)
     sendJson<TPayload>(input: SqsSendJsonInput<TPayload>): Promise<SqsSendJsonResult>;
     // (undocumented)
     sendJsonBatch<TId extends string, TPayload>(input: SqsSendJsonBatchInput<TId, TPayload>): Promise<SqsSendJsonBatchResult<TId>>;
+    // (undocumented)
+    sendSerialized<TPayload>(input: SqsSendSerializedInput<TPayload>): Promise<SqsSendJsonResult>;
+    // (undocumented)
+    sendSerializedBatch<TId extends string, TPayload>(input: SqsSendSerializedBatchInput<TId, TPayload>): Promise<SqsSendJsonBatchResult<TId>>;
+    // (undocumented)
+    sendString(input: SqsSendStringInput): Promise<SqsSendJsonResult>;
+    // (undocumented)
+    sendStringBatch<TId extends string>(input: SqsSendStringBatchInput<TId>): Promise<SqsSendJsonBatchResult<TId>>;
+}
+
+// @public (undocumented)
+export interface SqsPublisherOptions {
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidation;
 }
 
 // @public (undocumented)
@@ -818,6 +955,8 @@ export interface SqsSendJsonBatchInput<TId extends string = string, TPayload = u
     entries: Array<SqsSendJsonBatchEntry<TId, TPayload>>;
     // (undocumented)
     queue: string;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
 }
 
 // @public (undocumented)
@@ -858,6 +997,8 @@ export interface SqsSendJsonInput<TPayload> extends SqsSendJsonOptions {
     payload: TPayload;
     // (undocumented)
     queue: string;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
 }
 
 // @public (undocumented)
@@ -887,6 +1028,77 @@ export interface SqsSendJsonResult {
     // (undocumented)
     sequenceNumber?: string;
 }
+
+// @public (undocumented)
+export interface SqsSendSerializedBatchEntry<TId extends string = string, TPayload = unknown> extends SqsSendSerializedOptions {
+    // (undocumented)
+    id: TId;
+    // (undocumented)
+    payload: TPayload;
+}
+
+// @public (undocumented)
+export interface SqsSendSerializedBatchInput<TId extends string = string, TPayload = unknown> {
+    // (undocumented)
+    entries: Array<SqsSendSerializedBatchEntry<TId, TPayload>>;
+    // (undocumented)
+    queue: string;
+    // (undocumented)
+    serialize: PublisherSerializer<TPayload>;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+}
+
+// @public (undocumented)
+export interface SqsSendSerializedInput<TPayload> extends SqsSendSerializedOptions {
+    // (undocumented)
+    payload: TPayload;
+    // (undocumented)
+    queue: string;
+    // (undocumented)
+    serialize: PublisherSerializer<TPayload>;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+}
+
+// @public (undocumented)
+export interface SqsSendSerializedOptions extends SqsSendJsonOptions {
+}
+
+// @public (undocumented)
+export interface SqsSendStringBatchEntry<TId extends string = string> extends SqsSendStringOptions {
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    id: TId;
+}
+
+// @public (undocumented)
+export interface SqsSendStringBatchInput<TId extends string = string> {
+    // (undocumented)
+    entries: Array<SqsSendStringBatchEntry<TId>>;
+    // (undocumented)
+    queue: string;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+}
+
+// @public (undocumented)
+export interface SqsSendStringInput extends SqsSendStringOptions {
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    queue: string;
+    // (undocumented)
+    sizeValidation?: PublisherSizeValidationOverride;
+}
+
+// @public (undocumented)
+export interface SqsSendStringOptions extends SqsSendJsonOptions {
+}
+
+// @public (undocumented)
+export function sqsStringAttribute(value: string): MessageAttributeValue;
 
 // @public (undocumented)
 export type SqsTransportClient = SqsQueueUrlResolverClient & SqsPublishClient & SqsBatchOperationClient;
