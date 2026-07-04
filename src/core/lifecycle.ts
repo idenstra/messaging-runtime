@@ -4,7 +4,8 @@ import { describeUnknownError } from './utils';
 
 export type SqsWorkerLifecyclePhase = keyof SqsWorkerRouteLifecycleHooks;
 
-const LIFECYCLE_PHASES = new Set<SqsWorkerLifecyclePhase>(['beforeStart', 'afterStart', 'beforeStop', 'afterStop']);
+const LIFECYCLE_PHASE_ORDER = ['beforeStart', 'afterStart', 'beforeStop', 'afterStop'] as const;
+const LIFECYCLE_PHASES = new Set<SqsWorkerLifecyclePhase>(LIFECYCLE_PHASE_ORDER);
 
 export function validateLifecycleHooks(routeName: string, lifecycle: unknown): void {
   if (lifecycle === undefined) {
@@ -15,10 +16,14 @@ export function validateLifecycleHooks(routeName: string, lifecycle: unknown): v
     throw new Error(`SQS worker route ${routeName} has invalid lifecycle; expected an object.`);
   }
 
-  for (const [phase, hook] of Object.entries(lifecycle)) {
-    if (!LIFECYCLE_PHASES.has(phase as SqsWorkerLifecyclePhase)) {
-      throw new Error(`SQS worker route ${routeName} declares unsupported lifecycle hook ${phase}.`);
+  for (const key of Reflect.ownKeys(lifecycle)) {
+    if (typeof key !== 'string' || !LIFECYCLE_PHASES.has(key as SqsWorkerLifecyclePhase)) {
+      throw new Error(`SQS worker route ${routeName} declares unsupported lifecycle hook ${String(key)}.`);
     }
+  }
+
+  for (const phase of LIFECYCLE_PHASE_ORDER) {
+    const hook = lifecycle[phase];
     if (hook !== undefined && typeof hook !== 'function') {
       throw new Error(`SQS worker route ${routeName} has invalid lifecycle hook ${phase}; expected a function.`);
     }
@@ -52,6 +57,6 @@ export async function runLifecycleHook<TPayload>(
   }
 }
 
-function isLifecycleHooksRecord(value: unknown): value is Record<string, unknown> {
+function isLifecycleHooksRecord(value: unknown): value is Record<PropertyKey, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

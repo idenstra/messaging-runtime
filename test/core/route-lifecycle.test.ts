@@ -27,6 +27,30 @@ test('rejects invalid route lifecycle hook declarations during registration', ()
       }),
     /invalid lifecycle hook beforeStart; expected a function/i,
   );
+
+  assert.throws(
+    () =>
+      manager.register({
+        name: 'invalid-inherited-before-start',
+        queueUrl: 'https://queue.test/invalid-inherited-before-start',
+        handle: async () => undefined,
+        lifecycle: Object.create({ beforeStart: 'bad' }) as never,
+      }),
+    /invalid lifecycle hook beforeStart; expected a function/i,
+  );
+
+  const nonEnumerableLifecycle = {};
+  Object.defineProperty(nonEnumerableLifecycle, 'afterStop', { value: 'bad', enumerable: false });
+  assert.throws(
+    () =>
+      manager.register({
+        name: 'invalid-non-enumerable-after-stop',
+        queueUrl: 'https://queue.test/invalid-non-enumerable-after-stop',
+        handle: async () => undefined,
+        lifecycle: nonEnumerableLifecycle as never,
+      }),
+    /invalid lifecycle hook afterStop; expected a function/i,
+  );
 });
 
 test('runs lifecycle hooks in registration order on start and reverse order on stop', async () => {
