@@ -17,6 +17,7 @@ Command surface:
 - `make verify-fast`
 - `make verify`
 - `make verify-localstack`
+- `make verify-observability`
 - `make plan-sync`
 - `make plan-close ISSUE=<number>`
 
@@ -29,5 +30,9 @@ Default proof posture:
 Optional proof lane:
 - `make verify-localstack`
 - LocalStack-backed SNS/SQS end-to-end coverage against the built package output
+- local-first and opt-in only
+- not part of the default CI or `make verify-fast`
+- `make verify-observability`
+- repo-owned OTEL/SigNoz backend proof layered on top of the built package output plus LocalStack fixtures
 - local-first and opt-in only
 - not part of the default CI or `make verify-fast`

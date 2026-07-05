@@ -24,7 +24,7 @@ type JobMessage = { jobId: string };
 async function main(): Promise<void> {
   const region = process.env.AWS_REGION ?? 'us-east-1';
   const queueUrl = process.env.SQS_QUEUE_URL ?? 'https://sqs.us-east-1.amazonaws.com/123456789012/dispatch-email-jobs';
-  const otlpBaseUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
+  const otlpBaseUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://127.0.0.1:14318';
 
   const metricExporter = new OTLPMetricExporter({ url: `${otlpBaseUrl}/v1/metrics` });
   const metricReader = new PeriodicExportingMetricReader({ exporter: metricExporter, exportIntervalMillis: 15_000 });

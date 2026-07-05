@@ -16,6 +16,8 @@ Key scripts:
 - `scripts/harness/verify.sh`
 - `scripts/e2e/localstack/run.mjs`
 - `scripts/e2e/localstack/compose.yaml`
+- `scripts/e2e/observability/run.mjs`
+- `scripts/e2e/observability/compose.yaml`
 - `scripts/public-surface/run-interface-reports.mjs`
 - `scripts/public-surface/check-export-snapshot.mjs`
 - `scripts/benchmarks/run.ts`
@@ -32,6 +34,8 @@ Package-level code-shape tooling:
 - `npm run benchmark:compare -- --base <base.json> --candidate <candidate.json>`
 - `npm run e2e:localstack`
 - `npm run e2e:localstack:ci`
+- `npm run e2e:observability`
+- `npm run e2e:observability:ci`
 - `npm run public-surface:report`
 - `npm run public-surface:snapshot`
 - `npm run public-surface:check`
@@ -44,3 +48,6 @@ Optional end-to-end proof:
 - `make verify-localstack`
 - `npm run e2e:localstack -- --suite runtime,publishers`
 - dynamic LocalStack fixture provisioning lives in `test/e2e/localstack/`, not in package code
+- `make verify-observability`
+- `docker compose -f scripts/e2e/observability/compose.yaml up -d`
+- `docker compose -f scripts/e2e/observability/compose.yaml down -v`

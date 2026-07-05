@@ -9,6 +9,50 @@ The package stays vendor-neutral here:
 
 SigNoz is the first documented backend example because it speaks OTLP cleanly and fits the long-running worker model well.
 
+## Local proof lane
+
+This repo owns an optional local OTEL/SigNoz proof lane so maintainers can validate the package observability story end to end without relying on any internal repository.
+
+Standard entrypoints:
+
+```bash
+make verify-observability
+npm run e2e:observability
+npm run e2e:observability:ci
+```
+
+The repo-owned backend stack lives under `scripts/e2e/observability/` and uses a small Docker Compose topology plus repo-owned wrapper commands.
+
+Supported low-level escape hatch:
+
+```bash
+docker compose -f scripts/e2e/observability/compose.yaml up -d
+docker compose -f scripts/e2e/observability/compose.yaml down -v
+```
+
+Default local ports are intentionally repo-specific so the lane can coexist with other local stacks:
+
+- SigNoz UI: `127.0.0.1:18080`
+- OTLP gRPC: `127.0.0.1:14317`
+- OTLP HTTP: `127.0.0.1:14318`
+
+Override them through:
+
+- `MESSAGING_RUNTIME_SIGNOZ_UI_PORT`
+- `MESSAGING_RUNTIME_SIGNOZ_OTLP_GRPC_PORT`
+- `MESSAGING_RUNTIME_SIGNOZ_OTLP_HTTP_PORT`
+
+This lane layers on top of the LocalStack fixture foundation from `#36`:
+
+- `#36` proves transport and runtime behavior against SNS/SQS
+- `#57` proves that those real worker flows also reach a local backend through OTLP
+
+The lane uses scriptable ClickHouse assertions, not UI-only checks:
+
+- traces are verified through `signoz_traces.signoz_index_v3`
+- metrics are verified through `signoz_metrics.samples_v4` joined to `signoz_metrics.time_series_v4`
+- each test run uses a unique `smoke.run_id`
+
 ## Supported import
 
 ```ts
@@ -159,6 +203,8 @@ Typical self-hosted OTLP endpoints are:
 The compile-checked example in [`../examples/observability/otel-signoz-worker.ts`](../examples/observability/otel-signoz-worker.ts) uses OTLP/HTTP exporters and targets:
 - `http://<signoz-host>:4318/v1/metrics`
 - `http://<signoz-host>:4318/v1/traces`
+
+When using the repo-owned local proof stack, the default OTLP base URL is `http://127.0.0.1:14318`.
 
 Recommended dashboard groups:
 - queue pressure

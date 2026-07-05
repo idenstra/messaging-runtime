@@ -1,11 +1,12 @@
 # Testing
 
-`messaging-runtime` keeps two proof layers distinct:
+`messaging-runtime` keeps three proof layers distinct:
 
 - the default deterministic harness;
 - the optional LocalStack-backed end-to-end lane.
+- the optional OTEL/SigNoz observability backend lane.
 
-The default repo gate stays fast and AWS-free. The LocalStack lane exists for maintainers who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior.
+The default repo gate stays fast and AWS-free. The LocalStack lane exists for maintainers who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for maintainers who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend.
 
 ## Default verification
 
@@ -136,7 +137,72 @@ Current LocalStack-backed coverage includes:
 - production deployment correctness
 - Nest adapter end-to-end boot
 
-Use the future live AWS smoke lane for AWS-only confidence, and the future local OTEL backend lane for observability backend proof.
+Use the observability backend lane for local OTEL/SigNoz proof, and the future live AWS smoke lane for AWS-only confidence.
+
+## Optional observability backend lane
+
+The observability lane is the second end-to-end proof layer for the package surface.
+
+Standard entrypoints:
+
+```bash
+make verify-observability
+npm run e2e:observability
+npm run e2e:observability:ci
+```
+
+This lane:
+
+1. verifies Docker and `docker compose` are available;
+2. builds the package;
+3. starts the pinned local SigNoz stack from `scripts/e2e/observability/compose.yaml`;
+4. starts the pinned LocalStack stack from `scripts/e2e/localstack/compose.yaml`;
+5. runs observability E2E tests against the built `dist/` package output;
+6. tears both stacks down with volumes on success and failure.
+
+Default local ports are intentionally repo-specific so this lane can coexist with other stacks:
+
+- SigNoz UI: `127.0.0.1:18080`
+- OTLP gRPC: `127.0.0.1:14317`
+- OTLP HTTP: `127.0.0.1:14318`
+
+You may override those ports through:
+
+- `MESSAGING_RUNTIME_SIGNOZ_UI_PORT`
+- `MESSAGING_RUNTIME_SIGNOZ_OTLP_GRPC_PORT`
+- `MESSAGING_RUNTIME_SIGNOZ_OTLP_HTTP_PORT`
+
+The supported low-level escape hatch for the backend stack is:
+
+```bash
+docker compose -f scripts/e2e/observability/compose.yaml up -d
+docker compose -f scripts/e2e/observability/compose.yaml down -v
+```
+
+Current observability-backed coverage includes:
+
+- direct SQS worker success flow with runtime metrics and consumer spans
+- snapshot-derived gauges sourced from `getSnapshot()`
+- raw SNS -> SQS W3C propagation through a real backend path
+- handler failure counters plus error spans
+- timeout counters plus heartbeat-success counters
+- delete-batch failure telemetry through the real LocalStack-backed delete path
+
+Scriptable backend verification is direct and backend-real:
+
+- traces are verified through `signoz_traces.signoz_index_v3`
+- metrics are verified through `signoz_metrics.samples_v4` joined to `signoz_metrics.time_series_v4`
+- each test run uses a unique `smoke.run_id`
+
+`make verify-observability` proves more than unit tests or LocalStack alone, but it still does not prove:
+
+- live AWS behavior
+- IAM and AWS account wiring
+- OTLP logs behavior
+- production deployment correctness
+- Nest adapter end-to-end boot
+
+Use the live AWS smoke lane for AWS-only confidence after the local proof layers are green.
 
 ## When to run it
 
@@ -150,3 +216,11 @@ Run the LocalStack lane when a change touches:
 - package examples or docs that describe end-to-end behavior
 
 It is reasonable to run only the affected suites during iteration, then run the full lane before review when the change is runtime-facing.
+
+Run the observability lane when a change touches:
+
+- `@idenstra/messaging-runtime/observability`
+- runtime events or snapshot fields consumed by the OTEL adapter
+- W3C propagation helpers
+- docs/examples that describe the OTEL or SigNoz setup
+- worker tracing behavior

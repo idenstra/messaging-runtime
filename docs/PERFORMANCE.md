@@ -183,7 +183,7 @@ When a maintainer wants extra confidence, run an optional emulator-backed burst 
 2. a burst large enough to fill both in-flight and buffered slots
 3. verification that throughput improves without breaking delete/keep or shutdown behavior
 
-LocalStack-style proof is useful here, but it remains optional until the repository decides to own an emulator lane.
+`make verify-localstack` is the repo-owned emulator lane. Use it when a performance-sensitive runtime change also needs SNS/SQS behavior proof against the built package surface.
 
 ## Performance review checklist
 
