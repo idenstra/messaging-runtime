@@ -105,10 +105,16 @@ export async function waitForTcpPort(port, { host = '127.0.0.1', timeoutMs = 90_
   while (Date.now() < deadline) {
     try {
       await new Promise((resolve, reject) => {
+        const remainingMs = Math.max(250, Math.min(5_000, deadline - Date.now()));
         const socket = net.createConnection({ host, port });
+        socket.setTimeout(remainingMs);
         socket.once('connect', () => {
           socket.destroy();
           resolve();
+        });
+        socket.once('timeout', () => {
+          socket.destroy();
+          reject(new Error(`${label} connection attempt timed out after ${remainingMs}ms`));
         });
         socket.once('error', (error) => {
           socket.destroy();

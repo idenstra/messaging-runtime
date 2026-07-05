@@ -21,7 +21,9 @@ import {
   waitForCondition,
 } from '../localstack/support.mjs';
 
-export const OBSERVABILITY_RUN_ID = process.env.MESSAGING_RUNTIME_OBSERVABILITY_RUN_ID ?? 'manual';
+process.env.MESSAGING_RUNTIME_OBSERVABILITY_RUN_ID ??= createFallbackRunId();
+
+export const OBSERVABILITY_RUN_ID = process.env.MESSAGING_RUNTIME_OBSERVABILITY_RUN_ID;
 export const OTLP_HTTP_BASE_URL = `http://127.0.0.1:${signozOtlpHttpPort}`;
 const OBSERVABILITY_METER_NAME = 'messaging-runtime-observability-e2e';
 const OBSERVABILITY_TRACER_NAME = 'messaging-runtime-observability-e2e';
@@ -197,6 +199,10 @@ async function waitForCountQuery(description, query, timeoutMs) {
 
 function sqlLiteral(value) {
   return String(value).replaceAll("'", "''");
+}
+
+function createFallbackRunId() {
+  return `manual-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 }
 
 export {
