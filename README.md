@@ -86,6 +86,13 @@ make verify-localstack
 npm run e2e:localstack -- --suite runtime,publishers
 ```
 
+When a change touches OTEL metrics, W3C propagation, or worker tracing behavior, use the optional observability lane:
+
+```bash
+make verify-observability
+npm run e2e:observability
+```
+
 ## Quick start
 
 A minimal framework-agnostic worker uses one AWS SDK `SQSClient` wrapped once by `AwsSqsAdapter`.

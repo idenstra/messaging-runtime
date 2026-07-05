@@ -341,6 +341,23 @@ export async function waitForMessages(
   throw new Error(`Timed out waiting for ${expectedCount} message(s) on ${queueUrl}.`);
 }
 
+export async function waitForApproximateVisibleMessageCount(
+  sqsClient,
+  queueUrl,
+  { minCount = 1, timeoutMs = 10_000, intervalMs = 250 } = {},
+) {
+  return waitForCondition(
+    async () => {
+      const response = await sqsClient.send(
+        new GetQueueAttributesCommand({ QueueUrl: queueUrl, AttributeNames: ['ApproximateNumberOfMessages'] }),
+      );
+      const count = Number.parseInt(response.Attributes?.ApproximateNumberOfMessages ?? '0', 10);
+      return Number.isFinite(count) && count >= minCount;
+    },
+    { timeoutMs, intervalMs, description: `approximate visible message count >= ${minCount} on ${queueUrl}` },
+  );
+}
+
 export function parseMessageBody(message) {
   assert.equal(typeof message.Body, 'string', 'Expected a queue message body.');
   return message.Body;

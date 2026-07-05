@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help format lint audit verify-fast verify verify-localstack plan-sync plan-close
+.PHONY: help format lint audit verify-fast verify verify-localstack verify-observability plan-sync plan-close
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "}; /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -21,6 +21,9 @@ verify: verify-fast ## Run the default repo verification gate
 
 verify-localstack: ## Run the optional LocalStack-backed end-to-end proof lane
 	npm run e2e:localstack
+
+verify-observability: ## Run the optional OTEL/SigNoz observability proof lane
+	npm run e2e:observability
 
 plan-sync: ## Move closed-issue execution plans from active to completed
 	node ./scripts/harness/check-execution-plan-lifecycle.mjs --write
