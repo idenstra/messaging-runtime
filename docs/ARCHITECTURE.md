@@ -2,7 +2,7 @@
 
 `messaging-runtime` is the shared SNS/SQS runtime layer for app-owned worker services.
 
-The architecture stays intentionally narrow: reusable transport/runtime mechanics belong here; business handlers, infrastructure ownership, and provider-neutral abstractions do not.
+The architecture stays intentionally narrow: reusable transport/runtime mechanics belong here; business handlers, infrastructure ownership, and transport-neutral abstractions do not.
 
 ## Owned surfaces
 
@@ -16,7 +16,7 @@ The package owns:
   - shutdown
   - route lifecycle
   - runtime events and snapshots
-- worker host/bootstrap ergonomics
+- worker host ergonomics
   - manifest-driven route activation
   - queue binding resolution
   - signal-runner helpers
@@ -47,8 +47,8 @@ The package does not own:
 - persistence or idempotency storage
 - queue/topic provisioning
 - IAM policy management
-- generic broker abstractions
-- manual replay policy
+- transport-neutral abstractions
+- consumer-owned manual reprocessing policy
 
 Those stay consumer-owned by design.
 
@@ -69,7 +69,7 @@ Package-facing docs and examples should describe only those imports.
 flowchart TD
   Root["root package exports"]
   Core["core runtime"]
-  Host["host/bootstrap"]
+  Host["worker host"]
   Transport["transport helpers"]
   QueueOps["queue ops"]
   Observability["observability helpers"]
@@ -125,7 +125,7 @@ The supported extension seams are:
 Unsupported extension style:
 
 - deep imports into internal package files
-- provider-neutral broker abstractions
+- transport-neutral abstractions
 - provisioning or IAM helpers inside the shared package
 
 See [`EXTENDING.md`](EXTENDING.md) for the consumer-facing extension guide and compile-checked examples.

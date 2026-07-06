@@ -11,7 +11,7 @@ const suiteFiles = {
   redrive: 'test/e2e/aws-smoke/redrive.test.mjs',
 };
 const defaultRegion = process.env.AWS_REGION ?? 'us-east-1';
-const defaultProfileLabel = process.env.AWS_PROFILE ?? '(default provider chain)';
+const defaultProfileLabel = process.env.AWS_PROFILE ?? '(default AWS SDK provider chain)';
 const forbiddenEndpointEnvVars = [
   'MESSAGING_RUNTIME_LOCALSTACK_ENDPOINT',
   'AWS_ENDPOINT_URL',

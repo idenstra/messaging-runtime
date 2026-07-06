@@ -6,7 +6,22 @@ Use it when you want the mental model first. Use [`QUICK_START.md`](QUICK_START.
 
 ## The package in one sentence
 
-`messaging-runtime` gives consumer services a reusable SNS/SQS runtime layer without taking over business handlers, infrastructure provisioning, or provider-neutral broker abstractions.
+`messaging-runtime` gives consumer services a reusable SNS/SQS runtime layer without taking over business handlers, infrastructure provisioning, or transport-neutral abstractions.
+
+## Terminology
+
+Use these terms consistently when reading or extending the package:
+
+- `worker runtime`: polling, buffering, delete/keep, heartbeat, timeout, shutdown, snapshots, and runtime events
+- `worker host`: manifest-driven route activation and hosted worker bootstrap
+- `decode`: inbound SQS/SNS body or envelope parsing
+- `serialize`: outbound payload-to-string transformation
+- `send` vs `publish`: SQS sends messages; SNS publishes messages
+- `queue ops`: queue discovery, inspection, and native redrive helpers
+- `native redrive` vs `consumer-owned manual reprocessing`: the package owns SQS move-task recovery, while domain-aware reprocessing stays in the consuming system
+- `proof lane`: an optional verification layer such as LocalStack, observability-local, or live AWS smoke
+- `public self-test`: the outside-consumer live AWS smoke path
+- `maintainer workflow`: the upstream-only GitHub OIDC and release-gate path
 
 ## Capability map
 
@@ -20,7 +35,7 @@ The package is easiest to reason about in five groups:
    - shutdown
    - route lifecycle
    - runtime events and snapshots
-2. worker host/bootstrap
+2. worker host
    - manifest-driven route activation
    - queue binding resolution
    - signal-driven runner ergonomics
@@ -111,7 +126,7 @@ Queue ops stay read-only or transport-native:
 - discovery is read-only
 - queue inspection is read-only
 - native redrive is package-owned
-- manual replay remains consumer-owned
+- consumer-owned manual reprocessing remains outside the package
 
 ## Recommended integration pattern
 
@@ -132,7 +147,7 @@ This keeps configuration, rollout, and domain policy outside the shared runtime.
 The package should own:
 
 - SNS/SQS runtime semantics
-- worker host/bootstrap ergonomics
+- worker host ergonomics
 - transport-native publish/resolve/discovery helpers
 - queue inspection and native redrive
 - OTEL-first observability helpers
@@ -145,7 +160,7 @@ Consumer services should own:
 - queue/topic provisioning
 - IAM policy decisions
 - deployment topology
-- manual replay policy
+- consumer-owned manual reprocessing policy
 
 ## Where to go next
 

@@ -11,7 +11,7 @@ If you want deeper recipes after the first worker is running, continue with [`GE
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 
-Current publication posture is still private-first. The package shape and imports below are the supported ones, even though the public-registry decision is still tracked under [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md).
+The package shape and supported imports below are stable. If your environment consumes a private publication or a non-default registry, check [`RELEASES.md`](RELEASES.md) for the current package-distribution details.
 
 ## Install
 
@@ -69,7 +69,7 @@ await runSqsWorkerServiceUntilSignal(host);
 
 Why this shape:
 
-- one adapter instance can satisfy SQS runtime, transport, and queue-ops needs
+- one adapter instance can satisfy SQS runtime, transport, and queue ops needs
 - route factories keep common worker shapes short without hiding the underlying runtime model
 - `allowNetworkLookup: false` keeps queue resolution explicit in production-like setups
 

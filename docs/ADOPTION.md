@@ -134,7 +134,7 @@ Even after adoption, the service still owns:
 - idempotency storage
 - queue/DLQ provisioning
 - IAM policy decisions
-- manual replay policy
+- consumer-owned manual reprocessing policy
 - deployment topology
 
 `messaging-runtime` should make SNS/SQS behavior reusable. It should not absorb service-specific workflow policy.

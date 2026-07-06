@@ -58,7 +58,7 @@ export function createRecordingSqsAdapter(sdkClient) {
   const failReceiveOnceQueueUrls = new Set();
   const failedReceiveQueueUrls = new Set();
 
-  const wrapper = {
+  const recordingClient = {
     send: async (command, options) => {
       const commandName = command?.constructor?.name;
       const input = structuredClone(command.input);
@@ -84,7 +84,7 @@ export function createRecordingSqsAdapter(sdkClient) {
   };
 
   return {
-    adapter: new runtime.AwsSqsAdapter(wrapper),
+    adapter: new runtime.AwsSqsAdapter(recordingClient),
     records,
     failReceiveOnceForQueue(queueUrl) {
       failReceiveOnceQueueUrls.add(queueUrl);
@@ -95,7 +95,7 @@ export function createRecordingSqsAdapter(sdkClient) {
 export function createRecordingSnsAdapter(sdkClient) {
   const records = { publishInputs: [], publishBatchInputs: [], listTopicsInputs: [] };
 
-  const wrapper = {
+  const recordingClient = {
     send: async (command, options) => {
       const commandName = command?.constructor?.name;
       const input = structuredClone(command.input);
@@ -112,7 +112,7 @@ export function createRecordingSnsAdapter(sdkClient) {
     },
   };
 
-  return { adapter: new runtime.AwsSnsAdapter(wrapper), records };
+  return { adapter: new runtime.AwsSnsAdapter(recordingClient), records };
 }
 
 export function createScopedPrefix(runId, label, { prefix = 'mr' } = {}) {

@@ -15,7 +15,7 @@ The current worker-core slice implements bounded per-route prefetch and route-lo
 ## Performance principles
 
 - Keep the hot path SNS/SQS-specific.
-- Avoid generic broker abstractions in runtime code.
+- Avoid transport-neutral abstractions in runtime code.
 - Avoid framework dependencies in the core path.
 - Prefer explicit small interfaces over reflective or dynamic dispatch.
 - Keep message decode and ack decisions allocation-conscious.

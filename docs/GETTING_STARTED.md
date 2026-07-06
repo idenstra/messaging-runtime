@@ -4,6 +4,8 @@ This guide is the cookbook for `@idenstra/messaging-runtime`.
 
 Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest worker + publisher setup. Come here when you want the next layer of practical recipes for common worker, publisher, queue-ops, and observability shapes.
 
+The snippets in this guide are meant to be small and copy-pasteable. The `examples/` directory complements them with compile-checked reference examples when you want fuller end-to-end shapes.
+
 ## Prerequisites
 
 - Node.js `>=24`
@@ -11,13 +13,11 @@ Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest worker + p
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 - `@opentelemetry/api` when using `@idenstra/messaging-runtime/observability`
-- access to the package registry currently used by `@idenstra/messaging-runtime`
+- access to the registry where the package is currently published
 
-The package is not yet public-ready. Public installation guidance should be updated when `docs/PUBLIC_RELEASE.md` is complete.
+If your environment uses a private publication or a non-default registry, check [`RELEASES.md`](RELEASES.md) for the current distribution details.
 
 ## Install
-
-Current internal installation expects the configured `@idenstra` registry.
 
 ```bash
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
@@ -752,7 +752,7 @@ const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-
 
 Use the example script in [`../examples/queue-ops/native-dlq-redrive.ts`](../examples/queue-ops/native-dlq-redrive.ts) as the starting point for a consumer-owned admin command.
 
-Manual message-level replay remains outside this package. It must stay in the consuming system because idempotency, payload validation, and replay safety are domain-specific.
+Consumer-owned manual reprocessing remains outside this package. It must stay in the consuming system because idempotency, payload validation, and recovery safety are domain-specific.
 
 ## Next steps
 

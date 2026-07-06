@@ -2,7 +2,7 @@
 
 This document covers the package-facing security and safety boundaries for `@idenstra/messaging-runtime`.
 
-It is not the final public vulnerability-disclosure policy. Root-level security-policy posture stays with `#11`.
+It is not the final public vulnerability-disclosure policy. Root-level security-policy and disclosure posture still belong to the repository-level public-release work.
 
 ## Security ownership boundary
 
@@ -13,7 +13,7 @@ The package owns reusable SNS/SQS mechanics. Consumer services still own:
 - queue/topic provisioning
 - business-level authorization
 - idempotency storage
-- domain-safe replay or recovery rules
+- domain-safe manual reprocessing or recovery rules
 - deployment and network boundaries
 
 That split is deliberate. The runtime should stay deterministic and transport-focused.
@@ -87,7 +87,7 @@ At minimum, document:
 
 See [`OPERATIONS.md`](OPERATIONS.md) and [`ADOPTION.md`](ADOPTION.md).
 
-## DLQ and replay safety
+## DLQ and manual reprocessing safety
 
 The package owns:
 
@@ -95,19 +95,19 @@ The package owns:
 - DLQ source discovery
 - native SQS redrive task control
 
-The package does **not** own generic manual replay helpers.
+The package does **not** own generic manual reprocessing helpers.
 
-That boundary exists because manual replay correctness depends on:
+That boundary exists because consumer-owned manual reprocessing correctness depends on:
 
 - business idempotency rules
 - payload meaning
 - downstream side effects
 - tenant/customer/domain policy that should stay out of the shared package
 
-Treat native redrive and manual replay as different operations:
+Treat native redrive and consumer-owned manual reprocessing as different operations:
 
 - native redrive is package-owned queue behavior
-- manual replay remains consumer-owned domain behavior
+- consumer-owned manual reprocessing remains consumer-owned domain behavior
 
 ## Observability safety
 
@@ -154,4 +154,4 @@ They must not contain:
 - publish secrets
 - static AWS credentials
 
-Final public security-policy posture belongs to `#11`.
+Final public security-policy posture belongs to the repository-level OSS/public-release work, not this package-facing guide.

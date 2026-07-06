@@ -9,7 +9,7 @@ It stays deliberately narrow:
 - native SQS DLQ redrive support
 - OpenTelemetry-first metrics and tracing helpers
 
-It does **not** try to flatten Kafka, RabbitMQ, Redis streams, or other brokers into one abstraction. The point is to keep Amazon SNS/SQS behavior visible, testable, and cheap to operate.
+It does **not** try to flatten Kafka, RabbitMQ, Redis streams, or other transport families into one cross-transport abstraction. The point is to keep Amazon SNS/SQS behavior visible, testable, and cheap to operate.
 
 ## When to use it
 
@@ -90,7 +90,8 @@ Do not deep-import from `dist/` or internal source files.
 
 - [`docs/QUICK_START.md`](docs/QUICK_START.md) for the shortest first-run path
 - [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) for recipes and common setups
-- [`docs/USAGE.md`](docs/USAGE.md) for the conceptual mental model
+- [`docs/USAGE.md`](docs/USAGE.md) for the conceptual mental model and terminology
+- [`examples/`](examples) for compile-checked reference examples when you want fuller working shapes than the README snippets
 
 ### Build and operate
 
@@ -107,14 +108,14 @@ Do not deep-import from `dist/` or internal source files.
 - [`docs/EXTENDING.md`](docs/EXTENDING.md) for supported extension seams
 - [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for pre-`1.0` consumer policy
 - [`docs/TESTING.md`](docs/TESTING.md) for deterministic, LocalStack, observability-local, and live AWS proof lanes
-- [`docs/AWS_SMOKE.md`](docs/AWS_SMOKE.md) for live AWS self-test and maintainer workflow guidance
+- [`docs/AWS_SMOKE.md`](docs/AWS_SMOKE.md) for live AWS public self-test and maintainer workflow guidance
 - [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) for benchmark posture
 
 ### Release and reference
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for package boundaries and internal layout
 - [`docs/RELIABILITY.md`](docs/RELIABILITY.md) for verification posture
-- [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) for the remaining `#11` OSS-readiness work
+- [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) for the remaining OSS-readiness work
 - [`docs/RELEASES.md`](docs/RELEASES.md) for the current private-first release mechanics
 
 ## Proof lanes
@@ -140,17 +141,17 @@ See [`docs/TESTING.md`](docs/TESTING.md) for the suite boundaries and escalation
 - runtime baseline: Node.js `>=24`
 - version posture: pre-`1.0`
 - current publication posture: private-first GitHub Packages flow
-- OSS posture work still tracked in [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) and issue `#11`
+- OSS posture work is summarized in [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md)
 
 ## Deliberate non-goals
 
 This package does not own:
 
-- generic broker abstractions
+- transport-neutral abstractions that hide SNS/SQS behavior
 - business handlers or application payload contracts
 - environment, secrets, or config-file loading
 - queue/topic provisioning or IAM management APIs
-- generic manual replay tooling
+- generic manual reprocessing tooling
 - live AWS requirements in the default harness
 
 Consumer applications still own configuration, dependency wiring, rollout, idempotency, and domain-safe recovery policy.

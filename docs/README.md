@@ -13,7 +13,7 @@ Start with the product docs. Use the contributor docs only when changing the pac
 | --- | --- |
 | [`QUICK_START.md`](QUICK_START.md) | The shortest path to a working worker and publisher. |
 | [`GETTING_STARTED.md`](GETTING_STARTED.md) | Cookbook-style recipes for common worker, publisher, queue-ops, and observability setups. |
-| [`USAGE.md`](USAGE.md) | Conceptual overview of how the runtime, transport helpers, and queue ops fit together. |
+| [`USAGE.md`](USAGE.md) | Conceptual overview of how the runtime, transport helpers, queue ops, and package terminology fit together. |
 
 ## Build
 
@@ -21,7 +21,7 @@ Start with the product docs. Use the contributor docs only when changing the pac
 | --- | --- |
 | [`FEATURES.md`](FEATURES.md) | Supported capabilities, non-goals, and the current maturity boundary. |
 | [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) | Polling, concurrency, ack, timeout, heartbeat, shutdown, and redelivery semantics. |
-| [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) | Queue discovery, inspection, native DLQ redrive, and manual replay boundaries. |
+| [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) | Queue discovery, inspection, native DLQ redrive, and consumer-owned manual reprocessing boundaries. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package boundaries, internal layout, and extension-safe ownership lines. |
 | [`COMPATIBILITY.md`](COMPATIBILITY.md) | Supported imports, pre-`1.0` consumer policy, and extension-safe compatibility expectations. |
 
@@ -53,7 +53,7 @@ Start with the product docs. Use the contributor docs only when changing the pac
 
 | Document | Purpose |
 | --- | --- |
-| [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md) | Remaining OSS-readiness decisions and work tracked under `#11`. |
+| [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md) | Remaining OSS-readiness decisions and repository-publication posture. |
 | [`RELEASES.md`](RELEASES.md) | Current private-first release mechanics. |
 
 ## Contributor and governance docs

@@ -258,7 +258,7 @@ The live AWS lane proves real SNS/SQS behavior for:
 
 This lane is still not a production-deployment proof. It exists to answer the AWS-only questions that LocalStack and the local observability backend cannot answer.
 
-The public self-test path, fixture naming rules, IAM expectations, fork/workflow guidance, maintainer release wiring, and release-time publish gate behavior live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
+The public self-test path, fixture naming rules, IAM expectations, fork/workflow guidance, maintainer workflow wiring, and release-time publish gate behavior live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
 
 ## When to run it
 

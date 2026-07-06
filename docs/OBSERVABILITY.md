@@ -42,10 +42,10 @@ Override them through:
 - `MESSAGING_RUNTIME_SIGNOZ_OTLP_GRPC_PORT`
 - `MESSAGING_RUNTIME_SIGNOZ_OTLP_HTTP_PORT`
 
-This lane layers on top of the LocalStack fixture foundation from `#36`:
+This lane layers on top of the repository's LocalStack-backed SNS/SQS proof foundation:
 
-- `#36` proves transport and runtime behavior against SNS/SQS
-- `#57` proves that those real worker flows also reach a local backend through OTLP
+- the LocalStack lane proves transport and runtime behavior against SNS/SQS emulator flows
+- the observability lane proves that those worker flows also reach a real local backend through OTLP
 
 The lane uses scriptable ClickHouse assertions, not UI-only checks:
 
