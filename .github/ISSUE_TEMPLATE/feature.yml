@@ -1,5 +1,5 @@
 name: Feature
-description: New runtime capability or package-surface expansion
+description: Propose a new package capability, helper, or supported behavior
 title: ""
 type: Feature
 body:
@@ -20,13 +20,3 @@ body:
     id: non_goals
     attributes:
       label: Non-goals
-  - type: dropdown
-    id: plan_required
-    attributes:
-      label: Execution plan required?
-      options:
-        - "Yes"
-        - "No"
-    validations:
-      required: true
-

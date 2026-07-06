@@ -1,0 +1,23 @@
+name: Documentation or onboarding
+description: Report confusing docs, missing guidance, or a first-run gap
+title: ""
+body:
+  - type: textarea
+    id: current_gap
+    attributes:
+      label: Current gap
+      description: What part of the docs, example set, or first-run path is missing or confusing?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected guidance
+      description: What should a reader be able to understand or accomplish instead?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link the doc or example, and include any adoption context that helps reproduce the confusion.

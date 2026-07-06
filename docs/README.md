@@ -1,9 +1,6 @@
 # Documentation
 
-This docs set is split into:
-
-1. product docs for package consumers;
-2. contributor docs for repository workflow, proof, and release mechanics.
+This docs set is split into product docs for package consumers and contributor docs for repository workflow.
 
 Start with the product docs. Use the contributor docs only when changing the package or its release process.
 
@@ -54,12 +51,12 @@ Start with the product docs. Use the contributor docs only when changing the pac
 | Document | Purpose |
 | --- | --- |
 | [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md) | Remaining OSS-readiness decisions and repository-publication posture. |
-| [`RELEASES.md`](RELEASES.md) | Current private-first release mechanics. |
 
-## Contributor and governance docs
+## Contributor / Maintainer
 
 | Document | Purpose |
 | --- | --- |
+| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Public contributor entrypoint and proof expectations. |
 | [`../AGENTS.md`](../AGENTS.md) | Repository rules and contributor constraints. |
 | [`../WORKFLOW.md`](../WORKFLOW.md) | Proof tiers and handoff expectations. |
 | [`HARNESS.md`](HARNESS.md) | Harness entrypoints and deterministic repo gates. |
@@ -67,6 +64,7 @@ Start with the product docs. Use the contributor docs only when changing the pac
 | [`AI_ENGINEERING.md`](AI_ENGINEERING.md) | AI-assisted engineering discipline. |
 | [`ISSUE_TRACKING.md`](ISSUE_TRACKING.md) | Same-repo issue, execution plan, and PR flow. |
 | [`EXECUTION_PLANS.md`](EXECUTION_PLANS.md) | Execution-plan lifecycle rules. |
+| [`RELEASES.md`](RELEASES.md) | Current registry and release mechanics for maintainers. |
 
 ## Documentation rules
 

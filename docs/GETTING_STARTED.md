@@ -13,9 +13,6 @@ The snippets in this guide are meant to be small and copy-pasteable. The `exampl
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 - `@opentelemetry/api` when using `@idenstra/messaging-runtime/observability`
-- access to the registry where the package is currently published
-
-If your environment uses a private publication or a non-default registry, check [`RELEASES.md`](RELEASES.md) for the current distribution details.
 
 ## Install
 

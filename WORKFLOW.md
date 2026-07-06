@@ -35,6 +35,8 @@ notes:
 
 # Messaging runtime workflow
 
+This is a contributor and maintainer workflow document for proof tiers, handoff expectations, and repository change discipline.
+
 Start by reading:
 
 1. `AGENTS.md`

@@ -2,7 +2,7 @@
 
 This document covers the package-facing security and safety boundaries for `@idenstra/messaging-runtime`.
 
-It is not the final public vulnerability-disclosure policy. Root-level security-policy and disclosure posture still belong to the repository-level public-release work.
+For repository-level vulnerability disclosure and reporting, use the root [`SECURITY.md`](../SECURITY.md) policy.
 
 ## Security ownership boundary
 
@@ -140,8 +140,6 @@ See:
 
 ## Registry and publication posture
 
-Current release posture is still private-first.
-
 Tracked repo files may contain:
 
 - scope-to-registry mapping
@@ -154,4 +152,4 @@ They must not contain:
 - publish secrets
 - static AWS credentials
 
-Final public security-policy posture belongs to the repository-level OSS/public-release work, not this package-facing guide.
+Repository-level disclosure and reporting policy lives in the root [`SECURITY.md`](../SECURITY.md). This guide stays focused on package behavior and consumer safety boundaries.

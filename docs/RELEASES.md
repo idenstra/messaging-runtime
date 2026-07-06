@@ -1,5 +1,7 @@
 # Releases
 
+This is a contributor and maintainer workflow document for current registry and release mechanics.
+
 `messaging-runtime` is private-first. Releases are published only to GitHub Packages in this phase.
 
 ## Source of truth

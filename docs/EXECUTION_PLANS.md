@@ -1,5 +1,7 @@
 # Execution plans
 
+This is a contributor and maintainer workflow document for non-trivial repository changes.
+
 Non-trivial work in this repo follows the same-repo `issue -> plan -> PR` flow.
 
 Rules:

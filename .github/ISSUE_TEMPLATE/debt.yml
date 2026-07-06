@@ -1,5 +1,5 @@
-name: Debt
-description: Technical debt or deferred hardening
+name: Maintainer debt
+description: Maintainer workflow form for technical debt or deferred hardening
 title: ""
 type: Debt
 body:
@@ -13,4 +13,3 @@ body:
     id: risk
     attributes:
       label: Risk if deferred
-

@@ -1,6 +1,6 @@
 # Compatibility
 
-This document defines the supported consumer contract for `@idenstra/messaging-runtime` while the package remains private-first and `0.x`.
+This document defines the supported consumer contract for `@idenstra/messaging-runtime` while the package remains `0.x`.
 
 Use it together with:
 
@@ -73,17 +73,10 @@ Release meaning:
 
 ## Consumer upgrade guidance
 
-Expected upgrade flow for private consumers:
+Expected upgrade flow for consumers:
 1. read the changelog entry for the target version
 2. update the dependency to the exact published version
 3. run the consumer repo’s build, tests, and harness checks
 4. remove any temporary vendored/runtime-copy seam once adoption is complete
 
-## GitHub Actions consumer posture
-
-Consumer workflows that install this package from GitHub Packages should:
-- use `actions/setup-node` with the GitHub Packages registry URL
-- authenticate with `NODE_AUTH_TOKEN`
-- ensure the consumer repo has read access to the package
-
-This repo defines release and compatibility policy only. It does not change consumer repos in this slice.
+This repo defines release and compatibility policy only. Registry and publication mechanics are tracked separately from the supported API contract.

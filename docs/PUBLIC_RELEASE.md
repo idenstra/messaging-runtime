@@ -4,20 +4,22 @@ This repository is not yet ready for public release until the following readines
 
 This document assumes the readability, quick-start, adoption, and public-facing documentation cleanup is already complete. It should track only the remaining release-posture and OSS-readiness work.
 
+Repository posture phase 1 is already complete:
+
+- public `MIT` license added
+- root `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md` added
+- public-first issue and PR templates added while preserving maintainer governance metadata
+- consumer docs path separated from contributor / maintainer workflow docs
+- package-facing docs scrubbed for the main private-only onboarding leaks
+
 ## Repository posture
 
 - Change repository visibility intentionally, not as a side effect of another slice.
-- Decide and add the public license.
-- Add `CONTRIBUTING.md`.
-- Add `SECURITY.md` at the repository root or confirm GitHub security policy configuration.
-- Add public issue templates.
-- Add a public pull request template that does not assume private internal workflow knowledge.
-- Remove or clearly separate internal-only governance docs from the consumer reading path.
-- Audit docs and examples for private infrastructure, internal migration history, and confidential terms.
+- Confirm GitHub security-policy settings match the tracked root `SECURITY.md`.
+- Do one final repository-wide scrub for any private infrastructure, internal migration history, or confidential terms that remain after package posture is finalized.
 
 ## Package metadata
 
-- Replace `UNLICENSED` with the chosen public license in `package.json`.
 - Decide whether public distribution uses npmjs, GitHub Packages, or both.
 - Update `publishConfig` for the chosen public registry posture.
 - Confirm package name and scope for public consumption.

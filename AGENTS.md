@@ -26,7 +26,7 @@ Read these first and use them intentionally:
 2. SNS/SQS-specific transport helpers
 3. worker host/bootstrap ergonomics
 4. testability, determinism, and harness quality
-5. docs and release posture for private-first internal consumption
+5. docs and release posture for the repository and package
 
 ## Non-negotiable constraints
 - Keep the repo SNS/SQS-specific. Do not broaden into Kafka, RabbitMQ, or generic broker abstractions.
@@ -35,7 +35,7 @@ Read these first and use them intentionally:
 - Do not leak consumer- or repo-specific types into the package API.
 - Keep local verification deterministic by default. Do not require live AWS for the harness gate.
 - Any meaningful behavior change must update the relevant docs in the same change-set.
-- Package publication remains private-first and is allowed only through the guarded manual release workflow.
+- Package publication posture must remain aligned with the tracked release docs and workflow guards.
 
 ## Repo layout contract
 - `src/`: package source and exported runtime surface

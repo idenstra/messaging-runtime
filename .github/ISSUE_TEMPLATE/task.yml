@@ -1,5 +1,5 @@
-name: Task
-description: Small bounded implementation or follow-up task
+name: Maintainer task
+description: Maintainer workflow form for a small bounded implementation or follow-up task
 title: ""
 type: Task
 body:
@@ -15,4 +15,3 @@ body:
       label: Acceptance criteria
     validations:
       required: true
-
