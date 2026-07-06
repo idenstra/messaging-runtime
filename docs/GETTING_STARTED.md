@@ -1,6 +1,8 @@
-# Getting started
+# Getting started recipes
 
-This guide shows the smallest useful setup for a plain Node.js worker that consumes SQS messages, plus the common route-factory, SNS-over-SQS, publish, and transport-batch helper paths.
+This guide is the cookbook for `@idenstra/messaging-runtime`.
+
+Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest worker + publisher setup. Come here when you want the next layer of practical recipes for common worker, publisher, queue-ops, and observability shapes.
 
 ## Prerequisites
 
@@ -754,8 +756,10 @@ Manual message-level replay remains outside this package. It must stay in the co
 
 ## Next steps
 
+- Go back to [`QUICK_START.md`](QUICK_START.md) if you need the shortest public reading path to share with other adopters.
 - Read [`FEATURES.md`](FEATURES.md) for the supported surface.
 - Read [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) before setting ack, timeout, heartbeat, or concurrency policies.
 - Read [`OPERATIONS.md`](OPERATIONS.md) before production adoption.
+- Read [`ADOPTION.md`](ADOPTION.md) before rolling the runtime into a real service.
 - Read [`OBSERVABILITY.md`](OBSERVABILITY.md) before wiring metrics, traces, or autoscaling.
 - Read [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) before inspecting DLQs or starting a redrive task.

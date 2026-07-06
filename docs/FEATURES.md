@@ -2,6 +2,8 @@
 
 `messaging-runtime` is a focused SNS/SQS runtime. Its maturity should come from being excellent at one transport family, not from pretending every broker has the same semantics.
 
+If you want the shortest onboarding path, start with [`QUICK_START.md`](QUICK_START.md). If you want rollout guidance for a real service, use [`ADOPTION.md`](ADOPTION.md).
+
 ## Runtime capabilities
 
 | Capability | Supported | Notes |
@@ -87,7 +89,7 @@ These omissions are part of the design. Generic broker abstractions tend to eras
 
 The core feature set is credible, but the public maturity story is not complete until the following gaps are closed:
 
-1. Public package posture: license, package metadata, registry access, contribution docs, security policy, issue templates, and release instructions.
+1. Final OSS posture: license, public registry decision, contribution docs, root security-policy posture, issue templates, and public release instructions.
 2. Broader optional integration proof: keep the LocalStack, observability-backend, and live AWS smoke lanes current without weakening the deterministic default harness.
 3. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
 4. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.

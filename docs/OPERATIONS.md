@@ -1,6 +1,8 @@
 # Operations
 
-`messaging-runtime` keeps operational ownership explicit. The library owns reusable SNS/SQS mechanics. The application owns deployment, configuration, idempotency, persistence, and alerting policy.
+`messaging-runtime` keeps operational ownership explicit. The library owns reusable SNS/SQS mechanics. The application owns deployment, configuration, idempotency, persistence, alerting policy, and rollout.
+
+Use this guide for runtime operations. Use [`ADOPTION.md`](ADOPTION.md) when you are rolling the library into a real service for the first time.
 
 ## Configuration ownership
 
@@ -313,6 +315,8 @@ It does not provide:
 - a dependency on Nest in the framework-agnostic runtime path.
 
 ## Production adoption checklist
+
+This is the runtime-facing checklist. For the broader rollout sequence, read [`ADOPTION.md`](ADOPTION.md).
 
 Before a worker uses this package in production, confirm:
 

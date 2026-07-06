@@ -2,6 +2,8 @@
 
 This repository is not public-ready until the following readiness criteria are owned and resolved through tracked issue work. Making the repository visible before these items are resolved would weaken the maturity signal the package is meant to send.
 
+The readability, quick-start, adoption, and public-facing documentation cleanup from `#49` is assumed complete here. This document should only track what still belongs to the public-release posture under `#11`.
+
 ## Repository posture
 
 - Change repository visibility intentionally, not as a side effect of another slice.
@@ -21,7 +23,7 @@ This repository is not public-ready until the following readiness criteria are o
 - Confirm package name and scope for public consumption.
 - Confirm `files`, `exports`, `types`, and package tarball contents with `npm pack --dry-run`.
 - Add README badges only for signals that are real and maintained.
-- Add keywords and package metadata suitable for npm search if publishing publicly.
+- Re-check package description and keywords against the final public registry posture.
 
 ## API and compatibility
 
@@ -80,11 +82,11 @@ This repository is not public-ready until the following readiness criteria are o
 
 ## Documentation maturity
 
-- Make the root README concise and consumer-first.
+- Preserve the concise README and quick-start path established in `#49`.
 - Keep the first-run example correct and copy-pasteable.
-- Keep public docs in a clear order through [`docs/README.md`](README.md).
+- Keep public docs in a clear reader journey through [`docs/README.md`](README.md).
+- Keep `ADOPTION.md`, security guidance, and proof-lane docs accurate for outside consumers with their own infrastructure and AWS accounts.
 - Separate product docs from contributor/governance docs.
-- Document production adoption prerequisites.
 - Document current limitations directly instead of hiding them in issue references.
 
 ## Release decision

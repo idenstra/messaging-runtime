@@ -1,89 +1,67 @@
 # Architecture
 
-`messaging-runtime` owns the shared TypeScript SNS/SQS runtime layer used by app-owned worker services.
+`messaging-runtime` is the shared SNS/SQS runtime layer for app-owned worker services.
 
-Owned surfaces:
-- queue polling/runtime behavior
-- shared route lifecycle hooks for startup, readiness, stop-signal, and cleanup
-- route-level failure policy and timeout semantics
-- runtime event hooks and status/snapshot surfaces
-- OTEL metrics/tracing helpers and W3C trace propagation helpers
-- worker-service host/bootstrap and signal-runner ergonomics
-- explicit SNS/SQS transport helpers
-- queue inspection and native DLQ redrive task helpers
+The architecture stays intentionally narrow: reusable transport/runtime mechanics belong here; business handlers, infrastructure ownership, and provider-neutral abstractions do not.
+
+## Owned surfaces
+
+The package owns:
+
+- worker runtime behavior
+  - polling
+  - concurrency
+  - timeouts
+  - heartbeats
+  - shutdown
+  - route lifecycle
+  - runtime events and snapshots
 - worker host/bootstrap ergonomics
-- package-level verification and documentation
-
-Not owned here:
-- domain handlers
-- app persistence
-- SES/communication business policies
-- broker abstractions for Kafka, RabbitMQ, or other unrelated transports
-
-Current state:
-- single package
-- private-first
-- extracted SQS worker runtime core now lives here
-- the runtime core now owns route error hooks, timeout strategies, and metrics/snapshot hooks
-- the runtime core now also owns:
-  - bounded per-route raw-message prefetch
-  - pre-dispatch visibility-age protection for buffered messages
-  - route-local delete batching for worker-core finalization
-- the root package now owns worker-service lifecycle/bootstrap helpers:
   - manifest-driven route activation
-  - queue binding resolution through injected resolver state
-  - signal-driven runner ergonomics for consumer-owned entrypoints
-- the optional Nest adapter remains a consumer-facing convenience layer only:
-  - module lifecycle integration
-  - logger bridging
-  - no runtime-semantic or performance divergence from framework-agnostic usage
-  - adapter implementation stays separated from core runtime files
-- the root package now owns:
-  - SQS JSON body decoding
-  - SNS-over-SQS envelope decoding
-  - cached SQS queue URL resolution from name, URL, or ARN
-  - cached SNS topic ARN resolution from name or ARN
-  - JSON-oriented SQS/SNS publisher helpers
-  - explicit SNS structured topic publishing helpers
-  - queue inspection and normalized queue attribute snapshots
-  - native SQS DLQ redrive task management
-  - observability helpers exported from `@idenstra/messaging-runtime/observability`
-    - OTEL metrics mapping from runtime events
-    - snapshot-derived observable metrics
-    - W3C trace-context injection/extraction helpers
-    - consumer span wrappers for worker handlers
-  - combined AWS adapter setup for consumer-facing SQS and SNS wiring
-- resolver preload configuration is consumer-owned:
-  - apps may inject known queue/topic mappings at startup
-  - apps may disable runtime network lookup for strict environments
-  - the library itself does not read env files, manifests, or secrets
-- worker boot remains consumer-owned:
-  - apps declare handlers in code
-  - apps load manifests/config from env/files/secrets
-  - apps provide the final worker process entrypoint
-- consumer adoption still follows in later slices
+  - queue binding resolution
+  - signal-runner helpers
+- transport helpers
+  - route factories
+  - decoders
+  - publishers
+  - forwarding handlers
+  - queue/topic resolution and discovery
+- queue ops
+  - queue inspection
+  - DLQ source listing
+  - native redrive
+- observability helpers
+  - OTEL metrics mapping
+  - snapshot-derived gauges
+  - W3C propagation helpers
+  - worker tracing wrappers
+- optional adapters
+  - Nest lifecycle and logger bridge
 
-Public package contract:
-- package-facing docs describe only the supported SNS/SQS runtime surface
-- cross-repo migration status belongs in issues, not in library docs
-- consumer examples should stay neutral and reusable
+## Not owned here
 
-## Extension seams
+The package does not own:
 
-The package is intentionally extensible, but only through supported SNS/SQS-native seams.
+- domain handlers
+- application payload contracts
+- persistence or idempotency storage
+- queue/topic provisioning
+- IAM policy management
+- generic broker abstractions
+- manual replay policy
 
-Preferred seams:
-- capability interfaces such as `SqsRuntimeClient`, `SqsTransportClient`, `SqsQueueOperationsClient`, and `SnsTransportClient`
-- root-level helper composition over publishers, resolvers, queue ops, route factories, and forwarding helpers
-- `SqsWorkerServiceLifecycle` for framework or process lifecycle bridges
-- `@idenstra/messaging-runtime/observability` for OTEL and vendor-specific wiring
+Those stay consumer-owned by design.
 
-Unsupported extension style:
-- deep imports into internal package files
-- provider-neutral broker abstractions
-- provisioning or IAM helpers in the shared package surface
+## Public package contract
 
-For the consumer-facing extension guide, see [`EXTENDING.md`](EXTENDING.md).
+Supported imports are:
+
+- `@idenstra/messaging-runtime`
+- `@idenstra/messaging-runtime/core`
+- `@idenstra/messaging-runtime/nest`
+- `@idenstra/messaging-runtime/observability`
+
+Package-facing docs and examples should describe only those imports.
 
 ## Internal structure
 
@@ -93,15 +71,19 @@ flowchart TD
   Core["core runtime"]
   Host["host/bootstrap"]
   Transport["transport helpers"]
+  QueueOps["queue ops"]
   Observability["observability helpers"]
-  Adapter["optional adapters"]
+  Adapters["optional adapters"]
 
   Root --> Core
   Root --> Host
   Root --> Transport
+  Root --> QueueOps
   Root --> Observability
-  Root --> Adapter
+  Root --> Adapters
 ```
+
+This keeps the public surface narrow while still letting the implementation group stable concepts into separate modules.
 
 ## Consumer integration shape
 
@@ -110,25 +92,40 @@ flowchart LR
   App["consumer app"]
   Config["consumer-loaded config"]
   Runtime["messaging-runtime"]
-  Otel["OpenTelemetry SDK / OTLP"]
+  OTEL["OpenTelemetry SDK / OTLP"]
   AWS["AWS SNS/SQS"]
 
   App --> Config
   App --> Runtime
   Config --> Runtime
-  App --> Otel
-  Runtime --> Otel
+  App --> OTEL
+  Runtime --> OTEL
   Runtime --> AWS
 ```
 
-This separation is deliberate:
-- consumer apps remain responsible for business handlers and configuration sourcing
-- consumer apps remain responsible for manual replay, idempotency storage, and domain-safe recovery rules
-- the package remains responsible for reusable SNS/SQS runtime mechanics
-- the package treats SNS string-mode JSON publishing and SNS structured topic publishing as distinct semantics:
-  - JSON convenience publishing stays string-mode
-  - `MessageStructure: 'json'` is an explicit opt-in helper path
-- the package treats buffered state as process-local runtime state:
-  - per-route `buffered`
-  - manager `totalBuffered`
-  - no distributed backlog ledger inside the package
+The consumer app still owns:
+
+- config loading
+- dependency wiring
+- process entrypoints
+- rollout policy
+- domain-safe recovery rules
+
+The package owns the reusable SNS/SQS mechanics that sit between that app and AWS.
+
+## Extension seams
+
+The supported extension seams are:
+
+- capability interfaces such as `SqsRuntimeClient`, `SqsTransportClient`, `SqsQueueOperationsClient`, and `SnsTransportClient`
+- root-level composition over publishers, resolvers, queue ops, route factories, and forwarding helpers
+- `SqsWorkerServiceLifecycle` for framework or process lifecycle bridges
+- `@idenstra/messaging-runtime/observability` for OTEL and vendor-specific wiring
+
+Unsupported extension style:
+
+- deep imports into internal package files
+- provider-neutral broker abstractions
+- provisioning or IAM helpers inside the shared package
+
+See [`EXTENDING.md`](EXTENDING.md) for the consumer-facing extension guide and compile-checked examples.

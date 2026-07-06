@@ -1,76 +1,55 @@
 # Usage
 
-This document is the package-facing usage guide for `@idenstra/messaging-runtime`.
+This is the conceptual overview for `@idenstra/messaging-runtime`.
 
-## Main capabilities
+Use it when you want the mental model first. Use [`QUICK_START.md`](QUICK_START.md) for the shortest first-run path and [`GETTING_STARTED.md`](GETTING_STARTED.md) for cookbook recipes.
 
-The package currently provides four capability groups:
+## The package in one sentence
 
-1. Worker runtime core
-   - SQS polling
-   - bounded concurrency
-   - visibility heartbeat
-   - graceful shutdown
-   - shared route lifecycle hooks
-   - route-level failure and timeout policy
-   - runtime counters and snapshots
+`messaging-runtime` gives consumer services a reusable SNS/SQS runtime layer without taking over business handlers, infrastructure provisioning, or provider-neutral broker abstractions.
 
-2. Worker host/bootstrap
+## Capability map
+
+The package is easiest to reason about in five groups:
+
+1. worker runtime
+   - polling
+   - concurrency
+   - heartbeats
+   - timeouts
+   - shutdown
+   - route lifecycle
+   - runtime events and snapshots
+2. worker host/bootstrap
    - manifest-driven route activation
    - queue binding resolution
-   - signal-driven runner for app-owned worker processes
-
-3. Transport helpers
-   - explicit JSON/string route factories for common worker shapes
-   - plain SQS JSON decoding
-   - SNS-over-SQS envelope decoding
-   - cached queue/topic resolution
-   - JSON, string, serializer, and structured SNS publishers
-   - thin queue-to-queue and queue-to-topic forwarding handlers
-
-4. Queue operations
+   - signal-driven runner ergonomics
+3. transport helpers
+   - route factories
+   - decoders
+   - publishers
+   - forwarding handlers
+   - queue/topic resolution and discovery
+4. queue ops
    - queue inspection
-   - dead-letter source queue discovery
-   - native DLQ redrive task management
-
-5. Optional Nest adapter
-   - Nest lifecycle glue
-   - Nest logger bridging
-
-## Recommended usage pattern
-
-Use the package in this order:
-
-1. Load config in the consumer app.
-   - env
-   - file
-   - secrets manager
-   - config service
-
-2. Build AWS SDK clients in the consumer app.
-
-3. Create AWS adapters and preload resolver state when you already know the queue/topic mapping.
-
-4. Define handlers in code as a route catalog.
-
-5. Parse a serializable manifest that decides which routes this worker service will activate.
-
-6. Construct `SqsWorkerServiceHost`.
-
-7. Start it through `runSqsWorkerServiceUntilSignal(...)` or through the optional Nest adapter.
+   - DLQ source listing
+   - native DLQ redrive
+5. optional integrations
+   - Nest lifecycle/logger bridge
+   - OTEL metrics/tracing helpers under `@idenstra/messaging-runtime/observability`
 
 ## Worker-service flow
 
 ```mermaid
 flowchart TD
-  Config["consumer config sources"]
-  Manifest["parseSqsWorkerServiceManifest(...)"]
-  Routes["registered route catalog"]
+  Config["consumer config"]
+  Routes["route catalog in code"]
+  Manifest["worker manifest"]
   Resolver["queue resolver"]
   Host["SqsWorkerServiceHost"]
   Manager["SqsWorkerManager"]
   Poll["ReceiveMessage loop"]
-  Handle["decode + handle + ack policy"]
+  Handle["decode -> handle -> delete or keep"]
 
   Config --> Manifest
   Config --> Resolver
@@ -82,90 +61,95 @@ flowchart TD
   Poll --> Handle
 ```
 
+The service still owns configuration and process entrypoints. The package owns reusable SNS/SQS execution behavior.
+
 ## Transport-helper flow
 
 ```mermaid
 flowchart LR
-  Producer["consumer code"]
+  App["consumer app code"]
   Publisher["SqsPublisher / SnsPublisher"]
   Resolver["queue/topic resolver"]
   Broker["AWS SNS/SQS"]
-  Consumer["worker route"]
-  Decoder["decodeSqsJsonBody / decodeSnsNotificationJson"]
+  Worker["worker route"]
+  Decode["transport decode helpers"]
   Relay["optional forwarding handler"]
 
-  Producer --> Publisher
+  App --> Publisher
   Publisher --> Resolver
   Resolver --> Broker
-  Broker --> Consumer
-  Consumer --> Decoder
-  Consumer --> Relay
+  Broker --> Worker
+  Worker --> Decode
+  Worker --> Relay
   Relay --> Publisher
 ```
+
+This is why the library stays SNS/SQS-specific: queue visibility, delete semantics, redelivery, SNS structured publishing, and native redrive all matter directly.
 
 ## Queue-ops flow
 
 ```mermaid
 flowchart LR
-  Operator["consumer-owned admin command"]
+  Operator["consumer-owned operator command"]
+  Discovery["queue/topic discovery"]
   Inspector["SqsQueueInspector"]
   Redrive["SqsDlqRedriveManager"]
-  Broker["AWS SQS"]
+  SQS["AWS SQS"]
+  SNS["AWS SNS"]
 
+  Operator --> Discovery
   Operator --> Inspector
   Operator --> Redrive
-  Inspector --> Broker
-  Redrive --> Broker
+  Discovery --> SQS
+  Discovery --> SNS
+  Inspector --> SQS
+  Redrive --> SQS
 ```
 
-## Framework-agnostic usage
+Queue ops stay read-only or transport-native:
 
-Choose this when:
-- the worker is a plain Node process
-- you want the smallest runtime surface
-- you do not need Nest module lifecycle glue
+- discovery is read-only
+- queue inspection is read-only
+- native redrive is package-owned
+- manual replay remains consumer-owned
 
-Pattern:
-- construct the host directly
-- run it with `runSqsWorkerServiceUntilSignal(...)`
+## Recommended integration pattern
 
-## Nest usage
+Use the package in this order:
 
-Choose this when:
-- the worker already lives in a Nest app
-- you want `OnModuleInit` / `OnModuleDestroy` integration
-- you want runtime logs bridged into a Nest `LoggerService`
+1. load config in the consumer app
+2. construct AWS SDK clients
+3. wrap them with the package adapters
+4. preload resolver state when queue/topic mappings are already known
+5. declare routes in code
+6. activate them through a manifest when using the host
+7. wire observability and readiness in the consumer app
 
-Pattern:
-- build the host in the provider constructor
-- extend `AbstractNestSqsWorkerHost`
+This keeps configuration, rollout, and domain policy outside the shared runtime.
 
-This is a convenience layer only. It does not change queue behavior, retry semantics, or throughput.
+## What belongs where
 
-## Configuration boundary
+The package should own:
 
-The library intentionally does not:
-- read env files
-- read AWS Secrets Manager directly
-- discover route handlers dynamically
-- decide which worker processes should exist in your system
+- SNS/SQS runtime semantics
+- worker host/bootstrap ergonomics
+- transport-native publish/resolve/discovery helpers
+- queue inspection and native redrive
+- OTEL-first observability helpers
 
-That stays with the consumer app.
+Consumer services should own:
 
-The library does:
-- validate the manifest and route activation rules
-- resolve queue identifiers into queue URLs
-- own polling, timeout, heartbeat, shutdown, and ack behavior
-- provide reusable transport decoding and publish helpers
-- provide reusable queue inspection and native redrive helpers
+- environment and secrets loading
+- domain handlers and payload contracts
+- idempotency storage
+- queue/topic provisioning
+- IAM policy decisions
+- deployment topology
+- manual replay policy
 
-## Current non-goals
+## Where to go next
 
-The package does not currently own:
-- domain message contracts
-- provider-neutral broker abstractions
-- campaign or communication business logic
-- generic manual message replay tooling
-- direct consumer app wiring or deployment topology
-
-Those belong in the consuming repos.
+- [`GETTING_STARTED.md`](GETTING_STARTED.md) for recipes
+- [`OPERATIONS.md`](OPERATIONS.md) for readiness, scaling, idempotency, and queue-ops boundaries
+- [`EXTENDING.md`](EXTENDING.md) for adapter and helper composition seams
+- [`OBSERVABILITY.md`](OBSERVABILITY.md) for OTEL and SigNoz wiring

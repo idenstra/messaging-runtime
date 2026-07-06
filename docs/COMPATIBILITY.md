@@ -2,6 +2,11 @@
 
 This document defines the supported consumer contract for `@idenstra/messaging-runtime` while the package remains private-first and `0.x`.
 
+Use it together with:
+
+- [`ADOPTION.md`](ADOPTION.md) for rollout discipline
+- [`EXTENDING.md`](EXTENDING.md) for supported extension seams
+
 ## Runtime baseline
 
 - supported Node baseline: `24`
