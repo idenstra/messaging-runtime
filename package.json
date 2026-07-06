@@ -1,6 +1,6 @@
 {
   "name": "@idenstra/messaging-runtime",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TypeScript AWS SNS/SQS worker runtime, publishers, queue ops, DLQ redrive, and OpenTelemetry helpers for Node.js services",
   "keywords": [
     "aws",
