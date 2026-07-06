@@ -13,7 +13,12 @@ Format rules:
 
 - added a dedicated extension guide plus compile-checked examples for wrapped transport clients, consumer-owned helper composition, and lifecycle-bridge patterns on the supported public surface
 - added a short `QUICK_START.md` path, a public `ADOPTION.md` rollout guide, and stronger package-facing security guidance for outside consumers
+- added root OSS community files for the first public-repository posture slice: `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and repository-level `SECURITY.md`
 
+### Changed
+
+- changed the public docs path so consumer onboarding stays separate from contributor and maintainer workflow material while preserving `AGENTS.md` as the primary AI-agent anchor
+- changed GitHub issue and PR templates to a public-first hybrid shape that still preserves the repository governance metadata required by the current harness
 ## [0.2.0] - 2026-07-05
 
 ### Added

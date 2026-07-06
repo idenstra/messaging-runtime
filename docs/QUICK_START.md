@@ -11,13 +11,15 @@ If you want deeper recipes after the first worker is running, continue with [`GE
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 
-The package shape and supported imports below are stable. If your environment consumes a private publication or a non-default registry, check [`RELEASES.md`](RELEASES.md) for the current package-distribution details.
+The package shape and supported imports below are stable.
 
 ## Install
 
 ```bash
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 ```
+
+If the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
 
 ## Run one worker
 

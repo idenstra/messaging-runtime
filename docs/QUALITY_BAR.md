@@ -1,5 +1,7 @@
 # Quality bar
 
+This is a contributor and maintainer workflow document for engineering standards in this repository.
+
 This repo owns a shared runtime package. Quality must optimize for:
 
 - explicit SNS/SQS semantics
@@ -11,7 +13,7 @@ This repo owns a shared runtime package. Quality must optimize for:
 Every meaningful change should:
 - update tests when behavior changes
 - update docs when package contracts or workflow expectations change
-- preserve the private-first, single-package posture unless a tracked issue changes that decision
+- preserve the current package and release posture unless a tracked issue changes that decision
 - keep release metadata, changelog state, and package publication posture coherent
 - keep runtime semantics stable unless a tracked issue explicitly expands behavior
 - keep the supported import surface and approved package-interface reports aligned with the checked-in contract

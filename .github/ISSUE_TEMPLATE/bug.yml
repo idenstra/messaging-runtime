@@ -1,5 +1,5 @@
 name: Bug
-description: Runtime bug, regression, or incorrect behavior
+description: Report incorrect runtime, publisher, queue-ops, or observability behavior
 title: ""
 type: Bug
 body:
@@ -19,4 +19,4 @@ body:
     id: proof
     attributes:
       label: Proof or reproduction
-
+      description: Include logs, local reproduction steps, or the proof lane you already ran when relevant.

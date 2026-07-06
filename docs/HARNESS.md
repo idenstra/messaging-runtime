@@ -1,6 +1,8 @@
 # Harness overview
 
-`messaging-runtime` uses the standard Idenstra `issue -> plan -> PR` flow with a library-oriented harness.
+This is a maintainer workflow document. It describes repository verification, proof lanes, and governance entrypoints, not the package API.
+
+`messaging-runtime` uses a same-repo `issue -> plan -> PR` flow with a library-oriented harness.
 
 Canonical details:
 - [WORKFLOW.md](../WORKFLOW.md)

@@ -1,5 +1,5 @@
 name: Improvement
-description: Refinement that improves ergonomics, clarity, or operability
+description: Propose an ergonomics, clarity, documentation, or operability improvement
 title: ""
 type: Improvement
 body:
@@ -15,4 +15,8 @@ body:
       label: Proposed improvement
     validations:
       required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
 

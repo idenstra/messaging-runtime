@@ -1,5 +1,7 @@
 # AI engineering
 
+This is a contributor and maintainer workflow document for AI-assisted changes in this repository.
+
 Use AI assistance to accelerate implementation, not to weaken repo discipline.
 
 Expectations:

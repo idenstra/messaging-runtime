@@ -115,8 +115,6 @@ Do not deep-import from `dist/` or internal source files.
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for package boundaries and internal layout
 - [`docs/RELIABILITY.md`](docs/RELIABILITY.md) for verification posture
-- [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) for the remaining OSS-readiness work
-- [`docs/RELEASES.md`](docs/RELEASES.md) for the current private-first release mechanics
 
 ## Proof lanes
 
@@ -140,7 +138,6 @@ See [`docs/TESTING.md`](docs/TESTING.md) for the suite boundaries and escalation
 - package: `@idenstra/messaging-runtime`
 - runtime baseline: Node.js `>=24`
 - version posture: pre-`1.0`
-- current publication posture: private-first GitHub Packages flow
 - OSS posture work is summarized in [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md)
 
 ## Deliberate non-goals
@@ -156,14 +153,10 @@ This package does not own:
 
 Consumer applications still own configuration, dependency wiring, rollout, idempotency, and domain-safe recovery policy.
 
-## Development
+## Contributing
 
-Contributor workflow and governance live in:
+If you want to contribute to the repository, start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-- [`docs/HARNESS.md`](docs/HARNESS.md)
-- [`WORKFLOW.md`](WORKFLOW.md)
-- [`AGENTS.md`](AGENTS.md)
+If you are using AI assistance or need the maintainer workflow rules directly, also read [`AGENTS.md`](AGENTS.md).
 
-For the repo harness and contributor workflow, start with [`docs/HARNESS.md`](docs/HARNESS.md) and [`WORKFLOW.md`](WORKFLOW.md).
-
-Those docs are for maintainers and contributors, not the main consumer reading path.
+Maintainer workflow and release mechanics are documented in [`WORKFLOW.md`](WORKFLOW.md), [`docs/HARNESS.md`](docs/HARNESS.md), and [`docs/RELEASES.md`](docs/RELEASES.md).

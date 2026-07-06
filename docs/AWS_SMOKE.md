@@ -41,7 +41,7 @@ The `:ci` variant is the same repo-owned runner used by the manual GitHub workfl
 
 ## Public self-test path
 
-If you are validating `messaging-runtime` against your own AWS account, use the local smoke lane directly. You do not need access to any Idenstra account, workflow, or IAM role.
+If you are validating `messaging-runtime` against your own AWS account, use the local smoke lane directly. You do not need access to any upstream maintainer account, workflow, or IAM role.
 
 Prerequisites:
 
@@ -178,7 +178,7 @@ That path uses:
 An example local maintainer shell looks like:
 
 ```bash
-export AWS_PROFILE=idenstra-admin
+export AWS_PROFILE=maintainer-sandbox
 export AWS_REGION=us-east-1
 
 aws sso login --profile "$AWS_PROFILE"

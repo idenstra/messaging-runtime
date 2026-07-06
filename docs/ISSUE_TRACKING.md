@@ -1,5 +1,7 @@
 # Issue tracking
 
+This is a contributor and maintainer workflow document for repository planning and backlog ownership.
+
 Backlog ownership lives in GitHub issues, not in live markdown checklists.
 
 The canonical flow is `issue -> plan -> PR`.

@@ -1,5 +1,5 @@
-name: Epic
-description: Umbrella issue for a multi-slice runtime initiative
+name: Maintainer epic
+description: Maintainer workflow form for a multi-slice package initiative
 title: ""
 type: Epic
 body:
@@ -21,4 +21,3 @@ body:
       description: What would make this umbrella complete?
     validations:
       required: true
-
