@@ -1,21 +1,21 @@
-import { SnsTopicArnResolver, SqsQueueUrlResolver } from './resolvers';
+import { assertIntegerInRange, assertNonEmptyText } from './assertions';
 import {
-  assertIntegerInRange,
-  assertNonEmptyText,
   assertUniqueBatchEntryIds,
   createInternalBatchEntryId,
   createSimpleBatchResult,
-  createSnsPublishBatchRequestEntry,
-  createSnsPublishCommandInput,
-  DEFAULT_SNS_PUBLISH_MAX_BYTES,
-  DEFAULT_SQS_PUBLISH_MAX_BYTES,
-  PreparedSnsPublishRequest,
-  PreparedSqsPublishRequest,
-  readUnsupportedStructuredMessageAttributes,
   recordFailedBatchEntries,
   recordSimpleSuccessfulBatchEntries,
   recordSnsPublishSuccessfulBatchEntries,
   recordSuccessfulBatchEntries,
+} from './batch-results';
+import {
+  createSnsPublishBatchRequestEntry,
+  createSnsPublishCommandInput,
+  DEFAULT_SNS_PUBLISH_MAX_BYTES,
+  DEFAULT_SQS_PUBLISH_MAX_BYTES,
+  type PreparedSnsPublishRequest,
+  type PreparedSqsPublishRequest,
+  readUnsupportedStructuredMessageAttributes,
   resolveSizeValidation,
   serializeJsonPayload,
   serializeWithSerializer,
@@ -23,7 +23,8 @@ import {
   validateSnsPublishRequestSize,
   validateSnsStructuredJsonMessage,
   validateSqsPublishRequestSize,
-} from './shared';
+} from './publish-support';
+import { SnsTopicArnResolver, SqsQueueUrlResolver } from './resolvers';
 import type {
   SnsPublisherOptions,
   SnsPublishJsonBatchInput,

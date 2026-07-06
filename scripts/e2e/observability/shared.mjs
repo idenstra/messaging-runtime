@@ -1,9 +1,9 @@
 import net from 'node:net';
 import path from 'node:path';
-import { assertDockerAvailable, composeArgs, repoRoot, run, runCapture, sleep } from '../shared/common.mjs';
+import { assertDockerAvailable, composeArgs, createRunId, repoRoot, run, runCapture, sleep } from '../shared/common.mjs';
 import { localstackComposeFile, localstackEndpoint, waitForLocalstack } from '../shared/localstack.mjs';
 
-export { assertDockerAvailable, localstackEndpoint, repoRoot, run, runCapture, sleep, waitForLocalstack };
+export { assertDockerAvailable, createRunId, localstackEndpoint, repoRoot, run, runCapture, sleep, waitForLocalstack };
 
 export const observabilityComposeFile = path.join(repoRoot, 'scripts/e2e/observability/compose.yaml');
 export const observabilityProjectName =

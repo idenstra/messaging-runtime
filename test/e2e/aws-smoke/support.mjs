@@ -20,7 +20,7 @@ import {
   waitForApproximateVisibleMessageCount,
   waitForCondition,
   waitForMessages,
-} from '../support/sqs-sns.mjs';
+} from '../support/index.mjs';
 
 export const AWS_REGION = process.env.AWS_REGION ?? 'us-east-1';
 export const AWS_PROFILE = process.env.AWS_PROFILE;

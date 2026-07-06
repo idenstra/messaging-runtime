@@ -19,7 +19,7 @@ import {
   waitForApproximateVisibleMessageCount,
   waitForCondition,
   waitForMessages,
-} from '../support/sqs-sns.mjs';
+} from '../support/index.mjs';
 
 export const LOCALSTACK_ENDPOINT = process.env.MESSAGING_RUNTIME_LOCALSTACK_ENDPOINT ?? 'http://127.0.0.1:4566';
 export const AWS_REGION = process.env.AWS_REGION ?? 'us-east-1';

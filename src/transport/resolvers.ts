@@ -1,19 +1,20 @@
+import { assertNonEmptyIdentifier, assertNonEmptyText } from './assertions';
 import {
-  assertNonEmptyIdentifier,
-  assertNonEmptyText,
   assertSnsTopicArn,
   assertSqsQueueUrl,
-  createSqsQueueNameCacheKey,
   extractAccountIdFromSqsQueueUrl,
   extractNameFromArn,
   extractNameFromUrl,
   isArnForService,
   isHttpUrl,
-  normalizeSqsQueueDiscoveryPageSize,
-  normalizeSqsQueueResolutionInput,
   SNS_ARN_SERVICE,
   SQS_ARN_SERVICE,
-} from './shared';
+} from './identifiers';
+import {
+  createSqsQueueNameCacheKey,
+  normalizeSqsQueueDiscoveryPageSize,
+  normalizeSqsQueueResolutionInput,
+} from './sqs-resolution';
 import type {
   ListSnsTopicsInput,
   ListSnsTopicsResult,

@@ -1,6 +1,6 @@
 import type { MessageAttributeValue as SnsSdkMessageAttributeValue } from '@aws-sdk/client-sns';
 import type { MessageAttributeValue as SqsSdkMessageAttributeValue } from '@aws-sdk/client-sqs';
-import { assertNonEmptyBinaryValue, assertNonEmptyText, normalizeNumericAttributeValue } from './shared';
+import { assertNonEmptyBinaryValue, assertNonEmptyText, normalizeNumericAttributeValue } from './assertions';
 import type { SnsStringArrayAttributeValue } from './types';
 
 export function sqsStringAttribute(value: string): SqsSdkMessageAttributeValue {

@@ -1,16 +1,10 @@
-import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_FINITE_RUN_DEFAULTS,
   DEFAULT_LOGGER,
-  DEFAULT_RECEIVE_POLICY,
   DEFAULT_ROUTE_CONFIG,
   normalizeReceivePolicy,
-  RECEIVE_REQUEST_ATTEMPT_ID_TTL_MS,
   ROUTE_ACTIVITY_WAIT_MS,
-  validateReceiveRequestAttemptId,
   validateRoute,
-  WORKER_RECEIVE_MESSAGE_ATTRIBUTE_NAMES,
-  WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES,
 } from './config';
 import { type DeleteBatchDependencies, flushPendingDeletes, queueDelete } from './delete-batch';
 import {
@@ -21,24 +15,14 @@ import {
   normalizeFiniteRunDefaults,
   normalizeRunBoundedOptions,
   normalizeRunUntilIdleOptions,
-  recordFiniteRunMessagesReceived,
-  recordFiniteRunReceiveEmpty,
 } from './finite-run';
+import { startMessageTask } from './handler-runner';
 import { runLifecycleHook, type SqsWorkerLifecyclePhase, validateLifecycleHooks } from './lifecycle';
 import { defaultDecodePayload } from './message';
-import {
-  calculateRouteDemand,
-  dispatchBufferedMessages,
-  startMessageTask,
-  type WorkerProcessingDependencies,
-  waitForRouteActivity,
-} from './processing';
-import {
-  createRouteRuntime,
-  type NormalizedReceiveStrategy,
-  type NormalizedRoute,
-  type RouteRuntime,
-} from './runtime-state';
+import { type WorkerProcessingDependencies } from './processing';
+import { normalizeReceiveStrategy } from './receive-attempt';
+import { runRouteLoop } from './route-loop';
+import { createRouteRuntime, type NormalizedRoute, type RouteRuntime } from './runtime-state';
 import {
   addCounters,
   cloneRouteStatus,
@@ -55,14 +39,13 @@ import type {
   SqsWorkerManagerOptions,
   SqsWorkerManagerSnapshot,
   SqsWorkerReceivePolicy,
-  SqsWorkerReceiveStrategy,
   SqsWorkerRoute,
   SqsWorkerRouteStatus,
   SqsWorkerRunBoundedOptions,
   SqsWorkerRuntimeEvent,
   SqsWorkerRunUntilIdleOptions,
 } from './types';
-import { clearTimer, describeUnknownError, isAbortError, sleep } from './utils';
+import { clearTimer, describeUnknownError } from './utils';
 
 export class SqsWorkerManager {
   private readonly logger: SqsWorkerLogger;
@@ -112,6 +95,9 @@ export class SqsWorkerManager {
         this.emitInfrastructureRuntimeEvent(status, event);
       },
       recordInfrastructureError,
+      startMessageTask: (runtime, rawMessage) => {
+        startMessageTask(runtime, rawMessage, this.processingDependencies);
+      },
       queueDelete: async (runtime, message, reason) => {
         await queueDelete(runtime, message, reason, this.deleteBatchDependencies);
       },
@@ -213,110 +199,6 @@ export class SqsWorkerManager {
       counters: routes.reduce((aggregate, route) => addCounters(aggregate, route.counters), createCounters()),
       routes,
     };
-  }
-
-  private async runRouteLoop<TPayload>(runtime: RouteRuntime<TPayload>): Promise<void> {
-    const { route, status } = runtime;
-
-    while (true) {
-      const activityVersion = runtime.activityVersion;
-      await dispatchBufferedMessages(runtime, this.processingDependencies);
-      if (this.stopping) {
-        if (runtime.buffer.length === 0 && status.inFlight === 0) {
-          break;
-        }
-        await waitForRouteActivity(runtime, ROUTE_ACTIVITY_WAIT_MS, activityVersion);
-        continue;
-      }
-
-      const demand = calculateRouteDemand(runtime);
-      if (demand <= 0) {
-        await waitForRouteActivity(runtime, ROUTE_ACTIVITY_WAIT_MS, activityVersion);
-        continue;
-      }
-
-      try {
-        const abortController = new AbortController();
-        runtime.pollAbortController = abortController;
-        const receiveRequestAttemptId = getReceiveRequestAttemptId(runtime);
-        const response = await this.client.receiveMessage(
-          {
-            QueueUrl: route.queueUrl,
-            MaxNumberOfMessages: Math.max(1, Math.min(10, demand, route.config.maxMessagesPerPoll)),
-            WaitTimeSeconds: route.config.waitTimeSeconds,
-            VisibilityTimeout: route.config.visibilityTimeoutSeconds,
-            MessageSystemAttributeNames: [...WORKER_RECEIVE_MESSAGE_SYSTEM_ATTRIBUTE_NAMES],
-            MessageAttributeNames: [...WORKER_RECEIVE_MESSAGE_ATTRIBUTE_NAMES],
-            ...(receiveRequestAttemptId ? { ReceiveRequestAttemptId: receiveRequestAttemptId } : {}),
-          },
-          { abortSignal: abortController.signal },
-        );
-        if (runtime.pollAbortController === abortController) {
-          runtime.pollAbortController = undefined;
-        }
-        runtime.pendingReceiveRequestAttempt = undefined;
-
-        const messages = (response.Messages ?? []).slice(0, demand);
-        if (messages.length === 0) {
-          recordFiniteRunReceiveEmpty(runtime);
-          this.emitRuntimeEvent(status, {
-            type: 'receive-empty',
-            at: new Date(),
-            routeName: route.name,
-            queueUrl: route.queueUrl,
-          });
-          await waitForRouteActivity(runtime, route.config.emptyReceiveDelayMs, runtime.activityVersion);
-          continue;
-        }
-
-        recordFiniteRunMessagesReceived(runtime);
-        this.emitRuntimeEvent(status, {
-          type: 'messages-received',
-          at: new Date(),
-          routeName: route.name,
-          queueUrl: route.queueUrl,
-          messageCount: messages.length,
-        });
-
-        const immediateDispatchCount = Math.max(
-          0,
-          Math.min(messages.length, route.config.concurrency - status.inFlight),
-        );
-        for (const rawMessage of messages.slice(0, immediateDispatchCount)) {
-          startMessageTask(runtime, rawMessage, this.processingDependencies);
-        }
-
-        const bufferedMessages = messages.slice(immediateDispatchCount);
-        if (bufferedMessages.length > 0) {
-          const receivedAtMs = Date.now();
-          runtime.buffer.push(...bufferedMessages.map((rawMessage) => ({ rawMessage, receivedAtMs })));
-          this.signalRouteActivity(runtime);
-        }
-
-        status.buffered = runtime.buffer.length;
-      } catch (error) {
-        runtime.pollAbortController = undefined;
-        if (this.stopping && isAbortError(error)) {
-          continue;
-        }
-        const detail = describeUnknownError(error);
-        this.emitInfrastructureRuntimeEvent(status, {
-          type: 'poll-error',
-          at: new Date(),
-          routeName: route.name,
-          queueUrl: route.queueUrl,
-          error,
-          errorDetail: detail,
-          backoffMs: route.config.errorBackoffMs,
-        });
-        this.logger.error('SQS worker polling failed.', {
-          routeName: route.name,
-          queueUrl: route.queueUrl,
-          error: detail,
-        });
-        await sleep(route.config.errorBackoffMs);
-      }
-    }
   }
 
   private async startInternal(): Promise<void> {
@@ -480,7 +362,21 @@ export class SqsWorkerManager {
     runtime.status.stopping = false;
     runtime.status.inFlight = 0;
     runtime.status.buffered = 0;
-    runtime.loop = this.runRouteLoop(runtime);
+    runtime.loop = runRouteLoop(runtime, {
+      client: this.client,
+      logger: this.logger,
+      processingDependencies: this.processingDependencies,
+      isStopping: () => this.stopping,
+      emitRuntimeEvent: (status, event) => {
+        this.emitRuntimeEvent(status, event);
+      },
+      emitInfrastructureRuntimeEvent: (status, event) => {
+        this.emitInfrastructureRuntimeEvent(status, event);
+      },
+      signalRouteActivity: (routeRuntime) => {
+        this.signalRouteActivity(routeRuntime);
+      },
+    });
   }
 
   private async cleanupFailedStart(
@@ -589,49 +485,4 @@ export class SqsWorkerManager {
       });
     }
   }
-}
-
-function normalizeReceiveStrategy(
-  defaults: SqsWorkerReceivePolicy,
-  receive: SqsWorkerReceiveStrategy | undefined,
-): NormalizedReceiveStrategy {
-  return {
-    policy: normalizeReceivePolicy(defaults, receive?.policy),
-    createRequestAttemptId: receive?.createRequestAttemptId,
-  };
-}
-
-function getReceiveRequestAttemptId<TPayload>(runtime: RouteRuntime<TPayload>): string | undefined {
-  const mode = runtime.route.receive.policy.requestAttemptIdMode ?? DEFAULT_RECEIVE_POLICY.requestAttemptIdMode;
-  if (mode === 'off') {
-    return undefined;
-  }
-
-  const now = Date.now();
-  const pendingAttempt = runtime.pendingReceiveRequestAttempt;
-  if (pendingAttempt && now - pendingAttempt.createdAtMs < RECEIVE_REQUEST_ATTEMPT_ID_TTL_MS) {
-    return pendingAttempt.value;
-  }
-
-  const nextAttemptId = createReceiveRequestAttemptId(runtime.route, mode);
-  runtime.pendingReceiveRequestAttempt = { value: nextAttemptId, createdAtMs: now };
-  return nextAttemptId;
-}
-
-function createReceiveRequestAttemptId<TPayload>(
-  route: NormalizedRoute<TPayload>,
-  mode: SqsWorkerReceivePolicy['requestAttemptIdMode'],
-): string {
-  if (mode === 'runtime') {
-    return validateReceiveRequestAttemptId(route.name, randomUUID());
-  }
-
-  const customAttemptId = route.receive.createRequestAttemptId?.();
-  if (customAttemptId === undefined) {
-    throw new Error(
-      `SQS worker route ${route.name} uses custom ReceiveRequestAttemptId mode but did not produce an attempt id.`,
-    );
-  }
-
-  return validateReceiveRequestAttemptId(route.name, customAttemptId);
 }

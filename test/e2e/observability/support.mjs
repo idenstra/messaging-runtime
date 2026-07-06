@@ -19,7 +19,7 @@ import {
   subscribeTopicToQueue,
   waitForApproximateVisibleMessageCount,
   waitForCondition,
-} from '../support/sqs-sns.mjs';
+} from '../support/index.mjs';
 
 process.env.MESSAGING_RUNTIME_OBSERVABILITY_RUN_ID ??= createFallbackRunId();
 

@@ -6,7 +6,7 @@ import {
   DEFAULT_SNS_NOTIFICATION_LABEL,
   DEFAULT_SQS_JSON_LABEL,
   readOptionalText,
-} from './shared';
+} from './assertions';
 import type { DecodedSnsNotificationJson, SnsEnvelope, SnsNotificationEnvelope } from './types';
 
 export function decodeSqsJsonBody<TPayload>(body: string | undefined, label = DEFAULT_SQS_JSON_LABEL): TPayload {
