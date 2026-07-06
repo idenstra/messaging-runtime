@@ -187,13 +187,18 @@ test('Live AWS redrive suite', async (t) => {
 });
 
 async function waitForTerminalRedriveTaskState(redriveManager, sourceQueue, taskHandle, observedStatuses, waitOptions) {
+  let consecutiveMisses = 0;
+
   return waitForCondition(async () => {
     const tasks = await redriveManager.listRedriveTasks({ sourceQueue });
     const task = tasks.tasks.find((candidate) => candidate.taskHandle === taskHandle);
 
     if (!task) {
-      return { status: 'DISAPPEARED_AFTER_CANCEL' };
+      consecutiveMisses += 1;
+      return consecutiveMisses >= 3 ? { status: 'DISAPPEARED_AFTER_CANCEL' } : false;
     }
+
+    consecutiveMisses = 0;
 
     if (task.status) {
       observedStatuses.add(task.status);
