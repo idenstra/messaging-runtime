@@ -18,6 +18,7 @@ Command surface:
 - `make verify`
 - `make verify-localstack`
 - `make verify-observability`
+- `make verify-aws-smoke`
 - `make plan-sync`
 - `make plan-close ISSUE=<number>`
 
@@ -34,5 +35,10 @@ Optional proof lane:
 - not part of the default CI or `make verify-fast`
 - `make verify-observability`
 - repo-owned OTEL/SigNoz backend proof layered on top of the built package output plus LocalStack fixtures
+- local-first and opt-in only
+- not part of the default CI or `make verify-fast`
+- `make verify-aws-smoke`
+- repo-owned live AWS smoke proof for real SNS/SQS feature families plus maintainer AWS SSO workflow
+- manual GitHub Actions workflow plus release-time publish gate reuse the same repo-owned AWS smoke runner
 - local-first and opt-in only
 - not part of the default CI or `make verify-fast`

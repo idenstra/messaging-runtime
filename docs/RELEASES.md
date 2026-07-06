@@ -35,6 +35,7 @@ Inputs:
   - does not publish, tag, or create a GitHub release
 - `publish=true`
   - runs the same validations
+  - runs the reusable live AWS smoke workflow through GitHub OIDC before publish
   - publishes the package to GitHub Packages
   - creates git tag `v<version>`
   - creates the matching GitHub release using the changelog entry
@@ -47,6 +48,7 @@ Validation before publish:
   - tag `v<version>` does not already exist
   - the same version is not already published
 - `npm publish --dry-run`
+- when `publish=true`, the reusable AWS smoke workflow must succeed before `npm publish`
 
 ## Local operator checks
 
@@ -65,7 +67,8 @@ make verify-fast
 
 Workflow publication:
 - GitHub Actions publishes with the repository `GITHUB_TOKEN`
-- the workflow needs `contents: write` and `packages: write`
+- the release workflow needs `contents: write`, `packages: write`, and `id-token: write`
+- the reusable AWS smoke workflow assumes the role declared by the repository or environment variable `AWS_SMOKE_ROLE_ARN`
 
 Local installs and local manual package inspection:
 - use GitHub Packages auth in user space

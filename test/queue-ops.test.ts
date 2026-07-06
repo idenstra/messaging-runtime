@@ -142,6 +142,19 @@ function createDlqAttributes(queueArn = SOURCE_QUEUE_ARN): QueueAttributes {
   };
 }
 
+function createStandardQueueAttributes(queueArn = 'arn:aws:sqs:us-east-1:123456789012:jobs'): QueueAttributes {
+  return {
+    QueueArn: queueArn,
+    ApproximateNumberOfMessages: '1',
+    ApproximateNumberOfMessagesNotVisible: '0',
+    ApproximateNumberOfMessagesDelayed: '0',
+    VisibilityTimeout: '30',
+    MessageRetentionPeriod: '345600',
+    ReceiveMessageWaitTimeSeconds: '10',
+    DelaySeconds: '0',
+  };
+}
+
 test('SqsQueueInspector resolves queue names, URLs, and ARNs and normalizes queue attributes', async () => {
   const client = new FakeSqsQueueOperationsClient().withQueue(
     SOURCE_QUEUE_NAME,
@@ -204,6 +217,30 @@ test('SqsQueueInspector paginates dead-letter source queues', async () => {
     { QueueUrl: SOURCE_QUEUE_URL, MaxResults: 1, NextToken: undefined },
     { QueueUrl: SOURCE_QUEUE_URL, MaxResults: 1, NextToken: 'page-2' },
   ]);
+});
+
+test('SqsQueueInspector requests FifoQueue only for FIFO queue URLs and infers standard queues without it', async () => {
+  const standardQueueName = 'jobs-standard';
+  const standardQueueUrl = 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs-standard';
+  const standardQueueArn = 'arn:aws:sqs:us-east-1:123456789012:jobs-standard';
+  const fifoQueueName = 'jobs-standard.fifo';
+  const fifoQueueUrl = 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs-standard.fifo';
+  const fifoQueueArn = 'arn:aws:sqs:us-east-1:123456789012:jobs-standard.fifo';
+
+  const client = new FakeSqsQueueOperationsClient()
+    .withQueue(standardQueueName, standardQueueUrl, createStandardQueueAttributes(standardQueueArn))
+    .withQueue(fifoQueueName, fifoQueueUrl, createDlqAttributes(fifoQueueArn));
+  const inspector = new SqsQueueInspector(client);
+
+  const standardDescription = await inspector.inspectQueue(standardQueueName);
+  const fifoDescription = await inspector.inspectQueue(fifoQueueName);
+
+  assert.equal(standardDescription.queueArn, standardQueueArn);
+  assert.equal(standardDescription.fifo, false);
+  assert.equal(fifoDescription.queueArn, fifoQueueArn);
+  assert.equal(fifoDescription.fifo, true);
+  assert.equal(client.getQueueAttributesInputs[0]?.AttributeNames?.includes('FifoQueue') ?? false, false);
+  assert.equal(client.getQueueAttributesInputs[1]?.AttributeNames?.includes('FifoQueue') ?? false, true);
 });
 
 test('SqsDlqRedriveManager lists move tasks with normalized metadata', async () => {

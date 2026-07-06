@@ -51,7 +51,7 @@
 | AWS-aware worker autoscaling guidance | Yes | ECS/Fargate and Kubernetes guidance is documented at the runbook level, not baked into the package. |
 | Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
-| Live AWS integration tests | Not yet | Should be added as an optional lane, not a default local gate. |
+| Optional live AWS smoke lane | Yes | `make verify-aws-smoke` runs the real-AWS feature-family smoke suites for transport, worker, routing, discovery, queue-ops, and native redrive after the local proof layers are green. |
 | Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, `npm run benchmark:compare`, and tracked baseline artifacts under `docs/benchmarks/`, including worker-core prefetch scenarios. |
 
 ## Public API shape
@@ -88,7 +88,7 @@ These omissions are part of the design. Generic broker abstractions tend to eras
 The core feature set is credible, but the public maturity story is not complete until the following gaps are closed:
 
 1. Public package posture: license, package metadata, registry access, contribution docs, security policy, issue templates, and release instructions.
-2. Broader optional integration proof: keep the LocalStack and observability-backend lanes current and add live AWS smoke without weakening the deterministic default harness.
+2. Broader optional integration proof: keep the LocalStack, observability-backend, and live AWS smoke lanes current without weakening the deterministic default harness.
 3. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
 4. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.
 5. SNS publishing guidance: keep fair-queue `MessageGroupId`, FIFO/content-based deduplication, and structured-message boundaries explicit as the publisher surface expands.

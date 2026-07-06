@@ -24,6 +24,8 @@
     "benchmark:ci": "tsx scripts/benchmarks/run.ts --json",
     "benchmark:baseline": "tsx scripts/benchmarks/run.ts --write-baseline",
     "benchmark:compare": "node scripts/benchmarks/compare.mjs",
+    "e2e:aws-smoke": "node scripts/e2e/aws-smoke/run.mjs",
+    "e2e:aws-smoke:ci": "node scripts/e2e/aws-smoke/run.mjs --ci",
     "e2e:localstack": "node scripts/e2e/localstack/run.mjs",
     "e2e:localstack:ci": "node scripts/e2e/localstack/run.mjs --ci",
     "e2e:observability": "node scripts/e2e/observability/run.mjs",
@@ -41,6 +43,7 @@
   "devDependencies": {
     "@microsoft/api-extractor": "^7.53.1",
     "@biomejs/biome": "^2.4.10",
+    "@aws-sdk/client-sts": "^3.940.0",
     "@nestjs/common": "^11.1.21",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/core": "^2.8.0",

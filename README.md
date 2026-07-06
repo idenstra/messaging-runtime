@@ -62,10 +62,11 @@ Read the docs in this order:
 4. [`docs/RUNTIME_SEMANTICS.md`](docs/RUNTIME_SEMANTICS.md) - polling, ack, timeout, and shutdown behavior
 5. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) - configuration, observability, testing, and Nest usage
 6. [`docs/TESTING.md`](docs/TESTING.md) - deterministic checks, optional LocalStack E2E, and testing boundaries
-7. [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) - OTEL metrics, W3C tracing, SigNoz wiring, and autoscaling guidance
-8. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
-9. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
-10. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
+7. [`docs/AWS_SMOKE.md`](docs/AWS_SMOKE.md) - live AWS smoke commands, AWS SSO runbook, and fixture-safety guidance
+8. [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) - OTEL metrics, W3C tracing, SigNoz wiring, and autoscaling guidance
+9. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
+10. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan
+11. [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) - work required before making the repo public
 
 Contributor and governance docs remain available under [`AGENTS.md`](AGENTS.md), [`WORKFLOW.md`](WORKFLOW.md), and `docs/`.
 For the repo harness and contribution workflow, start with [`docs/HARNESS.md`](docs/HARNESS.md) and [`WORKFLOW.md`](WORKFLOW.md).
@@ -91,6 +92,13 @@ When a change touches OTEL metrics, W3C propagation, or worker tracing behavior,
 ```bash
 make verify-observability
 npm run e2e:observability
+```
+
+When LocalStack is already green but the change still needs a real AWS confidence pass, use the optional live AWS smoke lane:
+
+```bash
+make verify-aws-smoke
+npm run e2e:aws-smoke -- --suite transport,redrive
 ```
 
 ## Quick start

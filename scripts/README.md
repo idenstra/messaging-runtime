@@ -16,6 +16,7 @@ Key scripts:
 - `scripts/harness/verify.sh`
 - `scripts/e2e/localstack/run.mjs`
 - `scripts/e2e/localstack/compose.yaml`
+- `scripts/e2e/aws-smoke/run.mjs`
 - `scripts/e2e/observability/run.mjs`
 - `scripts/e2e/observability/compose.yaml`
 - `scripts/public-surface/run-interface-reports.mjs`
@@ -34,6 +35,8 @@ Package-level code-shape tooling:
 - `npm run benchmark:compare -- --base <base.json> --candidate <candidate.json>`
 - `npm run e2e:localstack`
 - `npm run e2e:localstack:ci`
+- `npm run e2e:aws-smoke`
+- `npm run e2e:aws-smoke:ci`
 - `npm run e2e:observability`
 - `npm run e2e:observability:ci`
 - `npm run public-surface:report`
@@ -51,3 +54,6 @@ Optional end-to-end proof:
 - `make verify-observability`
 - `docker compose -f scripts/e2e/observability/compose.yaml up -d`
 - `docker compose -f scripts/e2e/observability/compose.yaml down -v`
+- `make verify-aws-smoke`
+- `npm run e2e:aws-smoke -- --suite transport,worker`
+- documented AWS SSO runbook, suite names, manual workflow usage, and release-time AWS gate live in `docs/AWS_SMOKE.md`
