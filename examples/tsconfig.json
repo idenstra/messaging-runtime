@@ -13,7 +13,7 @@
       "@idenstra/messaging-runtime": ["src/index.ts"],
       "@idenstra/messaging-runtime/core": ["src/core/index.ts"],
       "@idenstra/messaging-runtime/nest": ["src/adapters/nest.ts"],
-      "@idenstra/messaging-runtime/observability": ["src/observability.ts"]
+      "@idenstra/messaging-runtime/observability": ["src/observability/index.ts"]
     }
   },
   "include": ["./**/*.ts"]

@@ -312,7 +312,7 @@
     {
       "subpath": "./observability",
       "importSpecifier": "@idenstra/messaging-runtime/observability",
-      "declarationPath": "dist/observability.d.ts",
+      "declarationPath": "dist/observability/index.d.ts",
       "symbols": [
         "createOpenTelemetrySqsWorkerMetricsAdapter",
         "extractTraceContextFromSqsMessage",

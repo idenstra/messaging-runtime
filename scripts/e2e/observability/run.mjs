@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {
   assertDockerAvailable,
+  createRunId,
   localstackComposeArgs,
   localstackEndpoint,
   observabilityComposeArgs,
@@ -16,10 +17,6 @@ import {
 
 const suiteFiles = ['test/e2e/observability/flows.test.mjs'];
 
-function createRunId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-}
-
 async function main() {
   const ciMode = process.argv.includes('--ci');
   const runId = process.env.MESSAGING_RUNTIME_OBSERVABILITY_RUN_ID ?? createRunId();
@@ -32,7 +29,7 @@ async function main() {
 
   console.log(`[messaging-runtime observability] run id: ${runId}`);
 
-  assertDockerAvailable();
+  assertDockerAvailable({ label: 'observability E2E' });
 
   console.log('[messaging-runtime observability] building package');
   run('npm', ['run', 'build']);

@@ -1,10 +1,7 @@
 #!/usr/bin/env node
-import childProcess from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
+import { createRunId, parseNamedSuites, run } from '../shared/common.mjs';
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const suiteFiles = {
   transport: 'test/e2e/aws-smoke/flows.test.mjs',
   worker: 'test/e2e/aws-smoke/worker.test.mjs',
@@ -21,42 +18,6 @@ const forbiddenEndpointEnvVars = [
   'AWS_ENDPOINT_URL_SQS',
   'AWS_ENDPOINT_URL_SNS',
 ];
-
-function run(command, args, options = {}) {
-  childProcess.execFileSync(command, args, { cwd: repoRoot, stdio: 'inherit', ...options });
-}
-
-function createRunId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-}
-
-function parseSuites(argv) {
-  const suiteIndex = argv.indexOf('--suite');
-  if (suiteIndex === -1) {
-    return Object.keys(suiteFiles);
-  }
-
-  const rawSuites = argv[suiteIndex + 1];
-  if (!rawSuites) {
-    throw new Error('--suite requires a comma-separated value.');
-  }
-
-  const suites = rawSuites
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  if (suites.length === 0) {
-    throw new Error('At least one live AWS smoke suite must be selected.');
-  }
-
-  const unknownSuites = suites.filter((suite) => !(suite in suiteFiles));
-  if (unknownSuites.length > 0) {
-    throw new Error(`Unknown live AWS smoke suite(s): ${unknownSuites.join(', ')}.`);
-  }
-
-  return suites;
-}
 
 function assertLiveAwsEnvironment() {
   for (const envVar of forbiddenEndpointEnvVars) {
@@ -100,7 +61,10 @@ async function verifyAwsIdentity() {
 }
 
 async function main() {
-  const suites = parseSuites(process.argv.slice(2));
+  const suites = parseNamedSuites(process.argv.slice(2), suiteFiles, {
+    emptyMessage: 'At least one live AWS smoke suite must be selected.',
+    unknownMessagePrefix: 'Unknown live AWS smoke suite(s)',
+  });
   const ciMode = process.argv.includes('--ci');
   const runId = process.env.MESSAGING_RUNTIME_AWS_SMOKE_RUN_ID ?? createRunId();
   process.env.MESSAGING_RUNTIME_AWS_SMOKE_RUN_ID = runId;

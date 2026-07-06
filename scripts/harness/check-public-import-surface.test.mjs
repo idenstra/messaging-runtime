@@ -25,7 +25,7 @@ test('findPublicImportSurfaceFindings accepts the supported public imports', () 
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
-    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
+    './observability': { types: './dist/observability/index.d.ts', default: './dist/observability/index.js' },
   });
   writeFile(
     repoRoot,
@@ -45,7 +45,7 @@ test('findPublicImportSurfaceFindings rejects unsupported deep imports in code a
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
-    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
+    './observability': { types: './dist/observability/index.d.ts', default: './dist/observability/index.js' },
   });
   writeFile(repoRoot, 'README.md', '`@idenstra/messaging-runtime/dist/core`\n');
   writeFile(repoRoot, 'src/index.ts', "export * from '@idenstra/messaging-runtime/src/core';\n");
@@ -69,7 +69,7 @@ test('findPackageExportFindings rejects unsupported public subpaths', () => {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
-    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
+    './observability': { types: './dist/observability/index.d.ts', default: './dist/observability/index.js' },
     './transport': { types: './dist/transport.d.ts', default: './dist/transport.js' },
   });
 
@@ -92,7 +92,7 @@ test('findPublicImportSurfaceFindings ignores the validator self-fixtures', () =
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
     './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
-    './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
+    './observability': { types: './dist/observability/index.d.ts', default: './dist/observability/index.js' },
   });
   writeFile(
     repoRoot,

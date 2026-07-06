@@ -30,7 +30,7 @@ If you want the shortest onboarding path, start with [`QUICK_START.md`](QUICK_ST
 | W3C trace propagation helpers | Yes | Inject and extract `traceparent`, `tracestate`, and `baggage` through SNS/SQS message attributes. |
 | Consumer span wrapper | Yes | `withOpenTelemetrySqsWorkerTracing(...)` wraps a route without changing worker-core semantics. |
 | Manifest-driven route activation | Yes | `parseSqsWorkerServiceManifest` and `SqsWorkerServiceHost`. |
-| Queue URL resolver | Yes | Name, URL, ARN, typed cross-account name resolution, legacy preload, typed preload entries, optional no-network mode. |
+| Queue URL resolver | Yes | Name, URL, ARN, typed cross-account name resolution, simple preload map, typed preload entries, optional no-network mode. |
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
 | SQS JSON publisher | Yes | Single-message and batch publishing. |
 | SQS string publisher | Yes | `sendString(...)` and `sendStringBatch(...)` send your exact SQS body as-is. |

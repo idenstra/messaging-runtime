@@ -29,7 +29,7 @@ export const publicEntrypoints = [
     id: 'observability',
     exportKey: './observability',
     importSpecifier: '@idenstra/messaging-runtime/observability',
-    declarationPath: 'dist/observability.d.ts',
+    declarationPath: 'dist/observability/index.d.ts',
     reportConfigPath: 'public-surface-report.observability.json',
     reportPath: 'etc/messaging-runtime-observability.public-surface.api.md',
   },

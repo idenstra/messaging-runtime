@@ -310,7 +310,7 @@ Package: `@idenstra/messaging-runtime`
 ## @idenstra/messaging-runtime/observability
 
 - subpath: `./observability`
-- declarations: `dist/observability.d.ts`
+- declarations: `dist/observability/index.d.ts`
 - exported symbols (48):
   - `createOpenTelemetrySqsWorkerMetricsAdapter`
   - `extractTraceContextFromSqsMessage`
