@@ -13,7 +13,7 @@ Use it when you want the mental model first. Use [`QUICK_START.md`](QUICK_START.
 Use these terms consistently when reading or extending the package:
 
 - `worker runtime`: polling, buffering, delete/keep, heartbeat, timeout, shutdown, snapshots, and runtime events
-- `worker host`: manifest-driven route activation and hosted worker bootstrap
+- `worker host`: manifest-driven route activation and hosted worker startup
 - `decode`: inbound SQS/SNS body or envelope parsing
 - `serialize`: outbound payload-to-string transformation
 - `send` vs `publish`: SQS sends messages; SNS publishes messages

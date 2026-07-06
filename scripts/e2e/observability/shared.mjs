@@ -1,6 +1,14 @@
 import net from 'node:net';
 import path from 'node:path';
-import { assertDockerAvailable, composeArgs, createRunId, repoRoot, run, runCapture, sleep } from '../shared/common.mjs';
+import {
+  assertDockerAvailable,
+  composeArgs,
+  createRunId,
+  repoRoot,
+  run,
+  runCapture,
+  sleep,
+} from '../shared/common.mjs';
 import { localstackComposeFile, localstackEndpoint, waitForLocalstack } from '../shared/localstack.mjs';
 
 export { assertDockerAvailable, createRunId, localstackEndpoint, repoRoot, run, runCapture, sleep, waitForLocalstack };
