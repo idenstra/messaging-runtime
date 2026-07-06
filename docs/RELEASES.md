@@ -111,6 +111,14 @@ node scripts/release/validate-release-state.mjs
 make verify-fast
 ```
 
+When maintainers want the validator to exercise live tag and registry checks before dispatching a release, run:
+
+```bash
+node scripts/release/validate-release-state.mjs --mode publish-github --check-live-state
+```
+
+That live-state form requires working network access plus whatever registry authentication is needed to inspect GitHub Packages for the scoped package version.
+
 For a GitHub Packages tester publish, the exact commit on `main` should already be the commit you are prepared to burn as that stable version if later testing finds a problem.
 
 ## Authentication
