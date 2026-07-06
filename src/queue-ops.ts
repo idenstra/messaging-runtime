@@ -28,7 +28,6 @@ const QUEUE_INSPECTION_ATTRIBUTE_NAMES: QueueAttributeName[] = [
   'MessageRetentionPeriod',
   'ReceiveMessageWaitTimeSeconds',
   'DelaySeconds',
-  'FifoQueue',
   'RedrivePolicy',
   'RedriveAllowPolicy',
 ];
@@ -165,7 +164,7 @@ export class SqsQueueInspector {
     const queueUrl = await this.resolver.resolve(queueIdentifier);
     const response = await this.client.getQueueAttributes({
       QueueUrl: queueUrl,
-      AttributeNames: QUEUE_INSPECTION_ATTRIBUTE_NAMES,
+      AttributeNames: buildQueueInspectionAttributeNames(queueUrl),
     });
     const attributes = { ...(response.Attributes ?? {}) };
 
@@ -294,15 +293,16 @@ function buildQueueDescription(input: {
   attributes: SqsQueueAttributesMap;
 }): SqsQueueDescription {
   const queueArn = readOptionalNonEmptyText(input.attributes.QueueArn, 'SQS queue QueueArn attribute');
+  const queueName = queueArn
+    ? extractNameFromArn(queueArn, SQS_ARN_SERVICE, 'SQS queue ARN')
+    : extractNameFromUrl(input.queueUrl, 'SQS queue URL');
 
   return {
     queueIdentifier: input.queueIdentifier,
-    queueName: queueArn
-      ? extractNameFromArn(queueArn, SQS_ARN_SERVICE, 'SQS queue ARN')
-      : extractNameFromUrl(input.queueUrl, 'SQS queue URL'),
+    queueName,
     queueUrl: input.queueUrl,
     queueArn,
-    fifo: readOptionalBooleanAttribute(input.attributes, 'FifoQueue') ?? false,
+    fifo: readOptionalBooleanAttribute(input.attributes, 'FifoQueue') ?? queueName.endsWith('.fifo'),
     approximateNumberOfMessages: readOptionalIntegerAttribute(input.attributes, 'ApproximateNumberOfMessages'),
     approximateNumberOfMessagesNotVisible: readOptionalIntegerAttribute(
       input.attributes,
@@ -320,6 +320,15 @@ function buildQueueDescription(input: {
     redriveAllowPolicy: parseRedriveAllowPolicy(input.attributes.RedriveAllowPolicy),
     attributes: input.attributes,
   };
+}
+
+function buildQueueInspectionAttributeNames(queueUrl: string): QueueAttributeName[] {
+  const attributeNames = [...QUEUE_INSPECTION_ATTRIBUTE_NAMES];
+  const queueName = extractNameFromUrl(queueUrl, 'SQS queue URL');
+  if (queueName.endsWith('.fifo')) {
+    attributeNames.push('FifoQueue');
+  }
+  return attributeNames;
 }
 
 function parseRedrivePolicy(value: string | undefined): SqsQueueRedrivePolicy | undefined {

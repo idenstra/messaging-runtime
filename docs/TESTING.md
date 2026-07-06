@@ -1,12 +1,13 @@
 # Testing
 
-`messaging-runtime` keeps three proof layers distinct:
+`messaging-runtime` keeps four proof layers distinct:
 
 - the default deterministic harness;
-- the optional LocalStack-backed end-to-end lane.
-- the optional OTEL/SigNoz observability backend lane.
+- the optional LocalStack-backed end-to-end lane;
+- the optional OTEL/SigNoz observability backend lane;
+- the optional live AWS smoke lane.
 
-The default repo gate stays fast and AWS-free. The LocalStack lane exists for maintainers who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for maintainers who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend.
+The default repo gate stays fast and AWS-free. The LocalStack lane exists for maintainers who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for maintainers who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend. The live AWS smoke lane exists for maintainers who need one final real-AWS feature-integrity pass plus an explicit AWS SSO runbook.
 
 ## Default verification
 
@@ -137,7 +138,7 @@ Current LocalStack-backed coverage includes:
 - production deployment correctness
 - Nest adapter end-to-end boot
 
-Use the observability backend lane for local OTEL/SigNoz proof, and the future live AWS smoke lane for AWS-only confidence.
+Use the observability backend lane for local OTEL/SigNoz proof, and use the live AWS smoke lane for AWS-only confidence after the local layers are green.
 
 ## Optional observability backend lane
 
@@ -204,6 +205,61 @@ Scriptable backend verification is direct and backend-real:
 
 Use the live AWS smoke lane for AWS-only confidence after the local proof layers are green.
 
+## Optional live AWS smoke lane
+
+The live AWS smoke lane is the final optional proof layer for maintainers.
+
+Standard entrypoints:
+
+```bash
+make verify-aws-smoke
+npm run e2e:aws-smoke
+npm run e2e:aws-smoke:ci
+```
+
+Subset execution is supported:
+
+```bash
+npm run e2e:aws-smoke -- --suite transport,worker
+npm run e2e:aws-smoke -- --suite redrive
+```
+
+Supported suite names:
+
+- `transport`
+- `worker`
+- `routing`
+- `discovery`
+- `queue-ops`
+- `redrive`
+
+This lane:
+
+1. builds the package;
+2. validates that the current shell is not still pointed at LocalStack or test credentials;
+3. verifies live AWS identity through STS;
+4. provisions temporary queues, topics, subscriptions, and the dedicated redrive fixtures through AWS SDK calls in test harness code only;
+5. runs suite-based real-AWS smoke tests against the built `dist/` package output;
+6. tears the temporary resources down at the end of the run.
+
+The live AWS lane proves real SNS/SQS behavior for:
+
+- queue and topic resolution;
+- queue and topic discovery;
+- queue inspection and dead-letter source listing;
+- representative SQS and SNS publish flows, including batch helpers;
+- raw and envelope SNS -> SQS flows;
+- message-attribute propagation;
+- worker receive/delete flow through the hosted worker shape;
+- route lifecycle hooks and finite-run execution through a real worker path;
+- FIFO receive-attempt request-shape proof;
+- forwarding helper flows;
+- native DLQ redrive start/list/cancel behavior through dedicated real AWS fixtures.
+
+This lane is still not a production-deployment proof. It exists to answer the AWS-only questions that LocalStack and the local observability backend cannot answer.
+
+The full AWS SSO runbook, fixture naming rules, IAM expectations, cleanup posture, manual workflow usage, and release-time publish gate behavior live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
+
 ## When to run it
 
 Run the LocalStack lane when a change touches:
@@ -224,3 +280,11 @@ Run the observability lane when a change touches:
 - W3C propagation helpers
 - docs/examples that describe the OTEL or SigNoz setup
 - worker tracing behavior
+
+Run the live AWS smoke lane when:
+
+- LocalStack is already green;
+- the change still depends on real AWS SNS/SQS semantics for confidence;
+- the change touched discovery, queue inspection, or native redrive behavior;
+- release or maintainership proof needs an AWS-backed pass;
+- a question remains about actual queue/topic resolution, raw or envelope SNS -> SQS delivery, attribute propagation, hosted worker receive/delete behavior, or real redrive semantics.

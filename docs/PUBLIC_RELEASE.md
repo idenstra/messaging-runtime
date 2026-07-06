@@ -55,6 +55,7 @@ This repository is not public-ready until the following readiness criteria are o
 - Keep queue inspection and native DLQ redrive docs, examples, and public exports aligned.
 - Keep the optional LocalStack lane current for receive, delete, visibility heartbeat, publish, routing, discovery, and queue-ops proof, and document clearly what still requires live AWS.
 - Keep the optional observability lane current for OTEL metrics, worker tracing, W3C propagation, and repo-owned SigNoz backend proof.
+- Keep the optional live AWS smoke lane current for real queue/topic resolution, discovery, publish, raw and envelope SNS -> SQS delivery, attribute propagation, worker receive/delete proof, and native redrive proof.
 - Document idempotency, duplicate processing, DLQ, native redrive, manual replay boundaries, and poison-message ownership.
 - Document FIFO queue considerations: message group ID, deduplication ID, ordering, concurrency, and batch behavior.
 - Document structured SNS topic publishing separately from JSON, raw-string, and serializer publishing, including the message-attributes limitation for `MessageStructure: 'json'`.

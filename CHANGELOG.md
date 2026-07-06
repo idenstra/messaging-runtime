@@ -34,6 +34,7 @@ Format rules:
 - added shared route lifecycle hooks for startup, stop-signal, and cleanup across direct manager and service-host usage
 - added thin queue-to-queue and queue-to-topic forwarding handlers that compose over the existing route factories and publisher surfaces
 - added an optional `make verify-localstack` / `npm run e2e:localstack` lane that runs the built package against LocalStack-backed SNS/SQS fixtures across runtime, publishers, routing, discovery, and queue-ops flows
+- added an optional `make verify-aws-smoke` / `npm run e2e:aws-smoke` lane plus AWS SSO runbook, suite selection, native redrive proof, and manual GitHub workflow / release-gate integration for real-AWS SNS/SQS feature validation
 
 ### Changed
 
