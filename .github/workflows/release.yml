@@ -30,6 +30,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
+      - name: Enforce main dispatch
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || {
+            echo "The release workflow must be dispatched from refs/heads/main. Current ref: $GITHUB_REF"
+            exit 1
+          }
+
       - name: Checkout main
         uses: actions/checkout@v7
         with:
@@ -65,7 +72,7 @@ jobs:
         run: npm publish --dry-run
 
   aws-smoke:
-    if: ${{ inputs.publish }}
+    if: ${{ inputs.publish && github.ref == 'refs/heads/main' }}
     needs: preflight
     uses: ./.github/workflows/aws-smoke.yml
     with:
@@ -74,7 +81,7 @@ jobs:
 
   publish:
     name: Publish package
-    if: ${{ inputs.publish }}
+    if: ${{ inputs.publish && github.ref == 'refs/heads/main' }}
     needs:
       - preflight
       - aws-smoke

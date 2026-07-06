@@ -28,6 +28,8 @@ Normal feature PRs never publish packages.
 
 The release workflow is `.github/workflows/release.yml`.
 
+The workflow must be dispatched from `main`. If it is launched from any other ref, preflight fails before any release-only work runs.
+
 Inputs:
 - `publish=false`
   - validates release readiness only
