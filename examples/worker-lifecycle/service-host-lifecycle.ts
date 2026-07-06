@@ -1,10 +1,10 @@
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
-  decodeSqsJsonBody,
   parseSqsWorkerServiceManifest,
   SqsQueueUrlResolver,
   SqsWorkerServiceHost,
+  sqsJsonRoute,
 } from '@idenstra/messaging-runtime';
 
 type JobPayload = { jobId: string };
@@ -37,9 +37,8 @@ async function main(): Promise<void> {
     queueResolver,
     manifest,
     routes: [
-      {
+      sqsJsonRoute<JobPayload>({
         name: 'jobs',
-        decodePayload: ({ body }) => decodeSqsJsonBody<JobPayload>(body),
         lifecycle: {
           afterStart: () => {
             markWorkerReady();
@@ -52,10 +51,9 @@ async function main(): Promise<void> {
           },
         },
         handle: async ({ payload }) => {
-          const job = payload as JobPayload;
-          await processJob(job.jobId);
+          await processJob(payload.jobId);
         },
-      },
+      }),
     ],
   });
 

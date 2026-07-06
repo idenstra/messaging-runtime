@@ -32,7 +32,7 @@ test('findPublicImportSurfaceFindings accepts the supported public imports', () 
     'README.md',
     '`@idenstra/messaging-runtime`, `@idenstra/messaging-runtime/nest`, and `@idenstra/messaging-runtime/observability`\n',
   );
-  writeFile(repoRoot, 'src/index.ts', "export { packageMetadata } from '@idenstra/messaging-runtime';\n");
+  writeFile(repoRoot, 'src/index.ts', "export { sqsJsonRoute } from '@idenstra/messaging-runtime';\n");
 
   const findings = findPublicImportSurfaceFindings(repoRoot, ['README.md', 'src/index.ts']);
 

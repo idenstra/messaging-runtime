@@ -1,5 +1,5 @@
 import { SQSClient } from '@aws-sdk/client-sqs';
-import { AwsSqsAdapter, SqsWorkerManager, type SqsWorkerMessage } from '@idenstra/messaging-runtime';
+import { AwsSqsAdapter, SqsWorkerManager, sqsJsonRoute } from '@idenstra/messaging-runtime';
 
 type JobPayload = { jobId: string };
 
@@ -22,25 +22,26 @@ const pool = new FakePool();
 async function main(): Promise<void> {
   const manager = new SqsWorkerManager(sqsAdapter, { defaults: { waitTimeSeconds: 20, visibilityTimeoutSeconds: 60 } });
 
-  manager.register<JobPayload>({
-    name: 'jobs',
-    queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
-    decodePayload: (message: SqsWorkerMessage) => JSON.parse(message.body ?? '{}') as JobPayload,
-    lifecycle: {
-      beforeStart: async () => {
-        await pool.connect();
+  manager.register(
+    sqsJsonRoute<JobPayload>({
+      name: 'jobs',
+      queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+      lifecycle: {
+        beforeStart: async () => {
+          await pool.connect();
+        },
+        beforeStop: () => {
+          markShutdownRequested();
+        },
+        afterStop: async () => {
+          await pool.close();
+        },
       },
-      beforeStop: () => {
-        markShutdownRequested();
+      handle: async ({ payload }) => {
+        await processJob(payload.jobId);
       },
-      afterStop: async () => {
-        await pool.close();
-      },
-    },
-    handle: async ({ payload }) => {
-      await processJob(payload.jobId);
-    },
-  });
+    }),
+  );
 
   await manager.start();
   await manager.stop();

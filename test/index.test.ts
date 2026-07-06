@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { packageMetadata } from '../src/index';
+import * as runtime from '../src/index';
 
-test('exports the runtime-core package metadata', () => {
-  assert.equal(packageMetadata.name, '@idenstra/messaging-runtime');
-  assert.equal(packageMetadata.phase, 'runtime-core-transport-host-queue-ops-and-observability');
+test('root entrypoint exports the preferred worker and transport helpers', () => {
+  assert.equal(typeof runtime.sqsJsonRoute, 'function');
+  assert.equal(typeof runtime.SqsWorkerServiceHost, 'function');
+  assert.equal(typeof runtime.AwsSqsAdapter, 'function');
 });

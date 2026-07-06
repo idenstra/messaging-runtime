@@ -5,7 +5,6 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
-import { packageMetadata } from '../../src/index';
 import { createBenchmarkScenarios } from './scenarios/index';
 import type { BenchmarkReport, BenchmarkScenario, BenchmarkScenarioResult } from './support';
 
@@ -19,7 +18,7 @@ const measuredSamples = 3;
 
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
-  const packageVersion = await readPackageVersion();
+  const packageMetadata = await readPackageMetadata();
   const scenarios = createBenchmarkScenarios();
   const results: BenchmarkScenarioResult[] = [];
 
@@ -29,7 +28,7 @@ async function main(): Promise<void> {
 
   const report: BenchmarkReport = {
     packageName: packageMetadata.name,
-    packageVersion,
+    packageVersion: packageMetadata.version,
     nodeVersion: process.version,
     platform: process.platform,
     arch: process.arch,
@@ -111,9 +110,8 @@ async function runScenarioSample(scenario: BenchmarkScenario): Promise<number> {
   return performance.now() - startedAt;
 }
 
-async function readPackageVersion(): Promise<string> {
-  const rawPackageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8')) as { version: string };
-  return rawPackageJson.version;
+async function readPackageMetadata(): Promise<{ name: string; version: string }> {
+  return JSON.parse(await fs.readFile(packageJsonPath, 'utf8')) as { name: string; version: string };
 }
 
 function renderMarkdownReport(report: BenchmarkReport): string {

@@ -30,13 +30,19 @@ Repository posture phase 1 is already complete:
 
 ## API and compatibility
 
-- Review the public export surface and remove accidental exports.
-- Keep API Extractor reports and export snapshots aligned.
-- Keep the supported subpath set explicit and stable:
+- The supported `1.x` import surface is already prepared and documented:
   - `@idenstra/messaging-runtime`
   - `@idenstra/messaging-runtime/core`
   - `@idenstra/messaging-runtime/nest`
   - `@idenstra/messaging-runtime/observability`
+- [`COMPATIBILITY.md`](COMPATIBILITY.md) now defines:
+  - current pre-`1.0` posture
+  - the prepared `1.x` semver contract
+  - deprecation and removal discipline
+  - best-effort latest-major-only maintenance expectations
+- [`MIGRATIONS.md`](MIGRATIONS.md) now reserves the breaking-release migration path for future majors.
+- Keep API Extractor reports and export snapshots aligned with the final export review before public cutover.
+- Re-run one final accidental-export review immediately before `1.0` is frozen.
 - Keep the combined AWS adapter contract stable and documented:
   - `AwsSqsAdapter` for SQS runtime and transport operations
   - `AwsSnsAdapter` for SNS publish and topic-resolution operations
@@ -51,8 +57,7 @@ Repository posture phase 1 is already complete:
   - SDK/exporter choices remain consumer-owned
   - SigNoz remains a documented backend example, not a runtime-specific adapter
 - Document the supported Node baseline and why it is `>=24`.
-- Define the `1.0.0` criteria.
-- Add migration notes for breaking changes while pre-`1.0`.
+- Define the final public cutover criteria and whether `1.0.0` is the cutover release.
 
 ## Feature maturity
 

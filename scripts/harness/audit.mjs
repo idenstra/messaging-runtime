@@ -319,15 +319,22 @@ function createRepoDocsCategory(repoRoot) {
     exists('CHANGELOG.md', repoRoot) &&
     exists('docs/RELEASES.md', repoRoot) &&
     exists('docs/COMPATIBILITY.md', repoRoot) &&
+    exists('docs/MIGRATIONS.md', repoRoot) &&
     hasText('docs/RELEASES.md', 'package.json', repoRoot) &&
     hasText('docs/COMPATIBILITY.md', 'exact versions', repoRoot) &&
-    hasText('docs/COMPATIBILITY.md', '@idenstra/messaging-runtime/core', repoRoot)
-      ? createCheck('release-docs', 'pass', 'Release and compatibility docs define the private-first consumer contract')
+    hasText('docs/COMPATIBILITY.md', 'latest major only', repoRoot) &&
+    hasText('docs/COMPATIBILITY.md', '@idenstra/messaging-runtime/core', repoRoot) &&
+    hasText('docs/MIGRATIONS.md', 'breaking release', repoRoot)
+      ? createCheck(
+          'release-docs',
+          'pass',
+          'Release, compatibility, and migration docs define the prepared public contract',
+        )
       : createCheck(
           'release-docs',
           'fail',
           'Release docs are missing or incomplete',
-          'Add CHANGELOG.md plus the release and compatibility docs.',
+          'Add CHANGELOG.md plus the release, compatibility, and migration docs.',
         ),
     ['src/core/index.ts', 'src/adapters/nest.ts', 'test/core/message.test.ts', 'test/adapters/nest.test.ts'].every(
       (relativePath) => exists(relativePath, repoRoot),

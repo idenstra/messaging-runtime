@@ -71,8 +71,9 @@ function seedMinimalHarnessRepo(repoRoot) {
   writeFile(
     repoRoot,
     'docs/COMPATIBILITY.md',
-    'exact versions\nNode 24\n@idenstra/messaging-runtime/core\n@idenstra/messaging-runtime/observability\n',
+    'exact versions\nNode 24\nlatest major only\n@idenstra/messaging-runtime/core\n@idenstra/messaging-runtime/observability\n',
   );
+  writeFile(repoRoot, 'docs/MIGRATIONS.md', 'breaking release\n');
   writeFile(repoRoot, 'scripts/README.md', 'verify.sh\n');
   writeFile(repoRoot, 'biome.json', '{}\n');
   writeFile(

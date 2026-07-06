@@ -11,7 +11,7 @@ If you want deeper recipes after the first worker is running, continue with [`GE
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 
-The package shape and supported imports below are stable.
+The supported imports below are the prepared long-lived package surface. See [`COMPATIBILITY.md`](COMPATIBILITY.md) for the current pre-`1.0` posture and the planned `1.x` contract.
 
 ## Install
 
