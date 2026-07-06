@@ -15,6 +15,7 @@ Start with the product documentation. Use the contributor documentation only whe
 | [`FEATURES.md`](FEATURES.md) | Understand the supported runtime surface, current gaps, and deliberate non-goals. |
 | [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) | Understand polling, concurrency, ack behavior, timeouts, heartbeats, and shutdown. |
 | [`OPERATIONS.md`](OPERATIONS.md) | Configure workers, observe runtime state, test without AWS, and use the Nest adapter. |
+| [`EXTENDING.md`](EXTENDING.md) | Extend the package safely through capability interfaces, helper layers, lifecycle bridges, and observability seams. |
 | [`TESTING.md`](TESTING.md) | Run the deterministic harness plus the LocalStack, observability-local, and live AWS proof lanes. |
 | [`AWS_SMOKE.md`](AWS_SMOKE.md) | Run the optional live AWS smoke lane through a public self-test path, upstream maintainer workflow path, and safe temporary fixtures. |
 | [`OBSERVABILITY.md`](OBSERVABILITY.md) | Wire OTEL metrics and traces, propagate W3C context, and plan AWS worker autoscaling. |

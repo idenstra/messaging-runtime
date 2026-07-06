@@ -24,6 +24,21 @@ Unsupported:
 - deep imports into internal source files
 - relying on undocumented package structure
 
+## Extension posture
+
+Supported extension seams are:
+- capability interfaces such as `SqsRuntimeClient`, `SqsTransportClient`, `SqsQueueOperationsClient`, and `SnsTransportClient`
+- root package composition over publishers, resolvers, route factories, forwarding helpers, discovery, and queue ops
+- `SqsWorkerServiceLifecycle` for framework or process integration
+- `@idenstra/messaging-runtime/observability` for OTEL and vendor-specific layering
+
+Unsupported extension style remains:
+- deep imports into internal package files
+- patching package internals instead of composing over supported imports
+- provider-neutral broker abstractions
+
+See [`EXTENDING.md`](EXTENDING.md) for the package-facing extension guide and compile-checked examples.
+
 Observability subpath notes:
 - `@idenstra/messaging-runtime/observability` depends on `@opentelemetry/api`
 - OTEL SDK and exporter packages remain consumer-installed, not runtime-owned

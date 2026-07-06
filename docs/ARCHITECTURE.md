@@ -68,6 +68,23 @@ Public package contract:
 - cross-repo migration status belongs in issues, not in library docs
 - consumer examples should stay neutral and reusable
 
+## Extension seams
+
+The package is intentionally extensible, but only through supported SNS/SQS-native seams.
+
+Preferred seams:
+- capability interfaces such as `SqsRuntimeClient`, `SqsTransportClient`, `SqsQueueOperationsClient`, and `SnsTransportClient`
+- root-level helper composition over publishers, resolvers, queue ops, route factories, and forwarding helpers
+- `SqsWorkerServiceLifecycle` for framework or process lifecycle bridges
+- `@idenstra/messaging-runtime/observability` for OTEL and vendor-specific wiring
+
+Unsupported extension style:
+- deep imports into internal package files
+- provider-neutral broker abstractions
+- provisioning or IAM helpers in the shared package surface
+
+For the consumer-facing extension guide, see [`EXTENDING.md`](EXTENDING.md).
+
 ## Internal structure
 
 ```mermaid

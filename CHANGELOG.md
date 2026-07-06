@@ -9,6 +9,10 @@ Format rules:
 
 ## [Unreleased]
 
+### Added
+
+- added a dedicated extension guide plus compile-checked examples for wrapped transport clients, consumer-owned helper composition, and lifecycle-bridge patterns on the supported public surface
+
 ## [0.2.0] - 2026-07-05
 
 ### Added
