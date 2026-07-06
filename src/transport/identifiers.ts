@@ -44,7 +44,8 @@ export function assertSqsQueueUrl(value: string, label: string): string {
 
 export function assertSnsTopicArn(value: string, label: string): string {
   const normalized = assertNonEmptyIdentifier(value, label);
-  if (!isArnForService(normalized, SNS_ARN_SERVICE)) {
+  const parts = normalized.split(':');
+  if (!isArnForService(normalized, SNS_ARN_SERVICE) || parts.length !== 6 || !parts[5]) {
     throw new Error(`${label} must be an SNS topic ARN.`);
   }
   return normalized;

@@ -124,6 +124,16 @@ test('SnsTopicArnResolver resolves topic names with pagination, accepts ARNs, an
   assert.deepEqual(client.listTopicsInputs, [{ NextToken: undefined }, { NextToken: 'page-2' }]);
 });
 
+test('SnsTopicArnResolver rejects SNS subscription ARNs when a topic ARN is required', async () => {
+  const resolver = new SnsTopicArnResolver(new FakeSnsTransportClient());
+
+  await assert.rejects(
+    () =>
+      resolver.resolve('arn:aws:sns:us-east-1:123456789012:idenstra-email-events:4f9b7784-0c5d-4b5a-8ba7-54c2f4b15540'),
+    /SNS topic ARN/i,
+  );
+});
+
 test('SnsTopicArnResolver supports preloaded mappings and optional no-network mode', async () => {
   const client = new FakeSnsTransportClient();
   const resolver = new SnsTopicArnResolver(client, {

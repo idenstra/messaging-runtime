@@ -31,21 +31,22 @@ export async function runSqsWorkerServiceUntilSignal(
     handlers.clear();
   };
 
-  await host.start();
+  const stopSignal = new Promise<void>((resolve) => {
+    for (const signal of signals) {
+      const handler = () => {
+        cleanup();
+        requestStop();
+        resolve();
+      };
+
+      handlers.set(signal, handler);
+      process.once(signal, handler);
+    }
+  });
 
   try {
-    await new Promise<void>((resolve) => {
-      for (const signal of signals) {
-        const handler = () => {
-          cleanup();
-          requestStop();
-          resolve();
-        };
-
-        handlers.set(signal, handler);
-        process.once(signal, handler);
-      }
-    });
+    await host.start();
+    await stopSignal;
   } finally {
     cleanup();
     requestStop();

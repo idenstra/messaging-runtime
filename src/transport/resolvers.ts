@@ -144,9 +144,10 @@ export class SnsTopicArnResolver {
     }
 
     if (isArnForService(topicIdentifier, SNS_ARN_SERVICE)) {
-      const topicName = extractNameFromArn(topicIdentifier, SNS_ARN_SERVICE, 'SNS topic ARN');
-      this.cacheResolution(topicIdentifier, topicName, topicIdentifier);
-      return topicIdentifier;
+      const topicArn = assertSnsTopicArn(topicIdentifier, 'SNS topic ARN');
+      const topicName = extractNameFromArn(topicArn, SNS_ARN_SERVICE, 'SNS topic ARN');
+      this.cacheResolution(topicArn, topicName, topicArn);
+      return topicArn;
     }
 
     const namedCacheHit = this.topicNameCache.get(topicIdentifier);

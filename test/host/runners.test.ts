@@ -105,3 +105,57 @@ test('runner starts and stops the host on process signal and removes its listene
   assert.equal(process.listenerCount('SIGTERM'), baselineSigterm);
   assert.equal(process.listenerCount('SIGINT'), baselineSigint);
 });
+
+test('runner does not miss a stop signal that arrives while the host is still starting', async () => {
+  const events: string[] = [];
+  const baselineSigterm = process.listenerCount('SIGTERM');
+  const host = {
+    async start() {
+      events.push('start:begin');
+      await sleep(20);
+      events.push('start:end');
+    },
+    async stop() {
+      events.push('stop');
+    },
+    getStatus() {
+      return [];
+    },
+    getSnapshot() {
+      return {
+        started: false,
+        stopping: false,
+        routeCount: 0,
+        totalInFlight: 0,
+        totalBuffered: 0,
+        counters: {
+          receiveEmptyCount: 0,
+          messagesReceivedCount: 0,
+          handlerStartedCount: 0,
+          handlerSuccessCount: 0,
+          handlerFailureCount: 0,
+          handlerTimeoutCount: 0,
+          lateSettlementCount: 0,
+          messageDeleteCount: 0,
+          messageKeepCount: 0,
+          heartbeatSuccessCount: 0,
+          heartbeatFailureCount: 0,
+          pollErrorCount: 0,
+          deleteBatchFailureCount: 0,
+          messageDeleteFailureCount: 0,
+          preDispatchVisibilityFailureCount: 0,
+          bufferedMessageDropCount: 0,
+        },
+        routes: [],
+      };
+    },
+  };
+
+  const runPromise = runSqsWorkerServiceUntilSignal(host, { signals: ['SIGTERM'] });
+  await sleep(5);
+  process.emit('SIGTERM', 'SIGTERM');
+  await runPromise;
+
+  assert.deepEqual(events, ['start:begin', 'stop', 'start:end']);
+  assert.equal(process.listenerCount('SIGTERM'), baselineSigterm);
+});
