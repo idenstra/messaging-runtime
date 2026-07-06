@@ -13,6 +13,11 @@ on:
         required: true
         default: us-east-1
         type: string
+      git-ref:
+        description: Optional git ref or commit SHA to check out before running the smoke suites
+        required: false
+        default: ''
+        type: string
   workflow_call:
     inputs:
       suites:
@@ -24,6 +29,11 @@ on:
         description: AWS region for temporary smoke fixtures
         required: false
         default: us-east-1
+        type: string
+      git-ref:
+        description: Optional git ref or commit SHA to check out before running the smoke suites
+        required: false
+        default: ''
         type: string
 
 permissions:
@@ -46,6 +56,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs['git-ref'] != '' && inputs['git-ref'] || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v6
