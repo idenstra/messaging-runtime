@@ -20,7 +20,7 @@ Start with the product docs. Use the contributor docs only when changing the pac
 | [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) | Polling, concurrency, ack, timeout, heartbeat, shutdown, and redelivery semantics. |
 | [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) | Queue discovery, inspection, native DLQ redrive, and consumer-owned manual reprocessing boundaries. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package boundaries, internal layout, and extension-safe ownership lines. |
-| [`COMPATIBILITY.md`](COMPATIBILITY.md) | Supported imports, pre-`1.0` consumer policy, and extension-safe compatibility expectations. |
+| [`COMPATIBILITY.md`](COMPATIBILITY.md) | Supported imports, current pre-`1.0` posture, and the prepared `1.x` compatibility contract. |
 
 ## Operate
 
@@ -51,6 +51,7 @@ Start with the product docs. Use the contributor docs only when changing the pac
 | Document | Purpose |
 | --- | --- |
 | [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md) | Remaining OSS-readiness decisions and repository-publication posture. |
+| [`MIGRATIONS.md`](MIGRATIONS.md) | Breaking-release migration-note format and future upgrade guidance location. |
 
 ## Contributor / Maintainer
 

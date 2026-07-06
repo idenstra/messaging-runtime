@@ -173,9 +173,8 @@ const host = new SqsWorkerServiceHost({
   queueResolver,
   manifest,
   routes: [
-    {
+    sqsJsonRoute<JobMessage>({
       name: 'jobs',
-      decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
       lifecycle: {
         beforeStart: async () => {
           await pool.connect();
@@ -190,7 +189,7 @@ const host = new SqsWorkerServiceHost({
       handle: async ({ payload }) => {
         await processJob(payload.jobId);
       },
-    },
+    }),
   ],
 });
 ```
@@ -202,22 +201,23 @@ If you use the core manager directly instead of the service host, the same lifec
 ```ts
 const manager = new SqsWorkerManager(sqsAdapter);
 
-manager.register<JobMessage>({
-  name: 'jobs',
-  queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
-  decodePayload: ({ body }) => decodeSqsJsonBody<JobMessage>(body),
-  lifecycle: {
-    beforeStart: async () => {
-      await pool.connect();
+manager.register(
+  sqsJsonRoute<JobMessage>({
+    name: 'jobs',
+    queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789012/jobs',
+    lifecycle: {
+      beforeStart: async () => {
+        await pool.connect();
+      },
+      afterStop: async () => {
+        await pool.close();
+      },
     },
-    afterStop: async () => {
-      await pool.close();
+    handle: async ({ payload }) => {
+      await processJob(payload.jobId);
     },
-  },
-  handle: async ({ payload }) => {
-    await processJob(payload.jobId);
-  },
-});
+  }),
+);
 ```
 
 ## Run a worker until idle or through a bounded maintenance pass

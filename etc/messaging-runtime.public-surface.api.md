@@ -171,12 +171,6 @@ export interface ListSqsQueuesResult {
 }
 
 // @public (undocumented)
-export const packageMetadata: {
-    readonly name: "@idenstra/messaging-runtime";
-    readonly phase: "runtime-core-transport-host-queue-ops-and-observability";
-};
-
-// @public (undocumented)
 export function parseSqsWorkerServiceManifest(input: unknown): SqsWorkerServiceManifest;
 
 // @public (undocumented)

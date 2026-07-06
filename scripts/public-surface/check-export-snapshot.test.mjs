@@ -40,7 +40,7 @@ function seedRepo(repoRoot) {
   writeFile(
     repoRoot,
     'dist/index.d.ts',
-    "export { CoreMarker } from './core/index';\nexport declare const packageMetadata: string;\n",
+    "export { CoreMarker } from './core/index';\nexport declare function createRootMarker(): void;\n",
   );
   writeFile(repoRoot, 'dist/core/index.d.ts', 'export declare const CoreMarker = "core";\n');
   writeFile(repoRoot, 'dist/adapters/nest.d.ts', 'export declare class NestMarker {}\n');
@@ -60,7 +60,7 @@ test('buildPublicSurfaceSnapshot reads the supported exports and declaration sym
         subpath: '.',
         importSpecifier: '@idenstra/messaging-runtime',
         declarationPath: 'dist/index.d.ts',
-        symbols: ['CoreMarker', 'packageMetadata'],
+        symbols: ['CoreMarker', 'createRootMarker'],
       },
       {
         subpath: './core',

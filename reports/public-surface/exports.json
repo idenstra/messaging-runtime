@@ -20,7 +20,6 @@
         "ListSqsDlqRedriveTasksResult",
         "ListSqsQueuesInput",
         "ListSqsQueuesResult",
-        "packageMetadata",
         "parseSqsWorkerServiceManifest",
         "PublisherSerializer",
         "PublisherSizeValidation",

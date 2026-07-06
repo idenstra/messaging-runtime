@@ -1,12 +1,11 @@
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,
-  decodeSqsJsonBody,
   parseSqsWorkerServiceManifest,
   runSqsWorkerServiceUntilSignal,
   SqsQueueUrlResolver,
-  type SqsWorkerMessage,
   SqsWorkerServiceHost,
+  sqsJsonRoute,
 } from '@idenstra/messaging-runtime';
 import {
   createOpenTelemetrySqsWorkerMetricsAdapter,
@@ -49,6 +48,14 @@ async function main(): Promise<void> {
   });
   const sqsAdapter = new AwsSqsAdapter(new SQSClient({ region }));
   const queueResolver = new SqsQueueUrlResolver(sqsAdapter);
+  const route = sqsJsonRoute<JobMessage>({
+    name: 'dispatch-email',
+    queue: queueUrl,
+    handle: async (handlerContext) => {
+      void context.active();
+      process.stdout.write(`dispatching email job ${handlerContext.payload.jobId}\n`);
+    },
+  });
 
   host = new SqsWorkerServiceHost({
     client: sqsAdapter,
@@ -56,19 +63,11 @@ async function main(): Promise<void> {
     manifest,
     managerOptions: { onEvent: metrics.onEvent },
     routes: [
-      withOpenTelemetrySqsWorkerTracing(
-        {
-          name: 'dispatch-email',
-          queue: queueUrl,
-          decodePayload: (message: SqsWorkerMessage) => decodeSqsJsonBody<JobMessage>(message.body),
-          handle: async (handlerContext) => {
-            const payload = handlerContext.payload as JobMessage;
-            void context.active();
-            process.stdout.write(`dispatching email job ${payload.jobId}\n`);
-          },
-        },
-        { tracer, propagator, carrierContext: context.active() },
-      ),
+      withOpenTelemetrySqsWorkerTracing<JobMessage, typeof route>(route, {
+        tracer,
+        propagator,
+        carrierContext: context.active(),
+      }),
     ],
   });
 

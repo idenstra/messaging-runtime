@@ -106,7 +106,7 @@ Do not deep-import from `dist/` or internal source files.
 ### Extend and verify
 
 - [`docs/EXTENDING.md`](docs/EXTENDING.md) for supported extension seams
-- [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for pre-`1.0` consumer policy
+- [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for current compatibility posture and the prepared `1.x` contract
 - [`docs/TESTING.md`](docs/TESTING.md) for deterministic, LocalStack, observability-local, and live AWS proof lanes
 - [`docs/AWS_SMOKE.md`](docs/AWS_SMOKE.md) for live AWS public self-test and maintainer workflow guidance
 - [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) for benchmark posture
@@ -115,6 +115,7 @@ Do not deep-import from `dist/` or internal source files.
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for package boundaries and internal layout
 - [`docs/RELIABILITY.md`](docs/RELIABILITY.md) for verification posture
+- [`docs/MIGRATIONS.md`](docs/MIGRATIONS.md) for future breaking-release migration guidance
 
 ## Proof lanes
 
@@ -138,6 +139,7 @@ See [`docs/TESTING.md`](docs/TESTING.md) for the suite boundaries and escalation
 - package: `@idenstra/messaging-runtime`
 - runtime baseline: Node.js `>=24`
 - version posture: pre-`1.0`
+- future `1.x` contract: prepared in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) and [`docs/MIGRATIONS.md`](docs/MIGRATIONS.md)
 - OSS posture work is summarized in [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md)
 
 ## Deliberate non-goals
