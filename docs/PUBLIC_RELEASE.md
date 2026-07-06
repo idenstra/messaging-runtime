@@ -20,9 +20,10 @@ Repository posture phase 1 is already complete:
 
 ## Package metadata
 
-- Decide whether public distribution uses npmjs, GitHub Packages, or both.
-- Update `publishConfig` for the chosen public registry posture.
-- Confirm package name and scope for public consumption.
+- Public/default distribution uses npmjs.
+- Keep `@idenstra/messaging-runtime` as the public package identity.
+- Keep GitHub Packages only as a temporary private-transition tester lane until the repo is ready for public release.
+- Keep `publishConfig` pointed at npmjs/public.
 - Confirm `files`, `exports`, `types`, and package tarball contents with `npm pack --dry-run`.
 - Add README badges only for signals that are real and maintained.
 - Re-check package description and keywords against the final public registry posture.
@@ -78,7 +79,8 @@ Repository posture phase 1 is already complete:
 - Ensure public pull requests can run safe checks without private secrets.
 - Keep release publication manual and guarded.
 - Use least-privilege workflow permissions.
-- Confirm release provenance requirements for the chosen registry.
+- Confirm release provenance requirements for npmjs.
+- Keep the temporary GitHub Packages publish step automated but separate from public npm promotion.
 - Confirm changelog entries are suitable for public readers.
 - Confirm tags, GitHub releases, and package versions stay aligned.
 

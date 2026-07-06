@@ -19,6 +19,7 @@ Format rules:
 
 - changed the public docs path so consumer onboarding stays separate from contributor and maintainer workflow material while preserving `AGENTS.md` as the primary AI-agent anchor
 - changed GitHub issue and PR templates to a public-first hybrid shape that still preserves the repository governance metadata required by the current harness
+- changed the package release posture so npmjs becomes the final public/default registry while GitHub Packages becomes a temporary tester lane driven by explicit release-workflow modes and tag-based promotion
 ## [0.2.0] - 2026-07-05
 
 ### Added

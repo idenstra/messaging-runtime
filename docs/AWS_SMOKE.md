@@ -173,7 +173,7 @@ That path uses:
 - GitHub OIDC for the repo-owned workflow
 - the repository or environment variable `AWS_SMOKE_ROLE_ARN`
 - a trust policy locked to `repo:idenstra/messaging-runtime:ref:refs/heads/main`
-- a release workflow that runs AWS smoke before `npm publish` when `publish=true`
+- a release workflow where `publish-github` runs AWS smoke before the GitHub Packages tester publish, and later `publish-npm` promotes the exact tagged commit to npm without rerunning AWS smoke
 
 An example local maintainer shell looks like:
 
@@ -334,18 +334,22 @@ From the GitHub UI, choose the `Messaging Runtime AWS Smoke` workflow, select th
 
 ## Release gate behavior
 
-The release workflow now treats AWS smoke as mandatory only for the real publish path:
+The release workflow now treats AWS smoke as mandatory only for the GitHub Packages tester-publish path:
 
-- `publish=false`
+- `mode=validate`
   - runs the normal release preflight
   - stays AWS-free
   - does not call the AWS smoke workflow
-- `publish=true`
-  - runs the normal release preflight
+- `mode=publish-github`
+  - runs the normal release preflight for the exact `main` commit being published
   - runs the reusable AWS smoke workflow
-  - only publishes if the AWS smoke job succeeds
+  - only publishes to GitHub Packages and creates the git tag if the AWS smoke job succeeds
+- `mode=publish-npm`
+  - checks out the explicit promotion tag
+  - stays AWS-free because it promotes the exact tagged commit that already passed `publish-github`
+  - only publishes to npm if the matching version is already present on GitHub Packages
 
-This keeps routine release validation cheap while still enforcing real AWS proof before `npm publish`.
+This keeps routine release validation cheap while still enforcing real AWS proof before a version enters the tester lane and before that exact version can later be promoted publicly.
 
 ## When to escalate to live AWS
 

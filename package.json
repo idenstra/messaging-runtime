@@ -26,7 +26,7 @@
     "./observability": { "types": "./dist/observability/index.d.ts", "default": "./dist/observability/index.js" }
   },
   "engines": { "node": ">=24" },
-  "publishConfig": { "registry": "https://npm.pkg.github.com", "access": "restricted" },
+  "publishConfig": { "registry": "https://registry.npmjs.org", "access": "public" },
   "repository": { "type": "git", "url": "git+https://github.com/idenstra/messaging-runtime.git" },
   "bugs": { "url": "https://github.com/idenstra/messaging-runtime/issues" },
   "homepage": "https://github.com/idenstra/messaging-runtime#readme",
