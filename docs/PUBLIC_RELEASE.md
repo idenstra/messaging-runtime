@@ -12,6 +12,13 @@ Repository posture phase 1 is already complete:
 - consumer docs path separated from contributor / maintainer workflow docs
 - package-facing docs scrubbed for the main private-only onboarding leaks
 
+Documentation posture phase 4 is already complete:
+
+- concise consumer-first README, quick start, cookbook, docs map, adoption guide, and security guide exist
+- extension guidance is linked from the public reading path
+- AWS smoke, LocalStack, and observability docs distinguish public self-test from maintainer workflow
+- package-facing docs are scrubbed for the main private infrastructure and private-workflow assumptions
+
 ## Repository posture
 
 - Change repository visibility intentionally, not as a side effect of another slice.

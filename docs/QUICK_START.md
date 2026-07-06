@@ -1,6 +1,6 @@
 # Quick start
 
-This guide is the shortest path to embedding `@idenstra/messaging-runtime` in a Node.js service.
+This guide is the shortest path to embedding `@idenstra/messaging-runtime` in a Node.js service that needs an AWS SQS worker, an SNS over SQS consumer, or an SQS publisher.
 
 If you want deeper recipes after the first worker is running, continue with [`GETTING_STARTED.md`](GETTING_STARTED.md). If you are adopting the library in a real service, continue with [`ADOPTION.md`](ADOPTION.md).
 
@@ -19,9 +19,9 @@ The supported imports below are the prepared long-lived package surface. See [`C
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 ```
 
-If the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
+Temporary transition note: if the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
 
-## Run one worker
+## Run one SQS worker
 
 The common setup is:
 
@@ -75,7 +75,7 @@ Why this shape:
 - route factories keep common worker shapes short without hiding the underlying runtime model
 - `allowNetworkLookup: false` keeps queue resolution explicit in production-like setups
 
-## Publish one message
+## Publish one message to SQS
 
 ```ts
 import { SQSClient } from '@aws-sdk/client-sqs';

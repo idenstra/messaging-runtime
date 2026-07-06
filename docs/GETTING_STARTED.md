@@ -2,7 +2,7 @@
 
 This guide is the cookbook for `@idenstra/messaging-runtime`.
 
-Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest worker + publisher setup. Come here when you want the next layer of practical recipes for common worker, publisher, queue-ops, and observability shapes.
+Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest AWS SQS worker + publisher setup. Come here when you want the next layer of practical recipes for AWS SQS workers, SNS over SQS consumers, SNS/SQS publishers, queue ops, and observability shapes.
 
 The snippets in this guide are meant to be small and copy-pasteable. The `examples/` directory complements them with compile-checked reference examples when you want fuller end-to-end shapes.
 
@@ -20,9 +20,9 @@ The snippets in this guide are meant to be small and copy-pasteable. The `exampl
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 ```
 
-If the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
+Temporary transition note: if the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
 
-## Create a worker
+## Create an AWS SQS worker
 
 Use one AWS SDK `SQSClient` wrapped by one `AwsSqsAdapter`.
 
@@ -31,8 +31,6 @@ The package still keeps runtime and transport interfaces separate internally, bu
 For the common worker shapes, prefer the explicit route factories. Manual route objects remain the escape hatch when you need a custom decoder or a different payload contract.
 
 ```ts
-import { randomUUID } from 'node:crypto';
-
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   AwsSqsAdapter,

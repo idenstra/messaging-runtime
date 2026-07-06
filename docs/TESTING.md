@@ -7,7 +7,7 @@
 - the optional OTEL/SigNoz observability backend lane;
 - the optional live AWS smoke lane.
 
-The default repo gate stays fast and AWS-free. The LocalStack lane exists for contributors who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for contributors who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend. The live AWS smoke lane exists for contributors running against their own AWS account and for upstream maintainers who need one final real-AWS feature-integrity pass before release.
+The default repo gate stays fast and AWS-free. The LocalStack lane exists for contributors and outside users who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for contributors and outside users who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend. The live AWS smoke lane exists for outside users running against their own AWS account and for upstream maintainers who need one final real-AWS feature-integrity pass before release.
 
 ## Default verification
 
@@ -207,7 +207,7 @@ Use the live AWS smoke lane for AWS-only confidence after the local proof layers
 
 ## Optional live AWS smoke lane
 
-The live AWS smoke lane is the final optional proof layer for contributors and upstream maintainers.
+The live AWS smoke lane is the final optional proof layer for outside users and upstream maintainers.
 
 Standard entrypoints:
 

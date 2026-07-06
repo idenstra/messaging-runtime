@@ -11,7 +11,7 @@ SigNoz is the first documented backend example because it speaks OTLP cleanly an
 
 ## Local proof lane
 
-This repo owns an optional local OTEL/SigNoz proof lane so maintainers can validate the package observability story end to end without relying on any internal repository.
+This repo owns an optional local OTEL/SigNoz proof lane so outside users and maintainers can validate the package observability story end to end without relying on private infrastructure or repository-specific workflow wiring.
 
 Standard entrypoints:
 
