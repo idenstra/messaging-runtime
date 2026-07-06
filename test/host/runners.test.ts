@@ -72,6 +72,7 @@ test('runner starts and stops the host on process signal and removes its listene
         stopping: false,
         routeCount: 0,
         totalInFlight: 0,
+        totalBuffered: 0,
         counters: {
           receiveEmptyCount: 0,
           messagesReceivedCount: 0,

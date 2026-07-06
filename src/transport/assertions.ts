@@ -12,7 +12,11 @@ export function assertAwsAccountId(value: string, label: string): string {
   return normalized;
 }
 
-export function assertNonEmptyIdentifier(value: string, label: string): string {
+export function assertNonEmptyIdentifier(value: unknown, label: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+
   const normalized = value.trim();
   if (!normalized) {
     throw new Error(`${label} must be a non-empty string.`);

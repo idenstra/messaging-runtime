@@ -95,6 +95,10 @@ test('SqsQueueUrlResolver supports typed preload entries and validates owner-acc
     /12-digit AWS account ID/i,
   );
   await assert.rejects(
+    () => resolver.resolve({ queue: 'dispatch-queue', ownerAccountId: 123 as unknown as string }),
+    /must be a non-empty string/i,
+  );
+  await assert.rejects(
     () =>
       resolver.resolve({ queue: 'arn:aws:sqs:us-east-1:210987654321:dispatch-queue', ownerAccountId: '210987654321' }),
     /only supported when resolving a queue by name/i,

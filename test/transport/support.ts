@@ -1,4 +1,4 @@
-import type { ListTopicsCommandInput, PublishBatchCommandInput } from '@aws-sdk/client-sns';
+import type { ListTopicsCommandInput, PublishBatchCommandInput, PublishCommandInput } from '@aws-sdk/client-sns';
 import type {
   ChangeMessageVisibilityBatchCommandInput,
   DeleteMessageBatchCommandInput,
@@ -118,7 +118,7 @@ export class FakeSqsTransportClient implements SqsTransportClient {
 
 export class FakeSnsTransportClient implements SnsTransportClient {
   readonly listTopicsInputs: ListTopicsCommandInput[] = [];
-  readonly publishInputs: Array<Record<string, unknown>> = [];
+  readonly publishInputs: PublishCommandInput[] = [];
   readonly publishBatchInputs: PublishBatchCommandInput[] = [];
   private readonly listTopicsResponses: Array<{ NextToken?: string; Topics?: Array<{ TopicArn?: string }> }> = [];
   private readonly publishBatchResponses: Array<{
@@ -144,7 +144,7 @@ export class FakeSnsTransportClient implements SnsTransportClient {
     return this.listTopicsResponses.shift() ?? { Topics: [] };
   }
 
-  async publish(input: Record<string, unknown>) {
+  async publish(input: PublishCommandInput) {
     this.publishInputs.push(input);
     return { MessageId: 'sns-message-1', SequenceNumber: '2' };
   }
