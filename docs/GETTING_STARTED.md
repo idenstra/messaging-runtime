@@ -20,6 +20,8 @@ The snippets in this guide are meant to be small and copy-pasteable. The `exampl
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 ```
 
+If the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
+
 ## Create a worker
 
 Use one AWS SDK `SQSClient` wrapped by one `AwsSqsAdapter`.

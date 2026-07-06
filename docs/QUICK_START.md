@@ -19,6 +19,8 @@ The package shape and supported imports below are stable.
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 ```
 
+If the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
+
 ## Run one worker
 
 The common setup is:
