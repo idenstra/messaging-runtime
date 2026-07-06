@@ -65,7 +65,7 @@ This lane provisions temporary queues, topics, and subscriptions outside the pac
 
 Fixture rules:
 
-- all resources are prefixed with `mr58-<run-id>-...`
+- all resources are prefixed with `messaging-runtime-<run-id>-...`
 - the runner prints the run ID before provisioning
 - the runner rejects LocalStack or custom endpoint overrides such as:
   - `MESSAGING_RUNTIME_LOCALSTACK_ENDPOINT`
@@ -91,10 +91,8 @@ The smoke lane expects a maintainer profile or workflow role that can perform th
 - `sqs:ListMessageMoveTasks`
 - `sqs:ReceiveMessage`
 - `sqs:DeleteMessage`
-- `sqs:DeleteMessageBatch`
 - `sqs:ChangeMessageVisibility`
 - `sqs:SendMessage`
-- `sqs:SendMessageBatch`
 - `sqs:SetQueueAttributes`
 - `sqs:StartMessageMoveTask`
 - `sqs:CancelMessageMoveTask`
@@ -103,11 +101,16 @@ The smoke lane expects a maintainer profile or workflow role that can perform th
 - `sns:DeleteTopic`
 - `sns:ListTopics`
 - `sns:Publish`
-- `sns:PublishBatch`
 - `sns:Subscribe`
 - `sns:SetSubscriptionAttributes`
 
-If you lock the credentials down further, keep them scoped to temporary smoke resources in one region.
+Batch AWS APIs exercised by this lane reuse the base IAM actions above:
+
+- `sqs:DeleteMessage` covers `DeleteMessageBatch`
+- `sqs:SendMessage` covers `SendMessageBatch`
+- `sns:Publish` covers `PublishBatch`
+
+If you lock the credentials down further, keep them scoped to temporary `messaging-runtime-*` smoke resources in one region.
 
 ## What the lane proves
 
@@ -165,7 +168,7 @@ Normal runs delete their own queues, topics, and subscriptions during teardown.
 If the process is interrupted mid-run:
 
 1. note the printed run ID;
-2. list any leftover resources with that `mr58-<run-id>-...` prefix in the same region;
+2. list any leftover resources with that `messaging-runtime-<run-id>-...` prefix in the same region;
 3. delete leftover topics first, then leftover queues;
 4. if the interrupted run was inside the `redrive` suite, verify no message move task is still `RUNNING` before deleting the queues.
 

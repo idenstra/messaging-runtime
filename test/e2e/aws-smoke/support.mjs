@@ -78,7 +78,7 @@ export async function waitForCondition(
 
 export function createFixturePrefix(label) {
   const normalizedLabel = label.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
-  return `mr58-${AWS_SMOKE_RUN_ID}-${normalizedLabel}`;
+  return `messaging-runtime-${AWS_SMOKE_RUN_ID}-${normalizedLabel}`;
 }
 
 export function createAwsConfig() {
