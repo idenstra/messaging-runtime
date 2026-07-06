@@ -2,7 +2,7 @@
 
 This guide is the cookbook for `@idenstra/messaging-runtime`.
 
-Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest AWS SQS worker + publisher setup. Come here when you want the next layer of practical recipes for AWS SQS workers, SNS over SQS consumers, SNS/SQS publishers, queue ops, and observability shapes.
+Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest AWS SQS worker + publisher setup. Come here when you want the next layer of practical recipes for AWS SQS workers, SNS over SQS consumers, SNS/SQS publishers, queue-ops, and observability shapes.
 
 The snippets in this guide are meant to be small and copy-pasteable. The `examples/` directory complements them with compile-checked reference examples when you want fuller end-to-end shapes.
 

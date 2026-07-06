@@ -1,6 +1,6 @@
 # Quick start
 
-This guide is the shortest path to embedding `@idenstra/messaging-runtime` in a Node.js service that needs an AWS SQS worker, an SNS over SQS consumer, or an SQS publisher.
+This guide is the shortest path to embedding `@idenstra/messaging-runtime` in a Node.js service that needs an AWS SQS worker, an SNS over SQS consumer, or an SNS/SQS publisher.
 
 If you want deeper recipes after the first worker is running, continue with [`GETTING_STARTED.md`](GETTING_STARTED.md). If you are adopting the library in a real service, continue with [`ADOPTION.md`](ADOPTION.md).
 
