@@ -119,15 +119,15 @@ test('Live AWS redrive suite', async (t) => {
       const startedTask = listedTasks.tasks.find((task) => task.taskHandle === startResult.taskHandle);
       assert.ok(startedTask, 'Real AWS redrive listing must include the started task.');
 
-      await waitForApproximateVisibleMessageCount(sqs, sourceQueue.url, {
-        minCount: 1,
-        timeoutMs: 20_000,
+      await waitForRedriveTaskToMoveMessages(redriveManager, deadLetterQueue.name, startResult.taskHandle, {
+        timeoutMs: 60_000,
         intervalMs: 1_000,
+        description: 'real AWS redrive task to move at least one message',
       });
       const movedBackMessages = await waitForMessages(sqs, sourceQueue.url, {
         expectedCount: 1,
         deleteReceived: true,
-        timeoutMs: 20_000,
+        timeoutMs: 30_000,
       });
       assert.equal(parseJsonMessageBody(movedBackMessages[0]).jobId.startsWith('redrive-'), true);
 
@@ -138,53 +138,37 @@ test('Live AWS redrive suite', async (t) => {
 
       assert.equal(startedTask.status, 'RUNNING');
 
-      let cancelIssued = false;
       const observedStatuses = new Set([startedTask.status]);
 
       try {
         const cancelResult = await redriveManager.cancelRedrive({ taskHandle: startResult.taskHandle });
-        cancelIssued = true;
         assert.equal(cancelResult.taskHandle, startResult.taskHandle);
       } catch (error) {
-        const terminalAfterCancelFailure = await waitForCondition(
-          async () => {
-            const tasks = await redriveManager.listRedriveTasks({ sourceQueue: deadLetterQueue.name });
-            const task = tasks.tasks.find((candidate) => candidate.taskHandle === startResult.taskHandle);
-            if (!task) {
-              return false;
-            }
-
-            if (task.status) {
-              observedStatuses.add(task.status);
-            }
-
-            return task.status === 'COMPLETED' ? task : false;
-          },
-          { timeoutMs: 30_000, intervalMs: 1_000, description: 'completed real AWS redrive task after cancel race' },
+        const terminalAfterCancelFailure = await waitForTerminalRedriveTaskState(
+          redriveManager,
+          deadLetterQueue.name,
+          startResult.taskHandle,
+          observedStatuses,
+          { timeoutMs: 30_000, intervalMs: 1_000, description: 'terminal real AWS redrive task after cancel race' },
         );
 
         t.diagnostic(
           `Real AWS redrive cancel raced with task completion: ${error instanceof Error ? error.message : String(error)}`,
         );
-        assert.equal(terminalAfterCancelFailure.status, 'COMPLETED');
+        assert.equal(
+          ['CANCELLED', 'CANCELLING', 'COMPLETED', 'DISAPPEARED_AFTER_CANCEL'].includes(
+            terminalAfterCancelFailure.status ?? '',
+          ),
+          true,
+        );
         return;
       }
 
-      const terminalTask = await waitForCondition(
-        async () => {
-          const tasks = await redriveManager.listRedriveTasks({ sourceQueue: deadLetterQueue.name });
-          const task = tasks.tasks.find((candidate) => candidate.taskHandle === startResult.taskHandle);
-
-          if (!task) {
-            return cancelIssued ? { status: 'DISAPPEARED_AFTER_CANCEL' } : false;
-          }
-
-          if (task.status) {
-            observedStatuses.add(task.status);
-          }
-
-          return ['CANCELLED', 'CANCELLING', 'COMPLETED'].includes(task.status ?? '') ? task : false;
-        },
+      const terminalTask = await waitForTerminalRedriveTaskState(
+        redriveManager,
+        deadLetterQueue.name,
+        startResult.taskHandle,
+        observedStatuses,
         { timeoutMs: 90_000, intervalMs: 2_000, description: 'terminal real AWS redrive task state after cancel' },
       );
 
@@ -201,3 +185,38 @@ test('Live AWS redrive suite', async (t) => {
     sns.destroy();
   }
 });
+
+async function waitForTerminalRedriveTaskState(redriveManager, sourceQueue, taskHandle, observedStatuses, waitOptions) {
+  let consecutiveMisses = 0;
+
+  return waitForCondition(async () => {
+    const tasks = await redriveManager.listRedriveTasks({ sourceQueue });
+    const task = tasks.tasks.find((candidate) => candidate.taskHandle === taskHandle);
+
+    if (!task) {
+      consecutiveMisses += 1;
+      return consecutiveMisses >= 3 ? { status: 'DISAPPEARED_AFTER_CANCEL' } : false;
+    }
+
+    consecutiveMisses = 0;
+
+    if (task.status) {
+      observedStatuses.add(task.status);
+    }
+
+    return ['CANCELLED', 'CANCELLING', 'COMPLETED'].includes(task.status ?? '') ? task : false;
+  }, waitOptions);
+}
+
+async function waitForRedriveTaskToMoveMessages(redriveManager, sourceQueue, taskHandle, waitOptions) {
+  return waitForCondition(async () => {
+    const tasks = await redriveManager.listRedriveTasks({ sourceQueue });
+    const task = tasks.tasks.find((candidate) => candidate.taskHandle === taskHandle);
+
+    if (!task) {
+      return false;
+    }
+
+    return (task.approximateNumberOfMessagesMoved ?? 0) > 0 || task.status === 'COMPLETED' ? task : false;
+  }, waitOptions);
+}

@@ -39,6 +39,8 @@ npm run e2e:aws-smoke -- --suite redrive
 
 The `:ci` variant is the same repo-owned runner used by the manual GitHub workflow and the release-time publish gate.
 
+If you are validating the library in your own AWS account, start with the public self-test path below.
+
 ## Public self-test path
 
 If you are validating `messaging-runtime` against your own AWS account, use the local smoke lane directly. You do not need access to any upstream maintainer account, workflow, or IAM role.
@@ -163,9 +165,9 @@ If the process is interrupted mid-run:
 
 Because the resource names are unique per run, a stale resource is easy to identify and remove manually.
 
-## Maintainer workflow
+## Maintainer workflow for this repository
 
-The upstream `idenstra/messaging-runtime` repository also owns a maintainer workflow path for release-time confidence on `main`.
+If you are maintaining `idenstra/messaging-runtime` itself, this repository also owns a maintainer workflow path for release-time confidence on `main`.
 
 That path uses:
 

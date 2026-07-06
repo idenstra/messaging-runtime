@@ -1,6 +1,6 @@
 # Features
 
-`messaging-runtime` is a focused SNS/SQS runtime. Its maturity should come from being excellent at one transport family, not from pretending every transport has the same semantics.
+`messaging-runtime` is a focused AWS SNS/SQS worker runtime, publisher, queue-ops, and DLQ redrive toolkit. Its maturity should come from being excellent at one transport family, not from pretending every transport has the same semantics.
 
 If you want the shortest onboarding path, start with [`QUICK_START.md`](QUICK_START.md). If you want rollout guidance for a real service, use [`ADOPTION.md`](ADOPTION.md).
 

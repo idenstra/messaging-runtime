@@ -1,8 +1,8 @@
 # messaging-runtime
 
-`messaging-runtime` is a TypeScript SNS/SQS worker runtime for Node.js services.
+`messaging-runtime` is a TypeScript AWS SNS/SQS worker runtime, publisher, queue-ops, DLQ redrive, and OpenTelemetry helper library for Node.js services.
 
-It stays deliberately narrow:
+It stays deliberately narrow so AWS SQS worker, SNS over SQS consumer, SNS/SQS publisher, and native DLQ redrive behavior stay visible, testable, and cheap to operate:
 
 - SQS worker execution, shutdown, timeouts, heartbeats, and route lifecycle
 - SNS/SQS publish, resolve, discovery, and queue-ops helpers
@@ -15,11 +15,11 @@ It does **not** try to flatten Kafka, RabbitMQ, Redis streams, or other transpor
 
 Use this library when your service needs to:
 
-- consume SQS queues with bounded concurrency and explicit ack behavior
-- process SNS notifications delivered through SQS
+- run an AWS SQS worker with bounded concurrency and explicit ack behavior
+- process SNS notifications delivered through SQS without hiding the SNS envelope or raw-delivery choices
 - publish to SQS queues or SNS topics from shared application code
 - inspect queues, list attached DLQ sources, and run native SQS redrive tasks
-- expose runtime metrics and traces without baking an observability vendor into core code
+- expose OpenTelemetry metrics and traces from a plain Node.js or NestJS worker service without baking an observability vendor into core code
 
 ## Start here
 
