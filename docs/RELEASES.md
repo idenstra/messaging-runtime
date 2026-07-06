@@ -68,7 +68,7 @@ make verify-fast
 Workflow publication:
 - GitHub Actions publishes with the repository `GITHUB_TOKEN`
 - the release workflow needs `contents: write`, `packages: write`, and `id-token: write`
-- the reusable AWS smoke workflow assumes the role declared by the repository variable or secret `AWS_SMOKE_ROLE_ARN`
+- the reusable AWS smoke workflow assumes the role declared by the repository or environment variable `AWS_SMOKE_ROLE_ARN`
 
 Local installs and local manual package inspection:
 - use GitHub Packages auth in user space

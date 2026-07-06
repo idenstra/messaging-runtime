@@ -172,7 +172,6 @@ test('Live AWS transport suite', async (t) => {
           topic: standardTopic.name,
           payload: { mode: 'json', index: 1 },
           subject: 'json-event',
-          messageGroupId: 'fair-group',
           messageAttributes: {
             mode: snsStringAttribute('json'),
             audiences: snsStringArrayAttribute(['ops', 'billing']),

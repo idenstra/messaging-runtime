@@ -186,7 +186,7 @@ The manual workflow uses:
 
 - GitHub OIDC
 - `aws-actions/configure-aws-credentials`
-- the repository variable or secret `AWS_SMOKE_ROLE_ARN`
+- the repository or environment variable `AWS_SMOKE_ROLE_ARN`
 - the same repo-owned `npm run e2e:aws-smoke:ci` runner
 
 From the GitHub UI, choose the `Messaging Runtime AWS Smoke` workflow, select the suite list if needed, and run it against the target branch.

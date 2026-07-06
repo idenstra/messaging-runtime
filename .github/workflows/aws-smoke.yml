@@ -40,8 +40,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ${{ inputs.aws-region }}
-      AWS_SMOKE_ROLE_ARN: ${{ vars.AWS_SMOKE_ROLE_ARN || secrets.AWS_SMOKE_ROLE_ARN }}
+      AWS_REGION: ${{ inputs['aws-region'] }}
+      AWS_SMOKE_ROLE_ARN: ${{ vars.AWS_SMOKE_ROLE_ARN }}
 
     steps:
       - name: Checkout
@@ -56,7 +56,7 @@ jobs:
       - name: Assert AWS smoke role is configured
         run: |
           test -n "$AWS_SMOKE_ROLE_ARN" || {
-            echo "Configure AWS_SMOKE_ROLE_ARN as a repository variable or secret for the live AWS smoke workflow."
+            echo "Configure AWS_SMOKE_ROLE_ARN as a repository or environment variable for the live AWS smoke workflow."
             exit 1
           }
 

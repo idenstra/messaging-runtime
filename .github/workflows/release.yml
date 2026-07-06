@@ -68,7 +68,6 @@ jobs:
     if: ${{ inputs.publish }}
     needs: preflight
     uses: ./.github/workflows/aws-smoke.yml
-    secrets: inherit
     with:
       suites: transport,worker,routing,discovery,queue-ops,redrive
       aws-region: us-east-1
