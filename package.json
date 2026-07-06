@@ -1,6 +1,6 @@
 {
   "name": "@idenstra/messaging-runtime",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared SNS/SQS messaging runtime for Idenstra app-owned worker services",
   "license": "UNLICENSED",
   "main": "dist/index.js",

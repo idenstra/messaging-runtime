@@ -39,9 +39,143 @@ npm run e2e:aws-smoke -- --suite redrive
 
 The `:ci` variant is the same repo-owned runner used by the manual GitHub workflow and the release-time publish gate.
 
-## AWS SSO runbook
+## Public self-test path
 
-The documented maintainer path is AWS SSO plus explicit shell configuration:
+If you are validating `messaging-runtime` against your own AWS account, use the local smoke lane directly. You do not need access to any Idenstra account, workflow, or IAM role.
+
+Prerequisites:
+
+- an AWS account or sandbox where you can create and delete temporary SNS/SQS fixtures
+- credentials available through the AWS SDK default provider chain
+- Node.js `>=24`
+- `npm ci`
+
+The simplest path is one named local profile:
+
+```bash
+export AWS_PROFILE=my-sandbox
+export AWS_REGION=us-east-1
+
+aws sts get-caller-identity --profile "$AWS_PROFILE"
+
+make verify-aws-smoke
+```
+
+Subset execution is supported when you only want one feature family:
+
+```bash
+npm run e2e:aws-smoke -- --suite transport,worker
+npm run e2e:aws-smoke -- --suite redrive
+```
+
+Notes:
+
+- `AWS_REGION` defaults to `us-east-1` if you do not set it.
+- `AWS_PROFILE` is optional; if you omit it, the AWS SDK uses the normal default provider chain for the current shell.
+- AWS SSO is one valid way to obtain credentials, but it is not required. Static credentials, `aws-vault`, and any other credential source accepted by the AWS SDK are also valid.
+- The local smoke lane builds the package, provisions temporary fixtures, runs the selected suites, and deletes its own resources during teardown.
+
+### Minimal IAM policy for your own account
+
+If you want to lock the smoke lane to temporary resources in your own sandbox account, use the IAM action set below and scope the resources to a prefix you control, such as `messaging-runtime-*` in one region.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "StsIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SqsSmokeQueues",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:DeleteQueue",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ListDeadLetterSourceQueues",
+        "sqs:ListMessageMoveTasks",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:SendMessage",
+        "sqs:SetQueueAttributes",
+        "sqs:StartMessageMoveTask",
+        "sqs:CancelMessageMoveTask"
+      ],
+      "Resource": "arn:aws:sqs:us-east-1:<ACCOUNT_ID>:messaging-runtime-*"
+    },
+    {
+      "Sid": "SqsListQueues",
+      "Effect": "Allow",
+      "Action": "sqs:ListQueues",
+      "Resource": "arn:aws:sqs:us-east-1:<ACCOUNT_ID>:*"
+    },
+    {
+      "Sid": "SnsSmokeTopics",
+      "Effect": "Allow",
+      "Action": [
+        "sns:CreateTopic",
+        "sns:DeleteTopic",
+        "sns:Publish",
+        "sns:Subscribe"
+      ],
+      "Resource": "arn:aws:sns:us-east-1:<ACCOUNT_ID>:messaging-runtime-*"
+    },
+    {
+      "Sid": "SnsListAndSubscriptionAttrs",
+      "Effect": "Allow",
+      "Action": [
+        "sns:ListTopics",
+        "sns:SetSubscriptionAttributes"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
+    }
+  ]
+}
+```
+
+Replace `<ACCOUNT_ID>` with your own AWS account ID. Batch AWS APIs exercised by this lane reuse the base IAM actions above:
+
+- `sqs:DeleteMessage` covers `DeleteMessageBatch`
+- `sqs:SendMessage` covers `SendMessageBatch`
+- `sns:Publish` covers `PublishBatch`
+
+### Cleanup and interruption
+
+Normal runs delete their own queues, topics, and subscriptions during teardown.
+
+If the process is interrupted mid-run:
+
+1. note the printed run ID;
+2. list any leftover resources with that `messaging-runtime-<run-id>-...` prefix in the same region;
+3. delete leftover topics first, then leftover queues;
+4. if the interrupted run was inside the `redrive` suite, verify no message move task is still `RUNNING` before deleting the queues.
+
+Because the resource names are unique per run, a stale resource is easy to identify and remove manually.
+
+## Maintainer path
+
+The upstream `idenstra/messaging-runtime` repository also owns a maintainer workflow path for release-time confidence on `main`.
+
+That path uses:
+
+- AWS SSO locally for maintainers who want to run the smoke from their own shell
+- GitHub OIDC for the repo-owned workflow
+- the repository or environment variable `AWS_SMOKE_ROLE_ARN`
+- a trust policy locked to `repo:idenstra/messaging-runtime:ref:refs/heads/main`
+- a release workflow that runs AWS smoke before `npm publish` when `publish=true`
+
+An example local maintainer shell looks like:
 
 ```bash
 export AWS_PROFILE=idenstra-admin
@@ -53,11 +187,32 @@ aws sts get-caller-identity --profile "$AWS_PROFILE"
 make verify-aws-smoke
 ```
 
-Notes:
+The maintainer-specific OIDC role and workflow are not part of the public package API. They exist only to validate and publish the upstream repository safely.
 
-- `AWS_REGION` defaults to `us-east-1` if you do not set it.
-- `AWS_PROFILE` is optional; if you omit it, the AWS SDK uses the normal default provider chain for the current shell.
-- SSO is the documented path, but any credential source that satisfies the AWS SDK default provider chain is acceptable for this smoke.
+## Fork and workflow path
+
+If you fork this repository and want the GitHub workflow to run against your own AWS account, you must create your own AWS role, variable, and trust policy in your own repo.
+
+Do not expect the upstream `idenstra/messaging-runtime` workflow or `AWS_SMOKE_ROLE_ARN` value to work for your fork.
+
+The fork owner should:
+
+1. create a sandbox IAM role in their own AWS account;
+2. create or reuse the GitHub OIDC provider for `token.actions.githubusercontent.com`;
+3. lock the trust policy to their own repository and branch or environment;
+4. add `AWS_SMOKE_ROLE_ARN` as a repository or environment variable in their own fork;
+5. run the same `Messaging Runtime AWS Smoke` workflow there.
+
+For an exact-branch trust policy, the key condition looks like:
+
+```json
+{
+  "StringEquals": {
+    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+    "token.actions.githubusercontent.com:sub": "repo:<OWNER>/<REPO>:ref:refs/heads/main"
+  }
+}
+```
 
 ## Safety posture
 
@@ -80,7 +235,7 @@ This lane does not operationalize queue or topic lifecycle through the published
 
 ## IAM scope
 
-The smoke lane expects a maintainer profile or workflow role that can perform the AWS calls used by the harness:
+The smoke lane expects credentials that can perform the AWS calls used by the harness:
 
 - `sts:GetCallerIdentity`
 - `sqs:CreateQueue`
@@ -103,12 +258,6 @@ The smoke lane expects a maintainer profile or workflow role that can perform th
 - `sns:Publish`
 - `sns:Subscribe`
 - `sns:SetSubscriptionAttributes`
-
-Batch AWS APIs exercised by this lane reuse the base IAM actions above:
-
-- `sqs:DeleteMessage` covers `DeleteMessageBatch`
-- `sqs:SendMessage` covers `SendMessageBatch`
-- `sns:Publish` covers `PublishBatch`
 
 If you lock the credentials down further, keep them scoped to temporary `messaging-runtime-*` smoke resources in one region.
 
@@ -161,19 +310,6 @@ Current live AWS smoke coverage includes:
 
 The lane is organized around feature families, not every helper permutation.
 
-## Cleanup and interruption
-
-Normal runs delete their own queues, topics, and subscriptions during teardown.
-
-If the process is interrupted mid-run:
-
-1. note the printed run ID;
-2. list any leftover resources with that `messaging-runtime-<run-id>-...` prefix in the same region;
-3. delete leftover topics first, then leftover queues;
-4. if the interrupted run was inside the `redrive` suite, verify no message move task is still `RUNNING` before deleting the queues.
-
-Because the resource names are unique per run, a stale resource is easy to identify and remove manually.
-
 ## GitHub workflow usage
 
 This slice adds a dedicated manual workflow:
@@ -185,7 +321,7 @@ It supports:
 - `workflow_dispatch`
 - `workflow_call`
 
-The manual workflow uses:
+The upstream manual workflow uses:
 
 - GitHub OIDC
 - `aws-actions/configure-aws-credentials`

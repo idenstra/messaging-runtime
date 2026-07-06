@@ -62,7 +62,7 @@ Read the docs in this order:
 4. [`docs/RUNTIME_SEMANTICS.md`](docs/RUNTIME_SEMANTICS.md) - polling, ack, timeout, and shutdown behavior
 5. [`docs/OPERATIONS.md`](docs/OPERATIONS.md) - configuration, observability, testing, and Nest usage
 6. [`docs/TESTING.md`](docs/TESTING.md) - deterministic checks, optional LocalStack E2E, and testing boundaries
-7. [`docs/AWS_SMOKE.md`](docs/AWS_SMOKE.md) - live AWS smoke commands, AWS SSO runbook, and fixture-safety guidance
+7. [`docs/AWS_SMOKE.md`](docs/AWS_SMOKE.md) - live AWS smoke commands, public self-test guidance, maintainer workflow wiring, and fixture-safety guidance
 8. [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) - OTEL metrics, W3C tracing, SigNoz wiring, and autoscaling guidance
 9. [`docs/QUEUE_OPERATIONS.md`](docs/QUEUE_OPERATIONS.md) - queue inspection, native DLQ redrive, and safe replay boundaries
 10. [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) - performance posture and benchmark plan

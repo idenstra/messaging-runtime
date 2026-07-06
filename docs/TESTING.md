@@ -7,7 +7,7 @@
 - the optional OTEL/SigNoz observability backend lane;
 - the optional live AWS smoke lane.
 
-The default repo gate stays fast and AWS-free. The LocalStack lane exists for maintainers who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for maintainers who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend. The live AWS smoke lane exists for maintainers who need one final real-AWS feature-integrity pass plus an explicit AWS SSO runbook.
+The default repo gate stays fast and AWS-free. The LocalStack lane exists for contributors who need stronger proof that the built package still works against real AWS SDK calls and SNS/SQS emulator behavior. The observability lane exists for contributors who need end-to-end proof that the documented OTEL metrics, tracing, and W3C propagation story reaches a real local backend. The live AWS smoke lane exists for contributors running against their own AWS account and for upstream maintainers who need one final real-AWS feature-integrity pass before release.
 
 ## Default verification
 
@@ -207,7 +207,7 @@ Use the live AWS smoke lane for AWS-only confidence after the local proof layers
 
 ## Optional live AWS smoke lane
 
-The live AWS smoke lane is the final optional proof layer for maintainers.
+The live AWS smoke lane is the final optional proof layer for contributors and upstream maintainers.
 
 Standard entrypoints:
 
@@ -258,7 +258,7 @@ The live AWS lane proves real SNS/SQS behavior for:
 
 This lane is still not a production-deployment proof. It exists to answer the AWS-only questions that LocalStack and the local observability backend cannot answer.
 
-The full AWS SSO runbook, fixture naming rules, IAM expectations, cleanup posture, manual workflow usage, and release-time publish gate behavior live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
+The public self-test path, fixture naming rules, IAM expectations, fork/workflow guidance, maintainer release wiring, and release-time publish gate behavior live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
 
 ## When to run it
 
@@ -286,5 +286,5 @@ Run the live AWS smoke lane when:
 - LocalStack is already green;
 - the change still depends on real AWS SNS/SQS semantics for confidence;
 - the change touched discovery, queue inspection, or native redrive behavior;
-- release or maintainership proof needs an AWS-backed pass;
+- release or upstream maintainership proof needs an AWS-backed pass;
 - a question remains about actual queue/topic resolution, raw or envelope SNS -> SQS delivery, attribute propagation, hosted worker receive/delete behavior, or real redrive semantics.

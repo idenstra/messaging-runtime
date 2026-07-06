@@ -253,13 +253,13 @@ npm run e2e:localstack -- --suite runtime,publishers
 
 The full local testing story, suite names, prerequisites, and emulator boundaries live in [`TESTING.md`](TESTING.md).
 
-When LocalStack is green but the question is still about real AWS SNS/SQS behavior, escalate to the maintainer-owned live AWS smoke lane:
+When LocalStack is green but the question is still about real AWS SNS/SQS behavior, escalate to the optional live AWS smoke lane:
 
 ```bash
 make verify-aws-smoke
 ```
 
-The AWS SSO runbook, fixture-safety rules, teardown posture, suite names, manual GitHub workflow usage, and release-time AWS smoke gate live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
+The public self-test path, fixture-safety rules, teardown posture, suite names, manual GitHub workflow usage, and release-time AWS smoke gate live in [`AWS_SMOKE.md`](AWS_SMOKE.md).
 
 ## Queue operations and DLQ recovery
 

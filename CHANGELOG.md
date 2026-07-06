@@ -9,6 +9,8 @@ Format rules:
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-05
+
 ### Added
 
 - added explicit `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` factories for the most common worker declaration shapes
@@ -45,6 +47,7 @@ Format rules:
 - changed the benchmark acceptance posture so checked-in baselines remain historical context while same-machine A/B comparison becomes the preferred throughput-review discipline
 - changed worker polling to request SQS system attributes through `MessageSystemAttributeNames` instead of `AttributeNames`
 - changed SNS publish helpers to allow standard-topic `messageGroupId`, reject standard-topic `messageDeduplicationId`, and align FIFO validation across single and batch publishing
+- changed the live AWS smoke docs to include a public self-test path for any AWS account, separate from the upstream maintainer OIDC workflow and release gate
 
 ## [0.1.0] - 2026-06-29
 
