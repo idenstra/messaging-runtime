@@ -2,6 +2,11 @@
 
 This document defines the supported consumer contract for `@idenstra/messaging-runtime` while the package remains private-first and `0.x`.
 
+Use it together with:
+
+- [`ADOPTION.md`](ADOPTION.md) for rollout discipline
+- [`EXTENDING.md`](EXTENDING.md) for supported extension seams
+
 ## Runtime baseline
 
 - supported Node baseline: `24`
@@ -15,7 +20,7 @@ Supported imports are limited to:
 - `@idenstra/messaging-runtime/nest`
 - `@idenstra/messaging-runtime/observability`
 
-Supported consumer-facing AWS wrapper classes are:
+Supported consumer-facing AWS adapter classes are:
 - `AwsSqsAdapter`
 - `AwsSnsAdapter`
 
@@ -35,7 +40,7 @@ Supported extension seams are:
 Unsupported extension style remains:
 - deep imports into internal package files
 - patching package internals instead of composing over supported imports
-- provider-neutral broker abstractions
+- transport-neutral abstractions
 
 See [`EXTENDING.md`](EXTENDING.md) for the package-facing extension guide and compile-checked examples.
 

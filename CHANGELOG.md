@@ -12,6 +12,7 @@ Format rules:
 ### Added
 
 - added a dedicated extension guide plus compile-checked examples for wrapped transport clients, consumer-owned helper composition, and lifecycle-bridge patterns on the supported public surface
+- added a short `QUICK_START.md` path, a public `ADOPTION.md` rollout guide, and stronger package-facing security guidance for outside consumers
 
 ## [0.2.0] - 2026-07-05
 

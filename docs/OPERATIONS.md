@@ -1,6 +1,8 @@
 # Operations
 
-`messaging-runtime` keeps operational ownership explicit. The library owns reusable SNS/SQS mechanics. The application owns deployment, configuration, idempotency, persistence, and alerting policy.
+`messaging-runtime` keeps operational ownership explicit. The library owns reusable SNS/SQS mechanics. The application owns deployment, configuration, idempotency, persistence, alerting policy, and rollout.
+
+Use this guide for runtime operations. Use [`ADOPTION.md`](ADOPTION.md) when you are rolling the library into a real service for the first time.
 
 ## Configuration ownership
 
@@ -280,21 +282,21 @@ These helpers intentionally stop at the queue-operation boundary:
 - queue inspection is package-owned;
 - native SQS DLQ redrive is package-owned;
 - transport-level SQS batch message operations are package-owned;
-- manual message-level replay remains consumer-owned.
+- consumer-owned manual reprocessing stays in the application.
 
 Discovery boundaries stay explicit:
 - `ListQueues` remains same-account and same-region because that is the native AWS boundary;
 - cross-account queue resolution is supported only for explicit `GetQueueUrl` name lookups;
 - topic discovery remains read-only and does not create, tag, or subscribe topics.
 
-This boundary is deliberate. Manual replay needs consumer-domain rules for:
+This boundary is deliberate. Consumer-owned manual reprocessing needs consumer-domain rules for:
 - idempotency;
 - payload validation;
 - destination selection;
 - safe mutation order;
 - auditability and rollback.
 
-Start from the consumer-owned example script in [`../examples/queue-ops/native-dlq-redrive.ts`](../examples/queue-ops/native-dlq-redrive.ts) and keep any message-level replay logic in the consuming system, not in the shared library.
+Start from the consumer-owned example script in [`../examples/queue-ops/native-dlq-redrive.ts`](../examples/queue-ops/native-dlq-redrive.ts) and keep any message-level reprocessing logic in the consuming system, not in the shared library.
 
 ## Nest adapter
 
@@ -314,6 +316,8 @@ It does not provide:
 
 ## Production adoption checklist
 
+This is the runtime-facing checklist. For the broader rollout sequence, read [`ADOPTION.md`](ADOPTION.md).
+
 Before a worker uses this package in production, confirm:
 
 - queue names, URLs, or ARNs are configured explicitly;
@@ -323,7 +327,7 @@ Before a worker uses this package in production, confirm:
 - failure ack policy is documented per route;
 - idempotency and DLQ behavior are owned by the consumer;
 - DLQ inspection and native redrive use a documented operator path;
-- manual replay, if it exists at all, is owned and guarded in the consumer application;
+- consumer-owned manual reprocessing, if it exists at all, is owned and guarded in the consumer application;
 - runtime events are mapped to metrics;
 - W3C trace propagation is either intentionally enabled or intentionally omitted;
 - raw SNS -> SQS delivery is enabled if trace attributes must survive SNS fanout into worker queues;

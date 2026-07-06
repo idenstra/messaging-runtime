@@ -1,6 +1,8 @@
 # Features
 
-`messaging-runtime` is a focused SNS/SQS runtime. Its maturity should come from being excellent at one transport family, not from pretending every broker has the same semantics.
+`messaging-runtime` is a focused SNS/SQS runtime. Its maturity should come from being excellent at one transport family, not from pretending every transport has the same semantics.
+
+If you want the shortest onboarding path, start with [`QUICK_START.md`](QUICK_START.md). If you want rollout guidance for a real service, use [`ADOPTION.md`](ADOPTION.md).
 
 ## Runtime capabilities
 
@@ -11,7 +13,7 @@
 | SQS max messages per poll | Yes | Capped to SQS maximum of 10. |
 | Bounded per-route prefetch | Yes | Raw-message prefetch is capped to `min(concurrency, maxMessagesPerPoll)` per route. |
 | Plain SQS JSON decoding | Yes | Built-in default route decode parses JSON bodies when a route does not supply `decodePayload`. `decodeSqsJsonBody` is also exported for explicit typed decoders. |
-| Common route factories | Yes | `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` cover the most common worker declaration shapes while preserving the existing route/host model. |
+| Common route factories | Yes | `sqsJsonRoute(...)`, `snsJsonQueueRoute(...)`, and `sqsStringRoute(...)` cover the most common worker declaration shapes while preserving the existing route and worker-host model. |
 | Thin forwarding handlers | Yes | Root-exported helpers cover fixed queue-to-queue and queue-to-topic relay flows across JSON, string, serializer, and structured SNS publisher modes. |
 | SNS-over-SQS JSON decoding | Yes | `decodeSnsEnvelope` and `decodeSnsNotificationJson`. |
 | Message delete on success | Yes | Default success action is delete, finalized through route-local delete batching in the worker core. |
@@ -28,7 +30,7 @@
 | W3C trace propagation helpers | Yes | Inject and extract `traceparent`, `tracestate`, and `baggage` through SNS/SQS message attributes. |
 | Consumer span wrapper | Yes | `withOpenTelemetrySqsWorkerTracing(...)` wraps a route without changing worker-core semantics. |
 | Manifest-driven route activation | Yes | `parseSqsWorkerServiceManifest` and `SqsWorkerServiceHost`. |
-| Queue URL resolver | Yes | Name, URL, ARN, typed cross-account name resolution, legacy preload, typed preload entries, optional no-network mode. |
+| Queue URL resolver | Yes | Name, URL, ARN, typed cross-account name resolution, simple preload map, typed preload entries, optional no-network mode. |
 | SNS topic ARN resolver | Yes | ARN, name lookup through `ListTopics`, preload, optional no-network mode. |
 | SQS JSON publisher | Yes | Single-message and batch publishing. |
 | SQS string publisher | Yes | `sendString(...)` and `sendStringBatch(...)` send your exact SQS body as-is. |
@@ -49,7 +51,7 @@
 | Optional LocalStack E2E lane | Yes | `make verify-localstack` runs the built package against LocalStack-backed SNS/SQS fixtures without changing the default deterministic harness. |
 | SigNoz backend example | Yes | Package code stays OTEL-first and vendor-neutral; SigNoz remains the first documented backend example and an optional repo-owned proof lane exists for metrics and traces. |
 | AWS-aware worker autoscaling guidance | Yes | ECS/Fargate and Kubernetes guidance is documented at the runbook level, not baked into the package. |
-| Generic manual message replay | No | Manual replay remains consumer-owned because idempotency and payload safety are domain-specific. |
+| Generic manual reprocessing helper | No | Consumer-owned manual reprocessing remains necessary because idempotency and payload safety are domain-specific. |
 | Nest adapter | Yes | Optional lifecycle and logger bridge. |
 | Optional live AWS smoke lane | Yes | `make verify-aws-smoke` runs the real-AWS feature-family smoke suites for transport, worker, routing, discovery, queue-ops, and native redrive after the local proof layers are green. |
 | Deterministic local benchmark suite | Yes | `npm run benchmark`, `npm run benchmark:ci`, `npm run benchmark:compare`, and tracked baseline artifacts under `docs/benchmarks/`, including worker-core prefetch scenarios. |
@@ -71,23 +73,23 @@ Avoid deep imports into `dist/` or internal source files. The public surface sho
 
 The package should not add:
 
-- Kafka, RabbitMQ, Redis stream, Pub/Sub, or generic broker providers;
-- provider-neutral route abstractions that hide SNS/SQS semantics;
+- Kafka, RabbitMQ, Redis streams, Pub/Sub, or other transport families;
+- transport-neutral route abstractions that hide SNS/SQS semantics;
 - business handlers;
 - application payload contracts;
 - persistence, outbox, inbox, or idempotency storage;
-- generic manual replay or message mutation tooling;
+- generic manual reprocessing or message mutation tooling;
 - environment or secrets loading;
 - dynamic module or handler discovery;
 - runtime dependencies on Nest in the core package path.
 
-These omissions are part of the design. Generic broker abstractions tend to erase the exact behavior that matters most for SQS: visibility timeout, receive batch size, delete semantics, redelivery, and long-poll cost.
+These omissions are part of the design. Transport-neutral abstractions tend to erase the exact behavior that matters most for SQS: visibility timeout, receive batch size, delete semantics, redelivery, and long-poll cost.
 
 ## Feature gaps to close before public release
 
 The core feature set is credible, but the public maturity story is not complete until the following gaps are closed:
 
-1. Public package posture: license, package metadata, registry access, contribution docs, security policy, issue templates, and release instructions.
+1. Final OSS posture: license, public registry decision, contribution docs, root security-policy posture, issue templates, and public release instructions.
 2. Broader optional integration proof: keep the LocalStack, observability-backend, and live AWS smoke lanes current without weakening the deterministic default harness.
 3. API ergonomics follow-through: keep the combined AWS adapter examples, naming parity, and supported wrapper contract consistent as the package grows.
 4. Production guidance: keep idempotency expectations, poison-message handling, retry/redrive policy ownership, and recommended queue settings explicit.

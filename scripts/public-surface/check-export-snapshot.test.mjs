@@ -30,7 +30,7 @@ function seedRepo(repoRoot) {
           '.': { types: './dist/index.d.ts', default: './dist/index.js' },
           './core': { types: './dist/core/index.d.ts', default: './dist/core/index.js' },
           './nest': { types: './dist/adapters/nest.d.ts', default: './dist/adapters/nest.js' },
-          './observability': { types: './dist/observability.d.ts', default: './dist/observability.js' },
+          './observability': { types: './dist/observability/index.d.ts', default: './dist/observability/index.js' },
         },
       },
       null,
@@ -44,7 +44,7 @@ function seedRepo(repoRoot) {
   );
   writeFile(repoRoot, 'dist/core/index.d.ts', 'export declare const CoreMarker = "core";\n');
   writeFile(repoRoot, 'dist/adapters/nest.d.ts', 'export declare class NestMarker {}\n');
-  writeFile(repoRoot, 'dist/observability.d.ts', 'export declare function createObservabilityMarker(): void;\n');
+  writeFile(repoRoot, 'dist/observability/index.d.ts', 'export declare function createObservabilityMarker(): void;\n');
 }
 
 test('buildPublicSurfaceSnapshot reads the supported exports and declaration symbols', () => {
@@ -77,7 +77,7 @@ test('buildPublicSurfaceSnapshot reads the supported exports and declaration sym
       {
         subpath: './observability',
         importSpecifier: '@idenstra/messaging-runtime/observability',
-        declarationPath: 'dist/observability.d.ts',
+        declarationPath: 'dist/observability/index.d.ts',
         symbols: ['createObservabilityMarker'],
       },
     ],

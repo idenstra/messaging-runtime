@@ -1,6 +1,10 @@
-# Getting started
+# Getting started recipes
 
-This guide shows the smallest useful setup for a plain Node.js worker that consumes SQS messages, plus the common route-factory, SNS-over-SQS, publish, and transport-batch helper paths.
+This guide is the cookbook for `@idenstra/messaging-runtime`.
+
+Use [`QUICK_START.md`](QUICK_START.md) first if you want the shortest worker + publisher setup. Come here when you want the next layer of practical recipes for common worker, publisher, queue-ops, and observability shapes.
+
+The snippets in this guide are meant to be small and copy-pasteable. The `examples/` directory complements them with compile-checked reference examples when you want fuller end-to-end shapes.
 
 ## Prerequisites
 
@@ -9,13 +13,11 @@ This guide shows the smallest useful setup for a plain Node.js worker that consu
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 - `@opentelemetry/api` when using `@idenstra/messaging-runtime/observability`
-- access to the package registry currently used by `@idenstra/messaging-runtime`
+- access to the registry where the package is currently published
 
-The package is not yet public-ready. Public installation guidance should be updated when `docs/PUBLIC_RELEASE.md` is complete.
+If your environment uses a private publication or a non-default registry, check [`RELEASES.md`](RELEASES.md) for the current distribution details.
 
 ## Install
-
-Current internal installation expects the configured `@idenstra` registry.
 
 ```bash
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
@@ -750,12 +752,14 @@ const redriveTasks = await redriveManager.listRedriveTasks({ sourceQueue: 'jobs-
 
 Use the example script in [`../examples/queue-ops/native-dlq-redrive.ts`](../examples/queue-ops/native-dlq-redrive.ts) as the starting point for a consumer-owned admin command.
 
-Manual message-level replay remains outside this package. It must stay in the consuming system because idempotency, payload validation, and replay safety are domain-specific.
+Consumer-owned manual reprocessing remains outside this package. It must stay in the consuming system because idempotency, payload validation, and recovery safety are domain-specific.
 
 ## Next steps
 
+- Go back to [`QUICK_START.md`](QUICK_START.md) if you need the shortest public reading path to share with other adopters.
 - Read [`FEATURES.md`](FEATURES.md) for the supported surface.
 - Read [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) before setting ack, timeout, heartbeat, or concurrency policies.
 - Read [`OPERATIONS.md`](OPERATIONS.md) before production adoption.
+- Read [`ADOPTION.md`](ADOPTION.md) before rolling the runtime into a real service.
 - Read [`OBSERVABILITY.md`](OBSERVABILITY.md) before wiring metrics, traces, or autoscaling.
 - Read [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) before inspecting DLQs or starting a redrive task.

@@ -163,7 +163,7 @@ If the process is interrupted mid-run:
 
 Because the resource names are unique per run, a stale resource is easy to identify and remove manually.
 
-## Maintainer path
+## Maintainer workflow
 
 The upstream `idenstra/messaging-runtime` repository also owns a maintainer workflow path for release-time confidence on `main`.
 
@@ -189,7 +189,9 @@ make verify-aws-smoke
 
 The maintainer-specific OIDC role and workflow are not part of the public package API. They exist only to validate and publish the upstream repository safely.
 
-## Fork and workflow path
+For outside consumers, the public self-test path above is the canonical path. The maintainer workflow is an upstream repository operation, not a requirement for adopting the library.
+
+## Fork workflow path
 
 If you fork this repository and want the GitHub workflow to run against your own AWS account, you must create your own AWS role, variable, and trust policy in your own repo.
 
@@ -198,7 +200,7 @@ Do not expect the upstream `idenstra/messaging-runtime` workflow or `AWS_SMOKE_R
 The fork owner should:
 
 1. create a sandbox IAM role in their own AWS account;
-2. create or reuse the GitHub OIDC provider for `token.actions.githubusercontent.com`;
+2. create or reuse the GitHub OIDC trust setup for `token.actions.githubusercontent.com`;
 3. lock the trust policy to their own repository and branch or environment;
 4. add `AWS_SMOKE_ROLE_ARN` as a repository or environment variable in their own fork;
 5. run the same `Messaging Runtime AWS Smoke` workflow there.

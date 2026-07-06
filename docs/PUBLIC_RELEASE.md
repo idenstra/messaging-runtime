@@ -1,6 +1,8 @@
 # Public release readiness
 
-This repository is not public-ready until the following readiness criteria are owned and resolved through tracked issue work. Making the repository visible before these items are resolved would weaken the maturity signal the package is meant to send.
+This repository is not yet ready for public release until the following readiness criteria are owned and resolved. Making the repository visible before these items are resolved would weaken the maturity signal the package is meant to send.
+
+This document assumes the readability, quick-start, adoption, and public-facing documentation cleanup is already complete. It should track only the remaining release-posture and OSS-readiness work.
 
 ## Repository posture
 
@@ -21,7 +23,7 @@ This repository is not public-ready until the following readiness criteria are o
 - Confirm package name and scope for public consumption.
 - Confirm `files`, `exports`, `types`, and package tarball contents with `npm pack --dry-run`.
 - Add README badges only for signals that are real and maintained.
-- Add keywords and package metadata suitable for npm search if publishing publicly.
+- Re-check package description and keywords against the final public registry posture.
 
 ## API and compatibility
 
@@ -51,12 +53,12 @@ This repository is not public-ready until the following readiness criteria are o
 
 ## Feature maturity
 
-- Confirm parity coverage for core worker concepts: manager, route, handler, error hook, translator, SQS provider behavior, SNS-over-SQS decoding, and publisher helpers.
+- Confirm parity coverage for core worker concepts: manager, route, handler, error hook, translator, SQS runtime behavior, SNS-over-SQS decoding, and publisher helpers.
 - Keep queue inspection and native DLQ redrive docs, examples, and public exports aligned.
 - Keep the optional LocalStack lane current for receive, delete, visibility heartbeat, publish, routing, discovery, and queue-ops proof, and document clearly what still requires live AWS.
 - Keep the optional observability lane current for OTEL metrics, worker tracing, W3C propagation, and repo-owned SigNoz backend proof.
 - Keep the optional live AWS smoke lane current for real queue/topic resolution, discovery, publish, raw and envelope SNS -> SQS delivery, attribute propagation, worker receive/delete proof, and native redrive proof.
-- Document idempotency, duplicate processing, DLQ, native redrive, manual replay boundaries, and poison-message ownership.
+- Document idempotency, duplicate processing, DLQ, native redrive, consumer-owned manual reprocessing boundaries, and poison-message ownership.
 - Document FIFO queue considerations: message group ID, deduplication ID, ordering, concurrency, and batch behavior.
 - Document structured SNS topic publishing separately from JSON, raw-string, and serializer publishing, including the message-attributes limitation for `MessageStructure: 'json'`.
 - Document LocalStack or emulator setup if an emulator lane is added.
@@ -80,11 +82,11 @@ This repository is not public-ready until the following readiness criteria are o
 
 ## Documentation maturity
 
-- Make the root README concise and consumer-first.
+- Preserve the concise README and quick-start path already established in the repo.
 - Keep the first-run example correct and copy-pasteable.
-- Keep public docs in a clear order through [`docs/README.md`](README.md).
+- Keep public docs in a clear reader journey through [`docs/README.md`](README.md).
+- Keep `ADOPTION.md`, security guidance, and proof-lane docs accurate for outside consumers with their own infrastructure and AWS accounts.
 - Separate product docs from contributor/governance docs.
-- Document production adoption prerequisites.
 - Document current limitations directly instead of hiding them in issue references.
 
 ## Release decision

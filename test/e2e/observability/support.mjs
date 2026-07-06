@@ -6,20 +6,20 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { BasicTracerProvider, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import * as runtime from '../../../dist/index.js';
-import * as observability from '../../../dist/observability.js';
+import * as observability from '../../../dist/observability/index.js';
 import { clickhouseQuery, signozOtlpHttpPort, sleep } from '../../../scripts/e2e/observability/shared.mjs';
+import { createSdkClients } from '../localstack/support.mjs';
 import {
   createQueue,
-  createSdkClients,
+  createScopedPrefix,
   createStandardRuntimeDefaults,
-  createSuitePrefix,
   createTopic,
   publishTopicStringMessage,
   sendQueueJsonMessage,
   subscribeTopicToQueue,
   waitForApproximateVisibleMessageCount,
   waitForCondition,
-} from '../localstack/support.mjs';
+} from '../support/index.mjs';
 
 process.env.MESSAGING_RUNTIME_OBSERVABILITY_RUN_ID ??= createFallbackRunId();
 
@@ -30,7 +30,7 @@ const OBSERVABILITY_TRACER_NAME = 'messaging-runtime-observability-e2e';
 const DEFAULT_QUERY_TIMEOUT_MS = 90_000;
 
 export function createCaseId(label) {
-  return `${createSuitePrefix(`obs-${label}`)}-${randomUUID().slice(0, 8)}`;
+  return `${createScopedPrefix(OBSERVABILITY_RUN_ID, `obs-${label}`)}-${randomUUID().slice(0, 8)}`;
 }
 
 export function createSmokeAttributes(caseId, extra = {}) {
@@ -161,12 +161,15 @@ export async function createInfrastructure() {
 }
 
 export async function createStandardQueueFixture(sqsClient, label, overrides = {}) {
-  return createQueue(sqsClient, { name: `${createSuitePrefix(label)}-${randomUUID().slice(0, 8)}`, ...overrides });
+  return createQueue(sqsClient, {
+    name: `${createScopedPrefix(OBSERVABILITY_RUN_ID, label)}-${randomUUID().slice(0, 8)}`,
+    ...overrides,
+  });
 }
 
 export async function createRawSnsSubscriptionFixture(snsClient, sqsClient, label) {
   const topic = await createTopic(snsClient, {
-    name: `${createSuitePrefix(`${label}-topic`)}-${randomUUID().slice(0, 8)}`,
+    name: `${createScopedPrefix(OBSERVABILITY_RUN_ID, `${label}-topic`)}-${randomUUID().slice(0, 8)}`,
   });
   const queue = await createStandardQueueFixture(sqsClient, `${label}-queue`);
   await subscribeTopicToQueue(snsClient, sqsClient, {

@@ -4,14 +4,14 @@
 
 ```ts
 
-import { Attributes } from '@opentelemetry/api';
+import type { Attributes } from '@opentelemetry/api';
 import { Context } from '@opentelemetry/api';
 import type { Message } from '@aws-sdk/client-sqs';
-import { MessageAttributeValue } from '@aws-sdk/client-sqs';
-import { MessageAttributeValue as MessageAttributeValue_2 } from '@aws-sdk/client-sns';
-import { Meter } from '@opentelemetry/api';
-import { TextMapPropagator } from '@opentelemetry/api';
-import { Tracer } from '@opentelemetry/api';
+import type { MessageAttributeValue } from '@aws-sdk/client-sqs';
+import type { MessageAttributeValue as MessageAttributeValue_2 } from '@aws-sdk/client-sns';
+import type { Meter } from '@opentelemetry/api';
+import type { TextMapPropagator } from '@opentelemetry/api';
+import type { Tracer } from '@opentelemetry/api';
 
 // @public (undocumented)
 export function createOpenTelemetrySqsWorkerMetricsAdapter(options: OpenTelemetrySqsWorkerMetricsOptions): OpenTelemetrySqsWorkerMetricsAdapter;

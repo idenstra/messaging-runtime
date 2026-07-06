@@ -1,6 +1,6 @@
 # Queue operations
 
-`messaging-runtime` provides a queue-operations layer for inspection and native Amazon SQS dead-letter recovery. It does not provide generic message-level replay.
+`messaging-runtime` provides a queue ops surface for inspection and native Amazon SQS dead-letter recovery. It does not provide generic message-level reprocessing.
 
 ## Owned by the package
 
@@ -15,10 +15,10 @@ The package owns:
 - transport-level SQS batch message operations through `SqsMessageBatchOperator`
 
 The package does not own:
-- manual receive-send-delete replay loops
+- manual receive-send-delete reprocessing loops
 - consumer idempotency storage
 - domain payload validation rules
-- business-specific replay guardrails
+- business-specific reprocessing guardrails
 - worker-core batched ack or heartbeat behavior
 
 `SqsMessageBatchOperator` is a transport helper, not a worker-core throughput policy. It is the building block for consumer-side batch delete or visibility changes today and a future worker-core throughput input only after benchmark-backed review.
@@ -101,18 +101,18 @@ Guardrails owned by the package:
 - a second `RUNNING` move task is rejected
 - destination-less redrive requires the DLQ to have at least one source queue
 
-## Manual replay stays consumer-owned
+## Consumer-owned manual reprocessing
 
 Native redrive is the default recovery path because it keeps the shared package focused on queue mechanics.
 
-Manual replay remains consumer-owned because safe replay depends on:
+Manual reprocessing remains consumer-owned because safe reprocessing depends on:
 - domain idempotency rules
 - payload schema and version handling
 - partial-processing recovery rules
 - destination selection policy
 - audit and rollback requirements
 
-If a consumer chooses to add manual replay, keep it outside the shared package and route it through a consumer-owned admin command or runbook.
+If a consumer chooses to add manual reprocessing, keep it outside the shared package and route it through a consumer-owned admin command or runbook.
 
 ## Example script
 

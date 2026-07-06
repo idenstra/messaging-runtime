@@ -1,7 +1,20 @@
 {
   "name": "@idenstra/messaging-runtime",
   "version": "0.2.0",
-  "description": "Shared SNS/SQS messaging runtime for Idenstra app-owned worker services",
+  "description": "TypeScript SNS/SQS worker runtime, publishers, queue ops, and OTEL helpers for Node.js services",
+  "keywords": [
+    "sns",
+    "sqs",
+    "aws",
+    "worker-runtime",
+    "message-queue",
+    "dlq",
+    "redrive",
+    "opentelemetry",
+    "nestjs",
+    "typescript",
+    "nodejs"
+  ],
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +23,7 @@
     ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./core": { "types": "./dist/core/index.d.ts", "default": "./dist/core/index.js" },
     "./nest": { "types": "./dist/adapters/nest.d.ts", "default": "./dist/adapters/nest.js" },
-    "./observability": { "types": "./dist/observability.d.ts", "default": "./dist/observability.js" }
+    "./observability": { "types": "./dist/observability/index.d.ts", "default": "./dist/observability/index.js" }
   },
   "engines": { "node": ">=24" },
   "publishConfig": { "registry": "https://npm.pkg.github.com", "access": "restricted" },

@@ -1,21 +1,8 @@
-import type { SqsWorkerManagerSnapshot } from '../../src/index';
-import {
-  decodeSnsNotificationJson,
-  decodeSqsJsonBody,
-  SnsPublisher,
-  SnsTopicArnResolver,
-  SqsPublisher,
-  SqsQueueUrlResolver,
-  SqsWorkerManager,
-} from '../../src/index';
+import { SqsWorkerManager } from '../../../src/index';
 import {
   BenchmarkMultiRouteWorkerRuntimeClient,
   type BenchmarkScenario,
-  BenchmarkSnsTransportClient,
-  BenchmarkSqsTransportClient,
   BenchmarkWorkerRuntimeClient,
-  benchmarkSnsNotificationEnvelopeBody,
-  benchmarkSqsJsonBody,
   createBenchmarkMessages,
   createDeferred,
   createQueueUrl,
@@ -23,94 +10,11 @@ import {
   runManagedBenchmarkScenario,
   sleep,
   waitFor,
-} from './support';
+} from '../support';
+import { manyRouteCount } from './fixtures';
 
-const manyRouteCount = 32;
-
-export function createBenchmarkScenarios(): BenchmarkScenario[] {
+export function createWorkerBenchmarkScenarios(): BenchmarkScenario[] {
   return [
-    {
-      name: 'decode:sqs-json',
-      description: 'Plain SQS JSON body decode throughput.',
-      iterationsPerSample: 10_000,
-      async runIteration() {
-        decodeSqsJsonBody(benchmarkSqsJsonBody);
-      },
-    },
-    {
-      name: 'decode:sns-over-sqs-json',
-      description: 'SNS envelope plus nested JSON payload decode throughput.',
-      iterationsPerSample: 10_000,
-      async runIteration() {
-        decodeSnsNotificationJson(benchmarkSnsNotificationEnvelopeBody);
-      },
-    },
-    {
-      name: 'publisher:sqs-batch',
-      description: 'SQS batch publish chunking and result aggregation.',
-      iterationsPerSample: 50,
-      async runIteration() {
-        const client = new BenchmarkSqsTransportClient().withQueueUrl('jobs', createQueueUrl('jobs'));
-        const publisher = new SqsPublisher(client);
-
-        await publisher.sendJsonBatch({
-          queue: 'jobs',
-          entries: Array.from({ length: 100 }, (_, index) => ({
-            id: `job-${index}`,
-            payload: { jobId: `job-${index}` },
-          })),
-        });
-      },
-    },
-    {
-      name: 'publisher:sns-batch',
-      description: 'SNS batch publish chunking and result aggregation.',
-      iterationsPerSample: 50,
-      async runIteration() {
-        const publisher = new SnsPublisher(new BenchmarkSnsTransportClient());
-
-        await publisher.publishJsonBatch({
-          topic: 'arn:aws:sns:us-east-1:123456789012:events',
-          entries: Array.from({ length: 100 }, (_, index) => ({
-            id: `event-${index}`,
-            payload: { eventId: `event-${index}` },
-            subject: `Event ${index}`,
-          })),
-        });
-      },
-    },
-    {
-      name: 'resolver:cache-hit',
-      description: 'Hot cache-hit resolution cost for mixed SQS and SNS workloads.',
-      iterationsPerSample: 5_000,
-      async runIteration() {
-        const state = await getResolverCacheHitState();
-        await state.sqsResolver.resolve('dispatch-queue');
-        await state.sqsResolver.resolve('feedback-queue');
-        await state.snsResolver.resolve('dispatch-events');
-        await state.snsResolver.resolve('feedback-events');
-      },
-    },
-    {
-      name: 'resolver:cache-miss-fake-client',
-      description: 'Cache-miss resolution through fake SQS GetQueueUrl and SNS ListTopics clients.',
-      iterationsPerSample: 2_000,
-      async runIteration() {
-        const sqsClient = new BenchmarkSqsTransportClient()
-          .withQueueUrl('dispatch-queue', createQueueUrl('dispatch-queue'))
-          .withQueueUrl('feedback-queue', createQueueUrl('feedback-queue'));
-        const snsClient = new BenchmarkSnsTransportClient()
-          .withTopicArn('arn:aws:sns:us-east-1:123456789012:dispatch-events')
-          .withTopicArn('arn:aws:sns:us-east-1:123456789012:feedback-events');
-        const sqsResolver = new SqsQueueUrlResolver(sqsClient);
-        const snsResolver = new SnsTopicArnResolver(snsClient);
-
-        await sqsResolver.resolve('dispatch-queue');
-        await sqsResolver.resolve('feedback-queue');
-        await snsResolver.resolve('dispatch-events');
-        await snsResolver.resolve('feedback-events');
-      },
-    },
     {
       name: 'worker:ack-delete',
       description: 'Single-message delete finalization baseline.',
@@ -395,100 +299,5 @@ export function createBenchmarkScenarios(): BenchmarkScenario[] {
         }
       },
     },
-    {
-      name: 'snapshot:many-routes',
-      description: 'Snapshot aggregation and cloning cost with many registered routes.',
-      iterationsPerSample: 5_000,
-      async runIteration() {
-        const manager = await getPreparedSnapshotManager();
-        const snapshot = manager.getSnapshot();
-
-        if (snapshot.routeCount !== manyRouteCount) {
-          throw new Error(
-            `Expected ${manyRouteCount} routes in prepared snapshot fixture, observed ${snapshot.routeCount}.`,
-          );
-        }
-      },
-    },
   ];
-}
-
-let resolverCacheHitStatePromise:
-  | Promise<{ sqsResolver: SqsQueueUrlResolver; snsResolver: SnsTopicArnResolver }>
-  | undefined;
-
-async function getResolverCacheHitState(): Promise<{
-  sqsResolver: SqsQueueUrlResolver;
-  snsResolver: SnsTopicArnResolver;
-}> {
-  resolverCacheHitStatePromise ??= prepareResolverCacheHitState();
-  return resolverCacheHitStatePromise;
-}
-
-async function prepareResolverCacheHitState(): Promise<{
-  sqsResolver: SqsQueueUrlResolver;
-  snsResolver: SnsTopicArnResolver;
-}> {
-  const sqsResolver = new SqsQueueUrlResolver(
-    new BenchmarkSqsTransportClient()
-      .withQueueUrl('dispatch-queue', createQueueUrl('dispatch-queue'))
-      .withQueueUrl('feedback-queue', createQueueUrl('feedback-queue')),
-  );
-  const snsResolver = new SnsTopicArnResolver(
-    new BenchmarkSnsTransportClient()
-      .withTopicArn('arn:aws:sns:us-east-1:123456789012:dispatch-events')
-      .withTopicArn('arn:aws:sns:us-east-1:123456789012:feedback-events'),
-  );
-
-  await sqsResolver.resolve('dispatch-queue');
-  await sqsResolver.resolve('feedback-queue');
-  await snsResolver.resolve('dispatch-events');
-  await snsResolver.resolve('feedback-events');
-
-  return { sqsResolver, snsResolver };
-}
-
-let preparedSnapshotManagerPromise: Promise<SqsWorkerManager> | undefined;
-
-async function getPreparedSnapshotManager(): Promise<SqsWorkerManager> {
-  preparedSnapshotManagerPromise ??= prepareSnapshotManager();
-  return preparedSnapshotManagerPromise;
-}
-
-async function prepareSnapshotManager(): Promise<SqsWorkerManager> {
-  const queueUrls = Array.from({ length: manyRouteCount }, (_, index) => createQueueUrl(`snapshot-route-${index + 1}`));
-  const batchesByQueueUrl = Object.fromEntries(
-    queueUrls.map((queueUrl, index) => [
-      queueUrl,
-      [{ Messages: createBenchmarkMessages(1, JSON.stringify({ routeId: index + 1 })) }],
-    ]),
-  );
-  const manager = new SqsWorkerManager(new BenchmarkMultiRouteWorkerRuntimeClient(batchesByQueueUrl), {
-    defaults: { waitTimeSeconds: 0, emptyReceiveDelayMs: 0, heartbeatIntervalMs: 0, maxMessagesPerPoll: 1 },
-  });
-
-  for (const [index, queueUrl] of queueUrls.entries()) {
-    manager.register({ name: `snapshot-route-${index + 1}`, queueUrl, handle: async () => undefined });
-  }
-
-  await runManagedBenchmarkScenario(manager, async () => {
-    await waitFor(() => manager.getSnapshot().counters.messageDeleteCount === manyRouteCount, { timeoutMs: 5_000 });
-  });
-
-  assertPreparedSnapshotManager(manager.getSnapshot());
-  return manager;
-}
-
-function assertPreparedSnapshotManager(snapshot: SqsWorkerManagerSnapshot): void {
-  if (snapshot.routeCount !== manyRouteCount) {
-    throw new Error(
-      `Expected prepared snapshot fixture to have ${manyRouteCount} routes, observed ${snapshot.routeCount}.`,
-    );
-  }
-
-  if (snapshot.counters.messageDeleteCount !== manyRouteCount) {
-    throw new Error(
-      `Expected prepared snapshot fixture to delete ${manyRouteCount} messages, observed ${snapshot.counters.messageDeleteCount}.`,
-    );
-  }
 }

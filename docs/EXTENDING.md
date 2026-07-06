@@ -2,7 +2,7 @@
 
 `messaging-runtime` is intentionally extensible, but only through SNS/SQS-native seams.
 
-The project does not want generic broker abstractions. It does want outside consumers to be able to:
+The project does not want transport-neutral abstractions. It does want outside consumers to be able to:
 
 - wrap AWS SDK clients;
 - add helper layers on top of publishers, resolvers, and queue ops;
@@ -69,7 +69,7 @@ Prefer wrapping the narrowest capability surface you need:
 - use `SqsQueueOperationsClient` when the wrapper is for queue inspection or redrive paths
 - use `SnsTransportClient` when the wrapper is for topic resolution or SNS publishing
 
-If the same wrapper really needs several capabilities, combine them intentionally instead of inventing a provider-neutral interface.
+If the same wrapper really needs several capabilities, combine them intentionally instead of inventing a transport-neutral interface.
 
 See the compile-checked example:
 
@@ -106,7 +106,7 @@ These helpers should:
 
 - use supported imports only
 - keep AWS field semantics visible
-- avoid inventing provider-neutral route or message contracts
+- avoid inventing transport-neutral route or message contracts
 - keep domain payload contracts in the consuming system
 
 See the compile-checked example:
@@ -198,10 +198,10 @@ Use these rules before proposing a new shared feature.
 
 ### Rejected
 
-- Kafka providers
-- RabbitMQ providers
-- Redis stream providers
-- generic `BrokerMessage`, broker-neutral ack abstractions, or provider-neutral route models
+- Kafka transport implementations
+- RabbitMQ transport implementations
+- Redis stream transport implementations
+- generic `BrokerMessage`, transport-neutral ack abstractions, or cross-transport route models
 - queue/topic provisioning and IAM/policy management APIs
 - app/domain message contracts
 - private consumer examples that require sibling repos to understand the pattern
@@ -212,7 +212,7 @@ Extension-facing contributions should follow these rules:
 
 - stay on supported imports only
 - do not require deep imports into package internals
-- do not add provider-neutral abstractions
+- do not add transport-neutral abstractions
 - do not weaken current proof expectations
 - keep examples generic and copy-pasteable
 - document welcomed and rejected extension boundaries in the same change set

@@ -6,7 +6,7 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
 import { packageMetadata } from '../../src/index';
-import { createBenchmarkScenarios } from './scenarios';
+import { createBenchmarkScenarios } from './scenarios/index';
 import type { BenchmarkReport, BenchmarkScenario, BenchmarkScenarioResult } from './support';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

@@ -1,38 +1,60 @@
 # Documentation
 
-This directory has two kinds of documentation:
+This docs set is split into:
 
-1. product documentation for package consumers;
-2. contributor documentation for repository workflow, release, and verification.
+1. product docs for package consumers;
+2. contributor docs for repository workflow, proof, and release mechanics.
 
-Start with the product documentation. Use the contributor documentation only when changing the package or release process.
+Start with the product docs. Use the contributor docs only when changing the package or its release process.
 
-## Product docs
-
-| Document | Purpose |
-| --- | --- |
-| [`GETTING_STARTED.md`](GETTING_STARTED.md) | Build the first worker, use the common route factories, decode SNS-over-SQS messages, and publish messages. |
-| [`FEATURES.md`](FEATURES.md) | Understand the supported runtime surface, current gaps, and deliberate non-goals. |
-| [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) | Understand polling, concurrency, ack behavior, timeouts, heartbeats, and shutdown. |
-| [`OPERATIONS.md`](OPERATIONS.md) | Configure workers, observe runtime state, test without AWS, and use the Nest adapter. |
-| [`EXTENDING.md`](EXTENDING.md) | Extend the package safely through capability interfaces, helper layers, lifecycle bridges, and observability seams. |
-| [`TESTING.md`](TESTING.md) | Run the deterministic harness plus the LocalStack, observability-local, and live AWS proof lanes. |
-| [`AWS_SMOKE.md`](AWS_SMOKE.md) | Run the optional live AWS smoke lane through a public self-test path, upstream maintainer workflow path, and safe temporary fixtures. |
-| [`OBSERVABILITY.md`](OBSERVABILITY.md) | Wire OTEL metrics and traces, propagate W3C context, and plan AWS worker autoscaling. |
-| [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) | Inspect queues, manage native DLQ redrive tasks, and keep manual replay consumer-owned. |
-| [`PERFORMANCE.md`](PERFORMANCE.md) | Define the performance posture, benchmark plan, and performance review rules. |
-| [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md) | Track what must be true before making the repo and package public. |
-
-## Existing architecture and compatibility docs
+## Start
 
 | Document | Purpose |
 | --- | --- |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package boundaries and internal structure. |
-| [`USAGE.md`](USAGE.md) | Existing usage notes. Prefer `GETTING_STARTED.md` for the current entrypoint. |
-| [`COMPATIBILITY.md`](COMPATIBILITY.md) | Supported import surface and pre-`1.0` consumer policy. |
-| [`RELIABILITY.md`](RELIABILITY.md) | Verification and reliability posture. |
-| [`SECURITY.md`](SECURITY.md) | Current security guardrails. |
-| [`RELEASES.md`](RELEASES.md) | Current internal release flow. |
+| [`QUICK_START.md`](QUICK_START.md) | The shortest path to a working worker and publisher. |
+| [`GETTING_STARTED.md`](GETTING_STARTED.md) | Cookbook-style recipes for common worker, publisher, queue-ops, and observability setups. |
+| [`USAGE.md`](USAGE.md) | Conceptual overview of how the runtime, transport helpers, queue ops, and package terminology fit together. |
+
+## Build
+
+| Document | Purpose |
+| --- | --- |
+| [`FEATURES.md`](FEATURES.md) | Supported capabilities, non-goals, and the current maturity boundary. |
+| [`RUNTIME_SEMANTICS.md`](RUNTIME_SEMANTICS.md) | Polling, concurrency, ack, timeout, heartbeat, shutdown, and redelivery semantics. |
+| [`QUEUE_OPERATIONS.md`](QUEUE_OPERATIONS.md) | Queue discovery, inspection, native DLQ redrive, and consumer-owned manual reprocessing boundaries. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Package boundaries, internal layout, and extension-safe ownership lines. |
+| [`COMPATIBILITY.md`](COMPATIBILITY.md) | Supported imports, pre-`1.0` consumer policy, and extension-safe compatibility expectations. |
+
+## Operate
+
+| Document | Purpose |
+| --- | --- |
+| [`OPERATIONS.md`](OPERATIONS.md) | Configuration boundaries, readiness, scaling, testing posture, and queue-ops ownership. |
+| [`OBSERVABILITY.md`](OBSERVABILITY.md) | OTEL metrics/traces, W3C propagation, SigNoz wiring, and autoscaling guidance. |
+| [`ADOPTION.md`](ADOPTION.md) | Roll the library into a real service one worker shape at a time. |
+| [`SECURITY.md`](SECURITY.md) | Package-facing security, IAM, trust-boundary, duplicate-processing, and smoke-test safety guidance. |
+
+## Extend
+
+| Document | Purpose |
+| --- | --- |
+| [`EXTENDING.md`](EXTENDING.md) | Supported extension seams for adapters, helper layers, lifecycle bridges, and observability wiring. |
+
+## Prove
+
+| Document | Purpose |
+| --- | --- |
+| [`TESTING.md`](TESTING.md) | Deterministic checks plus the optional LocalStack, observability-local, and live AWS proof lanes. |
+| [`AWS_SMOKE.md`](AWS_SMOKE.md) | Public self-test path, maintainer OIDC path, and temporary-fixture safety for live AWS smoke. |
+| [`PERFORMANCE.md`](PERFORMANCE.md) | Benchmark posture, same-machine comparison rules, and performance review expectations. |
+| [`RELIABILITY.md`](RELIABILITY.md) | Overall verification and reliability posture. |
+
+## Release and reference
+
+| Document | Purpose |
+| --- | --- |
+| [`PUBLIC_RELEASE.md`](PUBLIC_RELEASE.md) | Remaining OSS-readiness decisions and repository-publication posture. |
+| [`RELEASES.md`](RELEASES.md) | Current private-first release mechanics. |
 
 ## Contributor and governance docs
 
@@ -40,6 +62,7 @@ Start with the product documentation. Use the contributor documentation only whe
 | --- | --- |
 | [`../AGENTS.md`](../AGENTS.md) | Repository rules and contributor constraints. |
 | [`../WORKFLOW.md`](../WORKFLOW.md) | Proof tiers and handoff expectations. |
+| [`HARNESS.md`](HARNESS.md) | Harness entrypoints and deterministic repo gates. |
 | [`QUALITY_BAR.md`](QUALITY_BAR.md) | Engineering quality expectations. |
 | [`AI_ENGINEERING.md`](AI_ENGINEERING.md) | AI-assisted engineering discipline. |
 | [`ISSUE_TRACKING.md`](ISSUE_TRACKING.md) | Same-repo issue, execution plan, and PR flow. |
@@ -48,7 +71,7 @@ Start with the product documentation. Use the contributor documentation only whe
 ## Documentation rules
 
 - Keep consumer docs focused on package behavior, not internal migration history.
-- Put operational caveats next to the API they affect.
-- Do not claim public availability, benchmark numbers, or production hardening that the repo cannot prove.
-- Prefer short examples that compile over broad prose descriptions.
-- Move internal governance material out of the public reading path unless it is needed for consumers.
+- Favor short, compile-checked examples over broad prose.
+- Put operational caveats next to the API or behavior they affect.
+- Keep the first-run path short; move cookbook detail into `GETTING_STARTED.md`.
+- Keep public docs usable without private sibling repos, private AWS accounts, or private workflow variables.
