@@ -289,7 +289,7 @@ async function fetchJson(url, token) {
     headers: {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,
-      'User-Agent': 'idenstra-harness',
+      'User-Agent': 'messaging-runtime-harness',
     },
   });
 

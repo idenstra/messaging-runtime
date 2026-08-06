@@ -17,13 +17,13 @@ function writeFile(repoRoot, relativePath, contents) {
 
 test('findPackageFacingReferenceHygieneFindings flags owner/repo issue references in tracked docs', () => {
   const repoRoot = createTempRepo();
-  writeFile(repoRoot, 'README.md', 'See idenstra/platform#20 before publishing.\n');
+  writeFile(repoRoot, 'README.md', 'See example/runtime#20 before publishing.\n');
 
   const findings = findPackageFacingReferenceHygieneFindings(repoRoot, ['README.md']);
 
   assert.deepEqual(
     findings.map((finding) => ({ code: finding.code, matchedText: finding.matchedText })),
-    [{ code: 'cross-repo-slug-reference', matchedText: 'idenstra/platform#20' }],
+    [{ code: 'cross-repo-slug-reference', matchedText: 'example/runtime#20' }],
   );
 });
 

@@ -111,14 +111,14 @@ test('SnsTopicArnResolver resolves topic names with pagination, accepts ARNs, an
       NextToken: 'page-2',
       Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:other-topic' }],
     })
-    .withListTopicsResponse({ Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' }] });
+    .withListTopicsResponse({ Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events' }] });
   const resolver = new SnsTopicArnResolver(client);
 
-  const resolvedByName = await resolver.resolve('idenstra-email-events');
-  const resolvedByArn = await resolver.resolve('arn:aws:sns:us-east-1:123456789012:idenstra-email-events');
-  const resolvedByNameAgain = await resolver.resolve('idenstra-email-events');
+  const resolvedByName = await resolver.resolve('example-email-events');
+  const resolvedByArn = await resolver.resolve('arn:aws:sns:us-east-1:123456789012:example-email-events');
+  const resolvedByNameAgain = await resolver.resolve('example-email-events');
 
-  assert.equal(resolvedByName, 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events');
+  assert.equal(resolvedByName, 'arn:aws:sns:us-east-1:123456789012:example-email-events');
   assert.equal(resolvedByArn, resolvedByName);
   assert.equal(resolvedByNameAgain, resolvedByName);
   assert.deepEqual(client.listTopicsInputs, [{ NextToken: undefined }, { NextToken: 'page-2' }]);
@@ -129,7 +129,7 @@ test('SnsTopicArnResolver rejects SNS subscription ARNs when a topic ARN is requ
 
   await assert.rejects(
     () =>
-      resolver.resolve('arn:aws:sns:us-east-1:123456789012:idenstra-email-events:4f9b7784-0c5d-4b5a-8ba7-54c2f4b15540'),
+      resolver.resolve('arn:aws:sns:us-east-1:123456789012:example-email-events:4f9b7784-0c5d-4b5a-8ba7-54c2f4b15540'),
     /SNS topic ARN/i,
   );
 });
@@ -138,15 +138,15 @@ test('SnsTopicArnResolver supports preloaded mappings and optional no-network mo
   const client = new FakeSnsTransportClient();
   const resolver = new SnsTopicArnResolver(client, {
     preload: {
-      'idenstra-email-events': 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+      'example-email-events': 'arn:aws:sns:us-east-1:123456789012:example-email-events',
       'arn:aws:sns:us-east-1:123456789012:tenant-events': 'arn:aws:sns:us-east-1:123456789012:tenant-events',
     },
     allowNetworkLookup: false,
   });
 
   assert.equal(
-    await resolver.resolve('idenstra-email-events'),
-    'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+    await resolver.resolve('example-email-events'),
+    'arn:aws:sns:us-east-1:123456789012:example-email-events',
   );
   assert.equal(
     await resolver.resolve('arn:aws:sns:us-east-1:123456789012:tenant-events'),
@@ -192,7 +192,7 @@ test('SqsQueueDiscovery lists page-first queue summaries with prefix forwarding'
 test('SnsTopicDiscovery lists page-first topic summaries', async () => {
   const client = new FakeSnsTransportClient().withListTopicsResponse({
     Topics: [
-      { TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' },
+      { TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events' },
       { TopicArn: 'arn:aws:sns:us-east-1:123456789012:jobs.fifo' },
     ],
     NextToken: 'page-2',
@@ -205,8 +205,8 @@ test('SnsTopicDiscovery lists page-first topic summaries', async () => {
   assert.deepEqual(result, {
     topics: [
       {
-        topicName: 'idenstra-email-events',
-        topicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+        topicName: 'example-email-events',
+        topicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
         fifo: false,
       },
       { topicName: 'jobs.fifo', topicArn: 'arn:aws:sns:us-east-1:123456789012:jobs.fifo', fifo: true },

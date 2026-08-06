@@ -52,12 +52,12 @@ Bad first adopters:
 
 ## Version discipline
 
-While the package remains pre-`1.0`, consumers should:
+Consumers should:
 
 - pin exact versions
 - read the changelog on every upgrade
 - run their own build, tests, and harness after every upgrade
-- avoid loose semver ranges by default
+- choose a dependency range that matches their upgrade policy
 
 See [`COMPATIBILITY.md`](COMPATIBILITY.md) for the current consumer policy.
 

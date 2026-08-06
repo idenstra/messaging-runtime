@@ -5,21 +5,21 @@ import { FakeSnsTransportClient } from './support';
 
 test('SnsPublisher publishJson resolves topic identifiers and validates standard-topic semantics', async () => {
   const client = new FakeSnsTransportClient().withListTopicsResponse({
-    Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events' }],
+    Topics: [{ TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events' }],
   });
   const publisher = new SnsPublisher(client);
 
   const result = await publisher.publishJson({
-    topic: 'idenstra-email-events',
+    topic: 'example-email-events',
     payload: { kind: 'delivery' },
     subject: 'SES Delivery',
     messageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
     messageGroupId: 'group-1',
   });
 
-  assert.equal(result.topicArn, 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events');
+  assert.equal(result.topicArn, 'arn:aws:sns:us-east-1:123456789012:example-email-events');
   assert.deepEqual(client.publishInputs[0], {
-    TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+    TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
     Message: JSON.stringify({ kind: 'delivery' }),
     Subject: 'SES Delivery',
     MessageAttributes: { channel: { DataType: 'String', StringValue: 'email' } },
@@ -30,7 +30,7 @@ test('SnsPublisher publishJson resolves topic identifiers and validates standard
   await assert.rejects(
     () =>
       publisher.publishJson({
-        topic: 'idenstra-email-events',
+        topic: 'example-email-events',
         payload: { kind: 'delivery' },
         messageDeduplicationId: 'dedupe-1',
       }),
@@ -104,7 +104,7 @@ test('SnsPublisher publishJsonBatch chunks entries and returns keyed aggregate r
   const publisher = new SnsPublisher(client);
 
   const result = await publisher.publishJsonBatch({
-    topic: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+    topic: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
     entries: Array.from({ length: 12 }, (_, index) => ({
       id: `event-${index}`,
       payload: { index },

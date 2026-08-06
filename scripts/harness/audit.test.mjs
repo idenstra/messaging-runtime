@@ -66,12 +66,12 @@ function seedMinimalHarnessRepo(repoRoot) {
     'README.md',
     'WORKFLOW.md\ndocs/HARNESS.md\ndocs/RELEASES.md\ndocs/COMPATIBILITY.md\nSupported imports are intentionally narrow\n',
   );
-  writeFile(repoRoot, 'CHANGELOG.md', '# Changelog\n\n## [0.1.0] - 2026-06-29\n\n- Initial release.\n');
-  writeFile(repoRoot, 'docs/RELEASES.md', 'package.json\nGitHub Packages\n');
+  writeFile(repoRoot, 'CHANGELOG.md', '# Changelog\n\n## [1.0.0] - 2026-08-06\n\n- Initial release.\n');
+  writeFile(repoRoot, 'docs/RELEASES.md', 'package.json\nGitHub Packages\nrestricted tester lane\n');
   writeFile(
     repoRoot,
     'docs/COMPATIBILITY.md',
-    'exact versions\nNode 24\nlatest major only\n@idenstra/messaging-runtime/core\n@idenstra/messaging-runtime/observability\n',
+    'Semantic Versioning\nNode 24\nonly the latest major is maintained\n@idenstra/messaging-runtime/core\n@idenstra/messaging-runtime/observability\n',
   );
   writeFile(repoRoot, 'docs/MIGRATIONS.md', 'breaking release\n');
   writeFile(repoRoot, 'scripts/README.md', 'verify.sh\n');

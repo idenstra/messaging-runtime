@@ -12,7 +12,7 @@ import {
 const repoFullName = 'idenstra/messaging-runtime';
 
 test('extractIssueRefs keeps same-repo closing references and ignores other repos', () => {
-  const body = ['Closes #1', 'Fixes idenstra/messaging-runtime#2', 'Resolves idenstra/platform#20', ''].join('\n');
+  const body = ['Closes #1', 'Fixes idenstra/messaging-runtime#2', 'Resolves example/runtime#20', ''].join('\n');
 
   const issueRefs = extractIssueRefs(body, repoFullName);
   assert.deepEqual(issueRefs, [1, 2]);

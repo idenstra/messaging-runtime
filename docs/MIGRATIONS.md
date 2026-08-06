@@ -55,4 +55,4 @@ Recommended template:
 
 No breaking-release migration notes exist yet.
 
-The package is still pre-`1.0`, and the `1.x` compatibility contract is being prepared before public cutover.
+Version `1.0.0` is the initial public contract, so it has no earlier public major to migrate from.

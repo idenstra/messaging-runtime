@@ -336,7 +336,7 @@ export async function validateReleaseState(repoRoot = DEFAULT_REPO_ROOT, options
       findings.push(
         createReleaseStateFinding(
           'promotion-ref-required',
-          'publish-npm mode requires an explicit --promotion-ref value such as v0.2.0 or 0.2.0',
+          'publish-npm mode requires an explicit --promotion-ref value such as v1.0.0 or 1.0.0',
         ),
       );
     } else if (!promotionRef.ok) {

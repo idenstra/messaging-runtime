@@ -11,15 +11,13 @@ If you want deeper recipes after the first worker is running, continue with [`GE
 - `@aws-sdk/client-sqs`
 - `@aws-sdk/client-sns` when publishing to SNS
 
-The supported imports below are the prepared long-lived package surface. See [`COMPATIBILITY.md`](COMPATIBILITY.md) for the current pre-`1.0` posture and the planned `1.x` contract.
+The supported imports below are the stable `1.x` package surface. See [`COMPATIBILITY.md`](COMPATIBILITY.md) for the complete contract.
 
 ## Install
 
 ```bash
 npm install @idenstra/messaging-runtime @aws-sdk/client-sqs @aws-sdk/client-sns
 ```
-
-Temporary transition note: if the package is not available from your configured registry yet, build a local tarball from a clone of this repository with `npm pack`, then install that `.tgz` file into your service alongside the AWS SDK clients.
 
 ## Run one SQS worker
 

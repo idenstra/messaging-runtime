@@ -321,14 +321,15 @@ function createRepoDocsCategory(repoRoot) {
     exists('docs/COMPATIBILITY.md', repoRoot) &&
     exists('docs/MIGRATIONS.md', repoRoot) &&
     hasText('docs/RELEASES.md', 'package.json', repoRoot) &&
-    hasText('docs/COMPATIBILITY.md', 'exact versions', repoRoot) &&
-    hasText('docs/COMPATIBILITY.md', 'latest major only', repoRoot) &&
+    hasText('docs/RELEASES.md', 'restricted tester lane', repoRoot) &&
+    hasText('docs/COMPATIBILITY.md', 'Semantic Versioning', repoRoot) &&
+    hasText('docs/COMPATIBILITY.md', 'only the latest major is maintained', repoRoot) &&
     hasText('docs/COMPATIBILITY.md', '@idenstra/messaging-runtime/core', repoRoot) &&
     hasText('docs/MIGRATIONS.md', 'breaking release', repoRoot)
       ? createCheck(
           'release-docs',
           'pass',
-          'Release, compatibility, and migration docs define the prepared public contract',
+          'Release, compatibility, and migration docs define the stable public contract',
         )
       : createCheck(
           'release-docs',

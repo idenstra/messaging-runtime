@@ -17,7 +17,7 @@ test('decodeSnsEnvelope parses notification envelopes and preserves metadata', (
     JSON.stringify({
       Type: 'Notification',
       MessageId: 'sns-1',
-      TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+      TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
       Subject: 'Hello',
       Message: JSON.stringify({ kind: 'delivery' }),
       Timestamp: '2026-06-29T00:00:00.000Z',
@@ -26,7 +26,7 @@ test('decodeSnsEnvelope parses notification envelopes and preserves metadata', (
   );
 
   assert.equal(decoded.Type, 'Notification');
-  assert.equal(decoded.TopicArn, 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events');
+  assert.equal(decoded.TopicArn, 'arn:aws:sns:us-east-1:123456789012:example-email-events');
   assert.equal(decoded.Subject, 'Hello');
   assert.equal(decoded.SignatureVersion, '1');
 });
@@ -36,7 +36,7 @@ test('decodeSnsEnvelope parses subscription confirmation and unsubscribe confirm
     JSON.stringify({
       Type: 'SubscriptionConfirmation',
       MessageId: 'sns-2',
-      TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+      TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
       Message: 'confirm',
       Timestamp: '2026-06-29T00:00:00.000Z',
       Token: 'token-1',
@@ -47,7 +47,7 @@ test('decodeSnsEnvelope parses subscription confirmation and unsubscribe confirm
     JSON.stringify({
       Type: 'UnsubscribeConfirmation',
       MessageId: 'sns-3',
-      TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+      TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
       Message: 'unsubscribe',
       Timestamp: '2026-06-29T00:00:00.000Z',
       Token: 'token-2',
@@ -70,7 +70,7 @@ test('decodeSnsNotificationJson parses notification JSON and rejects control or 
     JSON.stringify({
       Type: 'Notification',
       MessageId: 'sns-1',
-      TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+      TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
       Message: JSON.stringify({ eventType: 'DELIVERY' }),
       Timestamp: '2026-06-29T00:00:00.000Z',
     }),
@@ -85,7 +85,7 @@ test('decodeSnsNotificationJson parses notification JSON and rejects control or 
         JSON.stringify({
           Type: 'SubscriptionConfirmation',
           MessageId: 'sns-2',
-          TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+          TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
           Message: 'confirm',
           Timestamp: '2026-06-29T00:00:00.000Z',
           Token: 'token-1',
@@ -100,7 +100,7 @@ test('decodeSnsNotificationJson parses notification JSON and rejects control or 
         JSON.stringify({
           Type: 'Notification',
           MessageId: 'sns-3',
-          TopicArn: 'arn:aws:sns:us-east-1:123456789012:idenstra-email-events',
+          TopicArn: 'arn:aws:sns:us-east-1:123456789012:example-email-events',
           Message: '{',
           Timestamp: '2026-06-29T00:00:00.000Z',
         }),
