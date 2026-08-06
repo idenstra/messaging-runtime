@@ -54,10 +54,10 @@ Bad first adopters:
 
 Consumers should:
 
-- pin exact versions
+- pin the candidate version exactly during initial validation and rollout
 - read the changelog on every upgrade
 - run their own build, tests, and harness after every upgrade
-- choose a dependency range that matches their upgrade policy
+- after validation, choose an exact pin or SemVer range that matches the service's controlled upgrade policy
 
 See [`COMPATIBILITY.md`](COMPATIBILITY.md) for the current consumer policy.
 
