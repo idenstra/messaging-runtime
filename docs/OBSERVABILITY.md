@@ -1,0 +1,289 @@
+# Observability
+
+`@idenstra/messaging-runtime/observability` is the package surface for OTEL metrics, W3C trace propagation, and worker tracing helpers.
+
+The package stays vendor-neutral here:
+- package code depends on injected OpenTelemetry API objects
+- package code does not configure exporters
+- package code does not assume SigNoz, Datadog, Grafana, or another backend
+
+SigNoz is the first documented backend example because it speaks OTLP cleanly and fits the long-running worker model well.
+
+## Local proof lane
+
+This repo owns an optional local OTEL/SigNoz proof lane so outside users and maintainers can validate the package observability story end to end without relying on private infrastructure or repository-specific workflow wiring.
+
+Standard entrypoints:
+
+```bash
+make verify-observability
+npm run e2e:observability
+npm run e2e:observability:ci
+```
+
+The repo-owned backend stack lives under `scripts/e2e/observability/` and uses a small Docker Compose topology plus repo-owned wrapper commands.
+
+Supported low-level escape hatch:
+
+```bash
+docker compose -f scripts/e2e/observability/compose.yaml up -d
+docker compose -f scripts/e2e/observability/compose.yaml down -v
+```
+
+Default local ports are intentionally repo-specific so the lane can coexist with other local stacks:
+
+- SigNoz UI: `127.0.0.1:18080`
+- OTLP gRPC: `127.0.0.1:14317`
+- OTLP HTTP: `127.0.0.1:14318`
+
+Override them through:
+
+- `MESSAGING_RUNTIME_SIGNOZ_UI_PORT`
+- `MESSAGING_RUNTIME_SIGNOZ_OTLP_GRPC_PORT`
+- `MESSAGING_RUNTIME_SIGNOZ_OTLP_HTTP_PORT`
+
+This lane layers on top of the repository's LocalStack-backed SNS/SQS proof foundation:
+
+- the LocalStack lane proves transport and runtime behavior against SNS/SQS emulator flows
+- the observability lane proves that those worker flows also reach a real local backend through OTLP
+
+The lane uses scriptable ClickHouse assertions, not UI-only checks:
+
+- traces are verified through `signoz_traces.signoz_index_v3`
+- metrics are verified through `signoz_metrics.samples_v4` joined to `signoz_metrics.time_series_v4`
+- each test run uses a unique `smoke.run_id`
+
+## Supported import
+
+```ts
+import {
+  createOpenTelemetrySqsWorkerMetricsAdapter,
+  extractTraceContextFromSqsMessage,
+  injectTraceContextIntoSnsMessageAttributes,
+  injectTraceContextIntoSqsMessageAttributes,
+  withOpenTelemetrySqsWorkerTracing,
+} from '@idenstra/messaging-runtime/observability';
+```
+
+## Metrics adapter
+
+Use an injected `Meter` to translate runtime events into OTEL counters and histograms.
+
+```ts
+const metrics = createOpenTelemetrySqsWorkerMetricsAdapter({
+  meter,
+  getSnapshot: () => host.getSnapshot(),
+  staticAttributes: {
+    service_name: 'worker-email',
+    deployment_environment: 'production',
+  },
+});
+
+const host = new SqsWorkerServiceHost({
+  client: sqsAdapter,
+  queueResolver,
+  manifest,
+  managerOptions: {
+    onEvent: metrics.onEvent,
+  },
+  routes,
+});
+```
+
+The adapter maps runtime events into OTEL instruments for:
+- empty receives
+- polling failures
+- messages received
+- handler starts
+- handler successes
+- handler failures
+- handler timeouts
+- late settlements after abandon timeout
+- delete and keep outcomes
+- batched delete failures
+- individual delete retry failures
+- pre-dispatch visibility failures for buffered messages
+- buffered-message drops before handler dispatch
+- heartbeat successes and failures
+- handler duration
+- late-settlement duration
+
+When `getSnapshot()` is injected, the adapter also emits observable gauges for:
+- route count
+- total in-flight work
+- per-route in-flight work
+- total buffered work
+- per-route buffered work
+- started/stopping state flags
+
+Recommended metric attributes include:
+- `route_name`
+- `queue_url`
+- `event_type`
+- `failure_kind`
+- `failure_mode`
+- `reason`
+- `drop_reason`
+- `timeout_strategy`
+- `settlement_outcome`
+- `heartbeat_source`
+
+## Worker tracing
+
+Use an injected `Tracer` plus a W3C propagator to create consumer spans around handlers.
+
+```ts
+const tracedRoute = withOpenTelemetrySqsWorkerTracing(route, {
+  tracer,
+  propagator,
+  spanAttributes: {
+    worker_kind: 'email',
+  },
+});
+```
+
+The wrapper:
+- extracts parent trace context from SQS message attributes
+- starts a consumer span for the handler execution
+- records exceptions on handler failures
+- preserves normal worker ack semantics
+- works with both core routes and service-host routes
+
+The helper does not change:
+- delete vs keep behavior
+- timeout strategy
+- heartbeat behavior
+- worker concurrency
+
+## W3C propagation
+
+The package standardizes on:
+- `traceparent`
+- `tracestate`
+- `baggage`
+
+Producer helpers inject those values into AWS message attributes:
+
+```ts
+const sqsAttributes = injectTraceContextIntoSqsMessageAttributes({
+  propagator,
+  carrierContext: producerContext,
+  messageAttributes: existingAttributes,
+});
+
+const snsAttributes = injectTraceContextIntoSnsMessageAttributes({
+  propagator,
+  carrierContext: producerContext,
+  messageAttributes: existingAttributes,
+});
+```
+
+Consumer helpers extract the parent context from `SqsWorkerMessage.messageAttributes`:
+
+```ts
+const parentContext = extractTraceContextFromSqsMessage(message, { propagator });
+```
+
+Supported propagation paths:
+- direct SQS producer -> SQS worker
+- SNS producer -> SQS worker only when the SNS subscription uses raw delivery
+
+Raw SNS -> SQS delivery is the supported mode because the package relies on message attributes surviving fanout. AWS also caps SQS message attributes at 10, and raw SNS delivery to SQS inherits that practical limit for forwarded attributes. Trace context normally consumes up to three attribute keys before application-specific attributes are added.
+
+Non-raw SNS -> SQS propagation is intentionally out of scope in this slice.
+
+## SigNoz via OTLP
+
+SigNoz should be treated as an OTLP backend, not as a runtime-specific adapter.
+
+Typical self-hosted OTLP endpoints are:
+- gRPC: `http://<signoz-host>:4317`
+- HTTP: `http://<signoz-host>:4318`
+
+The compile-checked example in [`../examples/observability/otel-signoz-worker.ts`](../examples/observability/otel-signoz-worker.ts) uses OTLP/HTTP exporters and targets:
+- `http://<signoz-host>:4318/v1/metrics`
+- `http://<signoz-host>:4318/v1/traces`
+
+When using the repo-owned local proof stack, the default OTLP base URL is `http://127.0.0.1:14318`.
+
+Recommended dashboard groups:
+- queue pressure
+- worker saturation
+- worker buffer pressure
+- handler reliability
+- timeout and heartbeat health
+- DLQ and native redrive state
+
+Recommended alerts:
+- oldest visible message age rising above the route SLO
+- backlog per worker/task rising while throughput stays flat
+- buffered work staying high while handler throughput falls
+- repeated polling failures
+- sustained handler failures
+- sustained timeouts
+- repeated delete-batch failures
+- repeated individual delete failures
+- repeated pre-dispatch visibility failures
+- repeated buffered-message drops
+- repeated heartbeat failures
+- DLQ depth growth
+- native redrive tasks stuck in `RUNNING` longer than expected
+
+## Health and readiness
+
+`getSnapshot()` remains the package-native health surface.
+
+Good readiness inputs:
+- host started
+- host not stopping
+- expected route count active
+- total in-flight work below a consumer-defined saturation threshold
+- no persistent heartbeat-failure trend
+
+Good liveness inputs:
+- the process is still polling or intentionally idle
+- in-flight work is still settling
+- the runtime is not deadlocked in a permanent stop transition
+
+Avoid treating `getSnapshot()` as end-to-end business delivery truth. It is worker-process state, not a message ledger.
+
+## AWS-aware autoscaling guidance
+
+Use queue-aware scaling first. CPU-only policies are usually too indirect for long-poll workers.
+
+### ECS/Fargate
+
+Recommended scaling inputs:
+- backlog per running task
+- oldest visible message age
+- runtime in-flight saturation
+
+Recommended posture:
+- scale out from queue backlog per task, not raw queue depth alone
+- use oldest visible message age as a latency guardrail for slow-moving queues
+- use failure and timeout rates to slow or block scale-in when the system is unhealthy
+- keep cooldowns conservative enough that long-poll workers are not constantly thrashing
+
+Operationally, the cleanest AWS pattern is CloudWatch-backed scaling with metric math that divides queue backlog by running task count.
+
+### Kubernetes on AWS
+
+Recommended scaling inputs:
+- external queue metrics such as SQS backlog or oldest message age
+- pod-level saturation signals such as in-flight work per worker
+- failure and timeout trends as scale-in guardrails
+
+Recommended posture:
+- prefer KEDA or another external-metric path when scaling from SQS
+- do not rely only on CPU or memory HPA targets for event-driven workers
+- keep minimum replicas intentional when cold-start latency matters
+- keep queue visibility timeout and pod termination grace periods aligned with worker shutdown behavior
+
+## What this slice does not include
+
+Out of scope here:
+- structured log adapters
+- log-correlation helpers
+- Lambda-specific guidance
+- non-raw SNS -> SQS propagation helpers
+- vendor-specific SigNoz code in the package

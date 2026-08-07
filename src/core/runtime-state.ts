@@ -1,0 +1,69 @@
+import type { Message as SqsSdkMessage } from '@aws-sdk/client-sqs';
+import type { RouteFiniteRunState } from './finite-run';
+import { createRouteStatus } from './status';
+import type {
+  SqsWorkerHandlerResult,
+  SqsWorkerMessage,
+  SqsWorkerMessageFinalizationReason,
+  SqsWorkerReceivePolicy,
+  SqsWorkerReceiveStrategy,
+  SqsWorkerRoute,
+  SqsWorkerRouteConfig,
+  SqsWorkerRouteStatus,
+} from './types';
+
+export interface NormalizedReceiveStrategy extends SqsWorkerReceiveStrategy {
+  policy: SqsWorkerReceivePolicy;
+}
+
+export interface NormalizedRoute<TPayload> extends Omit<SqsWorkerRoute<TPayload>, 'receive' | 'decodePayload'> {
+  decodePayload: (message: SqsWorkerMessage) => TPayload;
+  config: SqsWorkerRouteConfig;
+  receive: NormalizedReceiveStrategy;
+}
+
+export interface BufferedRouteMessage {
+  rawMessage: SqsSdkMessage;
+  receivedAtMs: number;
+}
+
+export interface PendingDeleteEntry {
+  message: SqsWorkerMessage;
+  reason: SqsWorkerMessageFinalizationReason;
+  resolve: () => void;
+}
+
+export interface RouteDeleteBatchState {
+  entries: PendingDeleteEntry[];
+  flushTimer?: NodeJS.Timeout;
+  flushPromise?: Promise<void>;
+}
+
+export interface RouteRuntime<TPayload> {
+  route: NormalizedRoute<TPayload>;
+  status: SqsWorkerRouteStatus;
+  loop?: Promise<void>;
+  tasks: Set<Promise<void>>;
+  buffer: BufferedRouteMessage[];
+  deleteBatch: RouteDeleteBatchState;
+  pollAbortController?: AbortController;
+  pendingReceiveRequestAttempt?: { value: string; createdAtMs: number };
+  finiteRun?: RouteFiniteRunState;
+  activityVersion: number;
+  activityWaiter?: () => void;
+}
+
+type SqsWorkerVoidResult = ReturnType<() => void>;
+
+export type SqsWorkerHandlerOutcome = SqsWorkerHandlerResult | SqsWorkerVoidResult | undefined;
+
+export function createRouteRuntime<TPayload>(route: NormalizedRoute<TPayload>): RouteRuntime<TPayload> {
+  return {
+    route,
+    status: createRouteStatus(route.name, route.queueUrl),
+    buffer: [],
+    deleteBatch: { entries: [] },
+    tasks: new Set(),
+    activityVersion: 0,
+  };
+}

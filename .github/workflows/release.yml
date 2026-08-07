@@ -1,0 +1,224 @@
+name: Messaging Runtime Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Release workflow mode
+        required: true
+        default: validate
+        type: choice
+        options:
+          - validate
+          - publish-github
+          - publish-npm
+      release-ref:
+        description: Required for publish-npm; accepts v-prefixed tags or bare versions such as v1.0.0 or 1.0.0
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: messaging-runtime-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  preflight:
+    name: Release preflight
+    runs-on: ubuntu-latest
+    outputs:
+      checkout_ref: ${{ steps.target.outputs.checkout_ref }}
+      package_version: ${{ steps.package.outputs.version }}
+      target_sha: ${{ steps.package.outputs.target_sha }}
+      tag_name: ${{ steps.package.outputs.tag_name }}
+
+    env:
+      NODE_AUTH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Enforce main dispatch
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || {
+            echo "The release workflow must be dispatched from refs/heads/main. Current ref: $GITHUB_REF"
+            exit 1
+          }
+
+      - name: Resolve target ref
+        id: target
+        run: |
+          mode='${{ inputs.mode }}'
+          release_ref='${{ inputs['release-ref'] }}'
+
+          case "$mode" in
+            validate|publish-github)
+              checkout_ref='refs/heads/main'
+              tag_name=''
+              ;;
+            publish-npm)
+              test -n "$release_ref" || {
+                echo "publish-npm requires a release-ref input such as v1.0.0 or 1.0.0"
+                exit 1
+              }
+              tag_name="$release_ref"
+              case "$tag_name" in
+                refs/tags/*) tag_name="${tag_name#refs/tags/}" ;;
+              esac
+              case "$tag_name" in
+                v*) ;;
+                *) tag_name="v$tag_name" ;;
+              esac
+              checkout_ref="refs/tags/$tag_name"
+              ;;
+            *)
+              echo "Unsupported release mode: $mode"
+              exit 1
+              ;;
+          esac
+
+          echo "checkout_ref=$checkout_ref" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout target
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.target.outputs.checkout_ref }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Configure GitHub Packages auth for release validation
+        run: |
+          npm config set @idenstra:registry https://npm.pkg.github.com
+          npm config set //npm.pkg.github.com/:_authToken "$NODE_AUTH_TOKEN"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Read package version
+        id: package
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag_name='${{ steps.target.outputs.tag_name }}'
+          if [ -z "$tag_name" ]; then
+            tag_name="v$version"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "target_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package
+        run: HARNESS_STRICT=1 make verify-fast
+
+      - name: Validate releasable git and registry state
+        run: |
+          cmd=(node scripts/release/validate-release-state.mjs --mode "${{ inputs.mode }}" --check-live-state)
+          if [ -n "${{ steps.target.outputs.tag_name }}" ]; then
+            cmd+=(--promotion-ref "${{ steps.target.outputs.tag_name }}")
+          fi
+          "${cmd[@]}"
+
+      - name: Publish dry-run
+        run: npm publish --dry-run
+
+  aws-smoke:
+    if: ${{ inputs.mode == 'publish-github' && github.ref == 'refs/heads/main' }}
+    needs: preflight
+    uses: ./.github/workflows/aws-smoke.yml
+    with:
+      suites: transport,worker,routing,discovery,queue-ops,redrive
+      aws-region: us-east-1
+      git-ref: ${{ needs.preflight.outputs.target_sha }}
+
+  publish-github:
+    name: Publish package to GitHub Packages
+    if: ${{ inputs.mode == 'publish-github' && github.ref == 'refs/heads/main' }}
+    needs:
+      - preflight
+      - aws-smoke
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_AUTH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout verified commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.preflight.outputs.target_sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@idenstra'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish package to GitHub Packages
+        run: npm publish --registry https://npm.pkg.github.com --access restricted
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${{ needs.preflight.outputs.tag_name }}"
+          git push origin "${{ needs.preflight.outputs.tag_name }}"
+
+  publish-npm:
+    name: Publish package to npmjs
+    if: ${{ inputs.mode == 'publish-npm' && github.ref == 'refs/heads/main' }}
+    needs:
+      - preflight
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout promoted tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ needs.preflight.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Setup Node for npmjs
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build package
+        run: npm run build
+
+      - name: Prepare release notes
+        run: node scripts/release/print-release-notes.mjs "${{ needs.preflight.outputs.package_version }}" > release-notes.md
+
+      - name: Publish package to npmjs
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ needs.preflight.outputs.tag_name }}" \
+            --title "${{ needs.preflight.outputs.tag_name }}" \
+            --notes-file release-notes.md

@@ -1,0 +1,23 @@
+name: Maintainer epic
+description: Maintainer workflow form for a multi-slice package initiative
+title: ""
+type: Epic
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: What long-lived capability or initiative does this epic own?
+    validations:
+      required: true
+  - type: textarea
+    id: child_issues
+    attributes:
+      label: Planned child issues
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: What would make this umbrella complete?
+    validations:
+      required: true

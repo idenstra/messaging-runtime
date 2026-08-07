@@ -1,0 +1,22 @@
+name: Feature
+description: Propose a new package capability, helper, or supported behavior
+title: ""
+type: Feature
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: What capability should the runtime add or expand?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals

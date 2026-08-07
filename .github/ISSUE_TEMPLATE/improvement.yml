@@ -1,0 +1,22 @@
+name: Improvement
+description: Propose an ergonomics, clarity, documentation, or operability improvement
+title: ""
+type: Improvement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Current problem
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Proposed improvement
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+

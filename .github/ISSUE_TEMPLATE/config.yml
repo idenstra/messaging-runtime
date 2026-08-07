@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security policy
+    url: https://github.com/idenstra/messaging-runtime/blob/main/SECURITY.md
+    about: Use the repository security policy and private reporting path instead of opening a public issue.
+  - name: Quick start and docs map
+    url: https://github.com/idenstra/messaging-runtime/blob/main/docs/README.md
+    about: Check the quick start, cookbook, and documentation map before opening an onboarding or usage issue.

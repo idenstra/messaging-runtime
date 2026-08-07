@@ -1,0 +1,22 @@
+name: Bug
+description: Report incorrect runtime, publisher, queue-ops, or observability behavior
+title: ""
+type: Bug
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof or reproduction
+      description: Include logs, local reproduction steps, or the proof lane you already ran when relevant.

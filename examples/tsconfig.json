@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": "..",
+    "paths": {
+      "@idenstra/messaging-runtime": ["src/index.ts"],
+      "@idenstra/messaging-runtime/core": ["src/core/index.ts"],
+      "@idenstra/messaging-runtime/nest": ["src/adapters/nest.ts"],
+      "@idenstra/messaging-runtime/observability": ["src/observability/index.ts"]
+    }
+  },
+  "include": ["./**/*.ts"]
+}
