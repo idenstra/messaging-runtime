@@ -47,6 +47,9 @@ Execution-plan helpers:
 - `make plan-sync`
 - `make plan-close ISSUE=<number>`
 
+PR governance also validates the narrow same-repository Dependabot manifest-only exemption; it does not exempt generated
+updates from package, public-surface, security, or release proof.
+
 Optional end-to-end proof:
 - `make verify-localstack`
 - `npm run e2e:localstack -- --suite runtime,publishers`

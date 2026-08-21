@@ -10,7 +10,7 @@ const allowedDependencyFilesByEcosystem = new Map([
     ],
   ],
   ['docker', [/(?:^|\/)Dockerfile(?:\.[^/]+)?$/]],
-  ['github_actions', [/^\.github\/workflows\/[^/]+\.ya?ml$/, /^\.github\/actions\/.+\/action\.ya?ml$/]],
+  ['github_actions', [/^\.github\/workflows\/[^/]+\.ya?ml$/]],
   ['maven', [/(?:^|\/)pom\.xml$/]],
   [
     'pip',
@@ -24,6 +24,7 @@ const allowedDependencyFilesByEcosystem = new Map([
       /(?:^|\/)gradle\.properties$/,
       /(?:^|\/)gradle\/wrapper\/gradle-wrapper\.properties$/,
       /(?:^|\/)gradle\/libs\.versions\.toml$/,
+      /(?:^|\/)variables\.gradle$/,
     ],
   ],
 ]);
@@ -34,6 +35,8 @@ export function isTrustedDependabotManifestUpdate({
   headRepositoryFullName,
   repoFullName,
   changedFiles,
+  changedFileModes,
+  allowedEcosystems,
 }) {
   const ecosystem = headRefName?.match(/^dependabot\/([^/]+)\//)?.[1];
   const allowedPatterns = allowedDependencyFilesByEcosystem.get(ecosystem);
@@ -44,6 +47,13 @@ export function isTrustedDependabotManifestUpdate({
     Array.isArray(changedFiles) &&
     changedFiles.length > 0 &&
     Boolean(allowedPatterns) &&
-    changedFiles.every((relativePath) => allowedPatterns.some((pattern) => pattern.test(relativePath)))
+    allowedEcosystems instanceof Set &&
+    allowedEcosystems.has(ecosystem) &&
+    changedFileModes instanceof Map &&
+    changedFiles.every(
+      (relativePath) =>
+        changedFileModes.get(relativePath) === '100644' &&
+        allowedPatterns.some((pattern) => pattern.test(relativePath)),
+    )
   );
 }

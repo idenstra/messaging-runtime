@@ -13,3 +13,6 @@ Workflow:
 4. open the PR with the governed template
 
 Cross-repo work should keep the authoritative backlog in the owning repo and use related links for coordination.
+
+Same-repository Dependabot manifest updates may omit manual issue and plan fields only when the bot identity, configured
+ecosystem branch, regular-file modes, and changed manifest/lock paths all pass the fail-closed governance validator.

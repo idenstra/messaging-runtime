@@ -91,6 +91,8 @@ Performance-sensitive runtime changes add one extra proof expectation beyond the
 - When required proof is skipped, call it out in handoff with the reason, impact, and follow-up path.
 - Put broader deferred hardening in a follow-up issue, not in the change summary.
 - Follow same-repo issue, plan, and PR-governance rules from `docs/ISSUE_TRACKING.md` and `docs/EXECUTION_PLANS.md`.
+- Same-repository Dependabot PRs are the only automatic governance exemption. They must be authored by
+  `dependabot[bot]` and contain only regular manifest or lock files for a configured ecosystem.
 
 ## Definition of done
 

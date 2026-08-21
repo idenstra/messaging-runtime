@@ -141,6 +141,7 @@ test('accepts verified Dependabot manifest updates without issue metadata', () =
     repoFullName,
     activeExecutionPlans: new Set(),
     completedExecutionPlans: new Set(),
+    authorLogin: 'dependabot[bot]',
     trustedDependencyAutomation: true,
   });
 

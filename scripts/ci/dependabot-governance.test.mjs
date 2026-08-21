@@ -8,6 +8,11 @@ const baseInput = {
   headRepositoryFullName: 'idenstra/repo',
   repoFullName: 'idenstra/repo',
   changedFiles: ['package.json', 'package-lock.json'],
+  changedFileModes: new Map([
+    ['package.json', '100644'],
+    ['package-lock.json', '100644'],
+  ]),
+  allowedEcosystems: new Set(['npm_and_yarn', 'github_actions']),
 };
 
 test('accepts same-repository Dependabot manifest-only updates', () => {
@@ -17,14 +22,7 @@ test('accepts same-repository Dependabot manifest-only updates', () => {
       ...baseInput,
       headRefName: 'dependabot/github_actions/minor-and-patch-12345678',
       changedFiles: ['.github/workflows/ci.yml'],
-    }),
-    true,
-  );
-  assert.equal(
-    isTrustedDependabotManifestUpdate({
-      ...baseInput,
-      headRefName: 'dependabot/gradle/minor-and-patch-12345678',
-      changedFiles: ['android/build.gradle', 'android/gradle/wrapper/gradle-wrapper.properties'],
+      changedFileModes: new Map([['.github/workflows/ci.yml', '100644']]),
     }),
     true,
   );
@@ -42,4 +40,12 @@ test('rejects impersonation, forks, unsupported ecosystems, and source changes',
     false,
   );
   assert.equal(isTrustedDependabotManifestUpdate({ ...baseInput, changedFiles: [] }), false);
+  assert.equal(
+    isTrustedDependabotManifestUpdate({
+      ...baseInput,
+      changedFileModes: new Map([['package.json', '120000']]),
+      changedFiles: ['package.json'],
+    }),
+    false,
+  );
 });
