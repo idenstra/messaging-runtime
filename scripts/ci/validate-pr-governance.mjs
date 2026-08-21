@@ -12,6 +12,7 @@ import {
   normalizeExecutionPlanPath,
   readOriginRepoFullName,
 } from '../harness/lib/execution-plan-utils.mjs';
+import { isTrustedDependabotManifestUpdate } from './dependabot-governance.mjs';
 
 const root = process.cwd();
 
@@ -159,12 +160,21 @@ export function evaluatePullRequestGovernance({
   repoFullName,
   activeExecutionPlans,
   completedExecutionPlans = new Set(),
+  trustedDependencyAutomation = false,
 }) {
   const issueRefs = extractIssueRefs(body, repoFullName);
   const executionPlan = extractExecutionPlan(body);
   const planExemption = extractPlanFreeExemption(body);
   const issueExemption = extractIssueFreeExemption(body);
   const trivialClassification = classifyTrivialChange(changedFiles);
+
+  if (trustedDependencyAutomation) {
+    return {
+      ok: true,
+      mode: 'trusted-dependency-automation',
+      message: 'validated trusted Dependabot manifest-only update',
+    };
+  }
 
   if (issueRefs.length > 0) {
     const missingIssues = issueRefs.filter((issueNumber) => !existingIssueNumbers.has(issueNumber));
@@ -363,6 +373,13 @@ async function runCli() {
   const prNumber = Number.parseInt(String(event.number ?? event.pull_request.number ?? ''), 10);
   const body = String(event.pull_request.body ?? '');
   const changedFiles = await fetchPullRequestFiles(repoFullName, prNumber, process.env.GITHUB_TOKEN);
+  const trustedDependencyAutomation = isTrustedDependabotManifestUpdate({
+    authorLogin: event.pull_request.user?.login,
+    headRefName: event.pull_request.head?.ref,
+    headRepositoryFullName: event.pull_request.head?.repo?.full_name,
+    repoFullName,
+    changedFiles,
+  });
   const issueRefs = extractIssueRefs(body, repoFullName);
   const issueStates = await resolveIssueStates(repoFullName, issueRefs, process.env.GITHUB_TOKEN);
   const existingIssueNumbers = new Set(
@@ -378,6 +395,7 @@ async function runCli() {
     repoFullName,
     activeExecutionPlans,
     completedExecutionPlans,
+    trustedDependencyAutomation,
   });
 
   if (evaluation.ok) {
