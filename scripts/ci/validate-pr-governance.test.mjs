@@ -132,3 +132,19 @@ test('evaluatePullRequestGovernance accepts an explicit trivial issue-free exemp
   assert.equal(evaluation.ok, true);
   assert.equal(evaluation.mode, 'trivial');
 });
+
+test('accepts verified Dependabot manifest updates without issue metadata', () => {
+  const evaluation = evaluatePullRequestGovernance({
+    body: '',
+    changedFiles: ['package.json', 'package-lock.json'],
+    existingIssueNumbers: new Set(),
+    repoFullName,
+    activeExecutionPlans: new Set(),
+    completedExecutionPlans: new Set(),
+    authorLogin: 'dependabot[bot]',
+    trustedDependencyAutomation: true,
+  });
+
+  assert.equal(evaluation.ok, true);
+  assert.equal(evaluation.mode, 'trusted-dependency-automation');
+});

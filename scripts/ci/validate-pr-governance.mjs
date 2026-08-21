@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -12,8 +13,23 @@ import {
   normalizeExecutionPlanPath,
   readOriginRepoFullName,
 } from '../harness/lib/execution-plan-utils.mjs';
+import { isTrustedDependabotManifestUpdate } from './dependabot-governance.mjs';
 
 const root = process.cwd();
+
+function readTrackedFileModes(repositoryRoot, relativePaths) {
+  const modes = new Map();
+  for (const relativePath of relativePaths) {
+    const output = execFileSync('git', ['-C', repositoryRoot, 'ls-files', '--stage', '--', relativePath], {
+      encoding: 'utf8',
+    });
+    const lines = output.trimEnd().split('\n').filter(Boolean);
+    const [metadata] = lines.length === 1 ? lines[0].split('\t', 1) : [];
+    const [mode, , stage] = metadata?.split(/\s+/) ?? [];
+    modes.set(relativePath, stage === '0' ? mode : undefined);
+  }
+  return modes;
+}
 
 const closingKeywordPattern =
   /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+((?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#(\d+))\b/gi;
@@ -159,12 +175,22 @@ export function evaluatePullRequestGovernance({
   repoFullName,
   activeExecutionPlans,
   completedExecutionPlans = new Set(),
+  authorLogin,
+  trustedDependencyAutomation = false,
 }) {
   const issueRefs = extractIssueRefs(body, repoFullName);
   const executionPlan = extractExecutionPlan(body);
   const planExemption = extractPlanFreeExemption(body);
   const issueExemption = extractIssueFreeExemption(body);
   const trivialClassification = classifyTrivialChange(changedFiles);
+
+  if (trustedDependencyAutomation && authorLogin === 'dependabot[bot]') {
+    return {
+      ok: true,
+      mode: 'trusted-dependency-automation',
+      message: 'validated trusted Dependabot manifest-only update',
+    };
+  }
 
   if (issueRefs.length > 0) {
     const missingIssues = issueRefs.filter((issueNumber) => !existingIssueNumbers.has(issueNumber));
@@ -363,6 +389,16 @@ async function runCli() {
   const prNumber = Number.parseInt(String(event.number ?? event.pull_request.number ?? ''), 10);
   const body = String(event.pull_request.body ?? '');
   const changedFiles = await fetchPullRequestFiles(repoFullName, prNumber, process.env.GITHUB_TOKEN);
+  const changedFileModes = readTrackedFileModes(root, changedFiles);
+  const trustedDependencyAutomation = isTrustedDependabotManifestUpdate({
+    authorLogin: event.pull_request.user?.login,
+    headRefName: event.pull_request.head?.ref,
+    headRepositoryFullName: event.pull_request.head?.repo?.full_name,
+    repoFullName,
+    changedFiles,
+    changedFileModes,
+    allowedEcosystems: new Set(['npm_and_yarn', 'github_actions']),
+  });
   const issueRefs = extractIssueRefs(body, repoFullName);
   const issueStates = await resolveIssueStates(repoFullName, issueRefs, process.env.GITHUB_TOKEN);
   const existingIssueNumbers = new Set(
@@ -378,6 +414,8 @@ async function runCli() {
     repoFullName,
     activeExecutionPlans,
     completedExecutionPlans,
+    authorLogin: event.pull_request.user?.login,
+    trustedDependencyAutomation,
   });
 
   if (evaluation.ok) {
