@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { isTrustedDependabotManifestUpdate } from './dependabot-governance.mjs';
 
 const baseInput = {
@@ -31,31 +31,15 @@ test('accepts same-repository Dependabot manifest-only updates', () => {
 });
 
 test('rejects impersonation, forks, unsupported ecosystems, and source changes', () => {
+  assert.equal(isTrustedDependabotManifestUpdate({ ...baseInput, authorLogin: 'dependabot' }), false);
+  assert.equal(isTrustedDependabotManifestUpdate({ ...baseInput, headRepositoryFullName: 'fork/repo' }), false);
   assert.equal(
-    isTrustedDependabotManifestUpdate({ ...baseInput, authorLogin: 'dependabot' }),
+    isTrustedDependabotManifestUpdate({ ...baseInput, headRefName: 'dependabot/unknown/dependency-1.2.3' }),
     false,
   );
   assert.equal(
-    isTrustedDependabotManifestUpdate({
-      ...baseInput,
-      headRepositoryFullName: 'fork/repo',
-    }),
-    false,
-  );
-  assert.equal(
-    isTrustedDependabotManifestUpdate({
-      ...baseInput,
-      headRefName: 'dependabot/unknown/dependency-1.2.3',
-    }),
-    false,
-  );
-  assert.equal(
-    isTrustedDependabotManifestUpdate({
-      ...baseInput,
-      changedFiles: ['package-lock.json', 'src/app.ts'],
-    }),
+    isTrustedDependabotManifestUpdate({ ...baseInput, changedFiles: ['package-lock.json', 'src/app.ts'] }),
     false,
   );
   assert.equal(isTrustedDependabotManifestUpdate({ ...baseInput, changedFiles: [] }), false);
 });
-

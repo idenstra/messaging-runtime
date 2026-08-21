@@ -10,22 +10,11 @@ const allowedDependencyFilesByEcosystem = new Map([
     ],
   ],
   ['docker', [/(?:^|\/)Dockerfile(?:\.[^/]+)?$/]],
-  [
-    'github_actions',
-    [
-      /^\.github\/workflows\/[^/]+\.ya?ml$/,
-      /^\.github\/actions\/.+\/action\.ya?ml$/,
-    ],
-  ],
+  ['github_actions', [/^\.github\/workflows\/[^/]+\.ya?ml$/, /^\.github\/actions\/.+\/action\.ya?ml$/]],
   ['maven', [/(?:^|\/)pom\.xml$/]],
   [
     'pip',
-    [
-      /(?:^|\/)requirements[^/]*\.txt$/,
-      /(?:^|\/)pyproject\.toml$/,
-      /(?:^|\/)uv\.lock$/,
-      /(?:^|\/)Pipfile(?:\.lock)?$/,
-    ],
+    [/(?:^|\/)requirements[^/]*\.txt$/, /(?:^|\/)pyproject\.toml$/, /(?:^|\/)uv\.lock$/, /(?:^|\/)Pipfile(?:\.lock)?$/],
   ],
   [
     'gradle',
@@ -55,9 +44,6 @@ export function isTrustedDependabotManifestUpdate({
     Array.isArray(changedFiles) &&
     changedFiles.length > 0 &&
     Boolean(allowedPatterns) &&
-    changedFiles.every((relativePath) =>
-      allowedPatterns.some((pattern) => pattern.test(relativePath)),
-    )
+    changedFiles.every((relativePath) => allowedPatterns.some((pattern) => pattern.test(relativePath)))
   );
 }
-
